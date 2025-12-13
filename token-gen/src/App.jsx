@@ -1,290 +1,21 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Copy, Check, Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Download, Wand2, Printer, FileText, Image, EyeOff, Shuffle, AlertCircle, Eye } from 'lucide-react';
-
-// --- Color Utility Functions ---
-
-const hexToHsl = (hex) => {
-  let r = 0, g = 0, b = 0;
-  if (hex.length === 4) {
-    r = "0x" + hex[1] + hex[1];
-    g = "0x" + hex[2] + hex[2];
-    b = "0x" + hex[3] + hex[3];
-  } else if (hex.length === 7) {
-    r = "0x" + hex[1] + hex[2];
-    g = "0x" + hex[3] + hex[4];
-    b = "0x" + hex[5] + hex[6];
-  }
-  r /= 255; g /= 255; b /= 255;
-  let cmin = Math.min(r, g, b), cmax = Math.max(r, g, b), delta = cmax - cmin;
-  let h = 0, s = 0, l = 0;
-
-  if (delta === 0) h = 0;
-  else if (cmax === r) h = ((g - b) / delta) % 6;
-  else if (cmax === g) h = (b - r) / delta + 2;
-  else h = (r - g) / delta + 4;
-
-  h = Math.round(h * 60);
-  if (h < 0) h += 360;
-  l = (cmax + cmin) / 2;
-  s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-  s = +(s * 100).toFixed(1);
-  l = +(l * 100).toFixed(1);
-
-  return { h, s, l };
-};
-
-const hslToHex = (h, s, l) => {
-  s /= 100;
-  l /= 100;
-  let c = (1 - Math.abs(2 * l - 1)) * s,
-      x = c * (1 - Math.abs(((h / 60) % 2) - 1)),
-      m = l - c / 2,
-      r = 0, g = 0, b = 0;
-
-  if (0 <= h && h < 60) { r = c; g = x; b = 0; }
-  else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
-  else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
-  else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
-  else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
-  else if (300 <= h && h < 360) { r = c; g = 0; b = x; }
-
-  r = Math.round((r + m) * 255).toString(16);
-  g = Math.round((g + m) * 255).toString(16);
-  b = Math.round((b + m) * 255).toString(16);
-
-  if (r.length === 1) r = "0" + r;
-  if (g.length === 1) g = "0" + g;
-  if (b.length === 1) b = "0" + b;
-
-  return "#" + r + g + b;
-};
-
-// Helper to generate a color with adjustments
-// lightSet: absolute lightness value (0-100)
-// lightShift: relative adjustment to base lightness
-const getColor = (baseHsl, hueShift = 0, satMult = 1, lightSet = null, lightShift = 0) => {
-  let h = (baseHsl.h + hueShift) % 360;
-  if (h < 0) h += 360;
-  let s = Math.max(0, Math.min(100, baseHsl.s * satMult));
-  let l = lightSet !== null ? lightSet : Math.max(0, Math.min(100, baseHsl.l + lightShift));
-  return hslToHex(h, s, l);
-};
-
-const blendHue = (base, shift, weight = 0) => {
-  const target = (base + shift + 360) % 360;
-  const h = (base * (1 - weight)) + (target * weight);
-  return (h + 360) % 360;
-};
-
-// Flatten tokens and add minimal typing so Penpot can ingest them
-const getPenpotType = (name, value) => {
-  if (typeof value === 'number') return 'number';
-  const val = String(value);
-  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(val) || /^rgba?\(/i.test(val) || /^hsla?\(/i.test(val)) return 'color';
-  if (/shadow/i.test(name)) return 'string';
-  if (/(px|rem|em|vh|vw|%)$/i.test(val)) return 'dimension';
-  if (/opacity/i.test(name)) return 'opacity';
-  return 'string';
-};
-
-const flattenTokens = (obj, prefix = []) => {
-  return Object.entries(obj).reduce((acc, [key, val]) => {
-    const path = [...prefix, key];
-    if (val && typeof val === 'object' && !Array.isArray(val)) {
-      if ('type' in val && 'value' in val) {
-        return acc.concat({ name: path.join('/'), value: val });
-      }
-      return acc.concat(flattenTokens(val, path));
-    }
-    return acc.concat({ name: path.join('/'), value: val });
-  }, []);
-};
-
-const buildWitchcraftPayload = (tokens, themeName, mode, isDark) => {
-  const slug = themeName.toLowerCase().replace(/\s+/g, '-');
-  const settings = {
-    primary: tokens.brand.primary,
-    accent: tokens.brand.accent,
-    background: tokens.surfaces.background,
-    fontSerif: "Literata",
-    fontScript: "Parisienne",
-    textPrimary: tokens.textPalette['text-primary'],
-    textHeading: tokens.typography.heading,
-    textMuted: tokens.typography['text-muted'],
-    fontHeading: "Cinzel",
-    fontAccent: "Cormorant Garamond",
-    colorMidnight: tokens.named['color-midnight'],
-    colorNight: tokens.named['color-night'],
-    colorIris: tokens.named['color-iris'],
-    colorAmethyst: tokens.named['color-amethyst'],
-    colorDusk: tokens.named['color-dusk'],
-    colorGold: tokens.named['color-gold'],
-    colorRune: tokens.named['color-rune'],
-    colorFog: tokens.named['color-fog'],
-    colorInk: tokens.named['color-ink'],
-    surfacePlain: tokens.surfaces['surface-plain'],
-    cardPanelSurface: tokens.cards['card-panel-surface'],
-    cardPanelSurfaceStrong: tokens.cards['card-panel-surface-strong'],
-    cardPanelBorder: tokens.cards['card-panel-border'],
-    cardPanelBorderStrong: tokens.cards['card-panel-border-strong'],
-    cardPanelBorderSoft: tokens.cards['card-panel-border-soft'],
-    glassSurface: tokens.glass['glass-surface'],
-    glassSurfaceStrong: tokens.glass['glass-surface-strong'],
-    glassCard: tokens.glass['glass-surface'],
-    glassHover: tokens.glass['glass-hover'],
-    glassBorder: tokens.glass['glass-border'],
-    glassBorderStrong: tokens.glass['glass-border-strong'],
-    glassHighlight: tokens.glass['glass-highlight'],
-    glassGlow: tokens.glass['glass-glow'],
-    glassShadowSoft: tokens.glass['glass-shadow-soft'],
-    glassShadowStrong: tokens.glass['glass-shadow-strong'],
-    glassBlur: tokens.glass['glass-blur'],
-    glassNoiseOpacity: tokens.glass['glass-noise-opacity'],
-    textSecondary: tokens.textPalette['text-secondary'],
-    textTertiary: tokens.textPalette['text-tertiary'],
-    textStrong: tokens.typography['text-strong'],
-    textBody: tokens.typography['text-body'],
-    textSubtle: tokens.typography['text-muted'],
-    textAccent: tokens.typography['text-accent'],
-    textAccentStrong: tokens.typography['text-accent-strong'],
-    inkBody: tokens.named['color-ink'],
-    inkStrong: tokens.named['color-midnight'],
-    inkMuted: tokens.named['color-dusk'],
-    linkColor: tokens.brand['link-color'],
-    cardBadgeBg: tokens.cards['card-tag-bg'],
-    cardBadgeBorder: tokens.cards['card-tag-border'],
-    cardBadgeText: tokens.cards['card-tag-text'],
-    cardTagBg: tokens.cards['card-tag-bg'],
-    cardTagBorder: tokens.cards['card-tag-border'],
-    cardTagText: tokens.cards['card-tag-text'],
-    focusRingColor: tokens.brand['focus-ring'],
-    cardFocusOutline: tokens.brand['focus-ring'],
-    success: tokens.status.success,
-    warning: tokens.status.warning,
-    error: tokens.status.error,
-    info: tokens.status.info,
-    headerBackground: tokens.surfaces['header-background'],
-    headerBorder: tokens.surfaces['surface-plain-border'],
-    headerText: tokens.typography['text-strong'],
-    headerTextHover: tokens.typography['text-accent'],
-    footerBackground: tokens.cards['card-panel-surface-strong'],
-    footerBorder: tokens.cards['card-panel-border'],
-    footerText: tokens.typography['footer-text'],
-    footerTextMuted: tokens.typography['footer-text-muted'],
-  };
-
-  return {
-    label: themeName,
-    slug,
-    mode: isDark ? 'midnight' : 'daylight',
-    category: 'custom',
-    settings,
-  };
-};
-
-const buildPenpotPayload = (tokens, orderedHandoff = [], meta = null) => {
-  const flat = flattenTokens(tokens);
-  const clean = (segment) => {
-    const stripped = segment.replace(/[^a-zA-Z0-9]+/g, '');
-    return stripped || 'token';
-  };
-  const payload = flat.reduce((sets, { name, value }) => {
-    const [rawSet, ...rest] = name.split('/');
-    const setName = clean(rawSet);
-    const tokenSegments = rest.length ? rest : [rawSet];
-    const tokenName = tokenSegments.map(clean).join('.');
-    if (!sets[setName]) sets[setName] = {};
-    const explicitType = value && typeof value === 'object' && 'type' in value ? value.type : null;
-    const tokenValue = value && typeof value === 'object' && 'value' in value ? value.value : value;
-    sets[setName][tokenName] = { type: explicitType ?? getPenpotType(name, tokenValue), value: tokenValue };
-    return sets;
-  }, {});
-
-  if (orderedHandoff.length) {
-    payload.handoff = orderedHandoff.reduce((acc, item, idx) => {
-      const key = `${String(idx + 1).padStart(2, '0')}-${clean(item.name)}`;
-      acc[key] = {
-        type: getPenpotType(item.name, item.value),
-        value: item.value,
-        source: item.path,
-      };
-      return acc;
-    }, {});
-  }
-
-  if (meta) {
-    const metaSet = payload.meta ?? {};
-    Object.entries(meta).forEach(([key, val]) => {
-      metaSet[clean(key)] = { type: getPenpotType(key, val), value: val };
-    });
-    payload.meta = metaSet;
-  }
-
-  return payload;
-};
-
-const normalizeHex = (hex, fallback = '#111827') => {
-  if (typeof hex !== 'string') return fallback;
-  const match = hex.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
-  if (!match) return fallback;
-  const raw = match[1];
-  if (raw.length === 3) {
-    return '#' + raw.split('').map((c) => c + c).join('');
-  }
-  return '#' + raw.toLowerCase();
-};
-
-const hexToRgb = (hex) => {
-  const clean = normalizeHex(hex);
-  const num = parseInt(clean.slice(1), 16);
-  return {
-    r: (num >> 16) & 255,
-    g: (num >> 8) & 255,
-    b: num & 255,
-  };
-};
-
-// --- WCAG Contrast Utilities ---
-const getLuminance = (hex) => {
-  const rgb = hexToRgb(hex);
-  const [r, g, b] = ['r', 'g', 'b'].map((channel) => {
-    const val = rgb[channel] / 255;
-    return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-};
-
-const getContrastRatio = (fg, bg) => {
-  try {
-    const l1 = getLuminance(fg);
-    const l2 = getLuminance(bg);
-    const lighter = Math.max(l1, l2);
-    const darker = Math.min(l1, l2);
-    return (lighter + 0.05) / (darker + 0.05);
-  } catch (err) {
-    console.warn('Contrast calculation failed:', err);
-    return 1;
-  }
-};
-
-const getWCAGBadge = (ratio) => {
-  if (ratio >= 7) return { text: 'AAA', color: 'text-green-600 bg-green-100' };
-  if (ratio >= 4.5) return { text: 'AA', color: 'text-amber-600 bg-amber-100' };
-  if (ratio >= 3) return { text: 'AA18', color: 'text-orange-600 bg-orange-100' };
-  return { text: 'FAIL', color: 'text-red-600 bg-red-100' };
-};
-
-const hexWithAlpha = (hex, alpha = 1) => {
-  const { r, g, b } = hexToRgb(hex);
-  return `rgba(${r},${g},${b},${alpha})`;
-};
-
-const escapeXml = (str = '') => String(str)
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;')
-  .replace(/'/g, '&apos;');
+import { Check, Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Download, Wand2, Printer, FileText, Image, EyeOff, Shuffle, Eye, Save, FolderOpen } from 'lucide-react';
+import ColorSwatch from './components/ColorSwatch';
+import Section from './components/Section';
+import ExportsPanel from './components/ExportsPanel';
+import ContrastPanel from './components/ContrastPanel';
+import useDarkClassSync from './hooks/useDarkClassSync';
+import { useNotification } from './context/NotificationContext.jsx';
+import {
+  escapeXml,
+  getContrastRatio,
+  getWCAGBadge,
+  hexWithAlpha,
+  normalizeHex,
+  pickReadableText,
+} from './lib/colorUtils';
+import { addPrintMode, buildOrderedStack, generateTokens } from './lib/tokens';
+import { buildGenericPayload, buildPenpotPayload, buildWitchcraftPayload, buildFigmaTokensPayload, buildStyleDictionaryPayload } from './lib/payloads';
 
 const encoder = new TextEncoder();
 const encodeText = (str) => encoder.encode(str);
@@ -313,6 +44,27 @@ const writeString = (buffer, offset, length, value) => {
   const len = Math.min(bytes.length, length);
   buffer.set(bytes.subarray(0, len), offset);
 };
+
+const STORAGE_KEYS = {
+  current: 'token-gen/current-palette',
+  saved: 'token-gen/saved-palettes',
+};
+
+const clampValue = (val, min, max) => Math.min(max, Math.max(min, Number(val)));
+
+const SectionFallback = ({ reset, message, label }) => (
+  <div className="p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
+    <p className="font-semibold text-sm">{label ? `${label} failed to render.` : 'This section failed to render.'}</p>
+    {message && <p className="text-xs mt-1">{message}</p>}
+    <button
+      type="button"
+      onClick={reset}
+      className="mt-3 inline-flex items-center px-3 py-1 rounded bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700"
+    >
+      Retry
+    </button>
+  </div>
+);
 
 const createTarArchive = (files) => {
   const blocks = [];
@@ -578,557 +330,6 @@ const getPrintTimestamps = () => {
   return { date, dateTime: `${date} ${time}` };
 };
 
-const orderedSwatchSpec = [
-  { name: 'Primary', path: 'brand.primary' },
-  { name: 'Accent', path: 'brand.accent' },
-  { name: 'Background', path: 'surfaces.background' },
-  { name: 'Body text', path: 'typography.text-body' },
-  { name: 'Heading', path: 'typography.heading' },
-  { name: 'Muted', path: 'typography.text-muted' },
-  { name: 'Page background', path: 'surfaces.page-background' },
-  { name: 'Header background', path: 'surfaces.header-background' },
-  { name: 'Header border', path: 'surfaces.surface-plain-border' },
-  { name: 'Footer background', path: 'cards.card-panel-surface' },
-  { name: 'Footer border', path: 'cards.card-panel-border' },
-  { name: 'Background (base)', path: 'surfaces.background' },
-  { name: 'Page background (deepest)', path: 'surfaces.background' },
-  { name: 'Header/overlay background', path: 'aliases.overlay-panel', fallbackPath: 'surfaces.header-background' },
-  { name: 'Card surface background', path: 'cards.card-panel-surface' },
-  { name: 'Body text colour', path: 'typography.text-body' },
-  { name: 'Heading text (lightest)', path: 'typography.heading' },
-  { name: 'Muted / subtle text', path: 'typography.text-muted' },
-  { name: 'Primary CTA & accents', path: 'brand.cta' },
-  { name: 'Brand accent colour', path: 'brand.secondary' },
-  { name: 'Hover & interactive states', path: 'brand.cta-hover' },
-  { name: 'Text accent', path: 'typography.text-accent' },
-  { name: 'Text accent strong', path: 'typography.text-accent-strong' },
-  { name: 'Link colour', path: 'brand.link-color' },
-  { name: 'Focus ring colour', path: 'brand.focus-ring' },
-  { name: 'Text primary', path: 'textPalette.text-primary' },
-  { name: 'Text secondary', path: 'textPalette.text-secondary' },
-  { name: 'Text tertiary', path: 'textPalette.text-tertiary' },
-  { name: 'Text body', path: 'typography.text-body' },
-  { name: 'Text subtle', path: 'typography.text-muted' },
-  { name: 'Text strong', path: 'typography.text-strong' },
-  { name: 'Text hint', path: 'typography.text-hint' },
-  { name: 'Text disabled', path: 'typography.text-disabled' },
-  { name: 'Text heading', path: 'typography.heading' },
-  { name: 'Ink body', path: 'named.color-ink', fallbackPath: 'textPalette.text-primary' },
-  { name: 'Ink strong', path: 'named.color-midnight', fallbackPath: 'typography.text-strong' },
-  { name: 'Ink muted', path: 'named.color-dusk', fallbackPath: 'textPalette.text-tertiary' },
-  { name: 'Surface plain', path: 'surfaces.surface-plain' },
-  { name: 'Surface plain border', path: 'surfaces.surface-plain-border' },
-  { name: 'Header background', path: 'surfaces.header-background' },
-  { name: 'Header border', path: 'surfaces.surface-plain-border' },
-  { name: 'Header text', path: 'typography.text-strong' },
-  { name: 'Header text (hover)', path: 'typography.text-accent' },
-  { name: 'Footer background', path: 'cards.card-panel-surface-strong' },
-  { name: 'Footer border', path: 'cards.card-panel-border' },
-  { name: 'Footer text', path: 'typography.footer-text' },
-  { name: 'Footer muted text', path: 'typography.footer-text-muted' },
-  { name: 'Card panel surface', path: 'cards.card-panel-surface' },
-  { name: 'Card panel strong', path: 'cards.card-panel-surface-strong' },
-  { name: 'Card panel border', path: 'cards.card-panel-border' },
-  { name: 'Card panel border strong', path: 'cards.card-panel-border-strong' },
-  { name: 'Card panel border soft', path: 'cards.card-panel-border-soft' },
-  { name: 'Card badge bg', path: 'cards.card-tag-bg' },
-  { name: 'Card badge border', path: 'cards.card-tag-border' },
-  { name: 'Card badge text', path: 'cards.card-tag-text' },
-  { name: 'Card tag bg', path: 'cards.card-tag-bg' },
-  { name: 'Card tag border', path: 'cards.card-tag-border' },
-  { name: 'Card tag text', path: 'cards.card-tag-text' },
-  { name: 'Card spoon bg', path: 'aliases.chip-background', fallbackPath: 'cards.card-panel-surface' },
-  { name: 'Card spoon border', path: 'aliases.chip-border', fallbackPath: 'cards.card-panel-border' },
-  { name: 'Card spoon text', path: 'typography.text-strong' },
-  { name: 'Card focus outline', path: 'brand.focus-ring' },
-  { name: 'Glass base', path: 'glass.glass-surface' },
-  { name: 'Glass strong', path: 'glass.glass-surface-strong' },
-  { name: 'Glass card', path: 'glass.glass-surface' },
-  { name: 'Glass hover', path: 'glass.glass-hover' },
-  { name: 'Glass border', path: 'glass.glass-border' },
-  { name: 'Glass border strong', path: 'glass.glass-border-strong' },
-  { name: 'Glass highlight', path: 'glass.glass-highlight' },
-  { name: 'Glass glow', path: 'glass.glass-glow' },
-  { name: 'Glass shadow soft', path: 'glass.glass-shadow-soft' },
-  { name: 'Glass shadow strong', path: 'glass.glass-shadow-strong' },
-  { name: 'Glass blur radius', path: 'glass.glass-blur' },
-  { name: 'Glass noise opacity', path: 'glass.glass-noise-opacity' },
-  { name: 'Success', path: 'status.success' },
-  { name: 'Warning', path: 'status.warning' },
-  { name: 'Error', path: 'status.error' },
-  { name: 'Info', path: 'status.info' },
-  { name: 'Entity card border', path: 'entity.entity-card-border' },
-  { name: 'Entity card glow', path: 'entity.entity-card-glow' },
-  { name: 'Entity card highlight', path: 'entity.entity-card-highlight' },
-  { name: 'Entity card surface top', path: 'entity.entity-card-surface' },
-  { name: 'Entity card surface bottom', path: 'entity.entity-card-surface' },
-  { name: 'Entity card heading', path: 'entity.entity-card-heading' },
-  { name: 'Entity card text', path: 'typography.text-body' },
-  { name: 'Entity card label', path: 'typography.text-muted' },
-  { name: 'Entity card CTA', path: 'brand.cta' },
-  { name: 'Entity card CTA hover', path: 'brand.cta-hover' },
-  { name: 'Entity card icon', path: 'brand.accent' },
-  { name: 'Entity card icon shadow', path: 'glass.glass-shadow-soft' },
-];
-
-const readTokenValue = (tokens, path) => {
-  const parts = path.split('.');
-  let current = tokens;
-  for (const part of parts) {
-    if (current && typeof current === 'object' && part in current) {
-      current = current[part];
-    } else {
-      return null;
-    }
-  }
-  if (current && typeof current === 'object' && 'value' in current) return current.value;
-  return current ?? null;
-};
-
-const buildOrderedStack = (tokens) => orderedSwatchSpec
-  .map((item) => {
-    const resolved = readTokenValue(tokens, item.path) ?? (item.fallbackPath ? readTokenValue(tokens, item.fallbackPath) : item.fallbackValue ?? null);
-    if (resolved === null || resolved === undefined) return null;
-    return { name: item.name, path: item.path, value: resolved };
-  })
-  .filter(Boolean);
-
-// --- Token Generation Logic ---
-
-const generateTokens = (baseColor, mode, isDark, apocalypseIntensity = 100) => {
-  const meatMode = baseColor.toLowerCase() === '#beefbeef';
-  const normalizedBase = meatMode
-    ? '#beefbe'
-    : (baseColor.length === 9 && baseColor.startsWith('#') ? baseColor.slice(0, 7) : baseColor);
-  const hsl = hexToHsl(normalizedBase);
-  const isApocalypse = mode === 'Apocalypse';
-  const intensity = isApocalypse ? (Math.max(20, Math.min(150, apocalypseIntensity)) / 100) : 1;
-  
-  // Harmony Offsets & saturation tweaks tuned for clearer stylistic separation
-  const harmony = {
-    Monochromatic: { secH: 0, accH: 0, secSat: 0.92, accSat: 1.0, surfaceMix: 0, backgroundMix: 0 },
-    Analogous: { secH: -20, accH: 20, secSat: 0.98, accSat: 1.05, surfaceMix: 0.35, backgroundMix: 0.25 },
-    Complementary: { secH: 180, accH: 180, secSat: 1.05, accSat: 1.1, surfaceMix: 0.28, backgroundMix: 0.22 },
-    Tertiary: { secH: 120, accH: -120, secSat: 0.96, accSat: 1.08, surfaceMix: 0.32, backgroundMix: 0.24 },
-    Apocalypse: { secH: 180, accH: 180, secSat: 2.0 * intensity, accSat: 2.2 * intensity, surfaceMix: Math.min(0.6, 0.45 * intensity), backgroundMix: Math.min(0.55, 0.35 * intensity) },
-  }[mode] ?? { secH: 0, accH: 0, secSat: 0.92, accSat: 1.0, surfaceMix: 0, backgroundMix: 0 };
-  const { secH, accH, secSat, accSat, surfaceMix, backgroundMix } = harmony;
-
-  // --- Light/Dark Logic Inversion ---
-  // In Dark mode, surfaces are dark (L ~ 10-20), Text is light (L ~ 80-90)
-  // In Light mode, surfaces are light (L ~ 95-100), Text is dark (L ~ 10-20)
-  
-  const bgL = isApocalypse ? (isDark ? 2 : 99) : (isDark ? 10 : 98); // Page Background
-  const surfaceL = isApocalypse ? (isDark ? 6 : 98) : (isDark ? 16 : 93); // Cards (light mode keeps tint; avoid pure white)
-  const textMainL = isApocalypse ? (isDark ? 98 : 8) : (isDark ? 95 : 10);
-  const textMutedL = isApocalypse ? (isDark ? 70 : 35) : (isDark ? 65 : 40);
-  const borderL = isApocalypse ? (isDark ? 10 : 88) : (isDark ? 25 : 90);
-  
-  // Balance tint between modes: use a shared base, then boost light mode so it matches dark-mode intensity at higher lightness
-  const baseSurfaceSat = isApocalypse
-    ? Math.max(32, Math.min(82, hsl.s * 0.8))
-    : Math.max(14, Math.min(56, hsl.s * 0.42));
-  const gammaLightSat = Math.pow(baseSurfaceSat / 100, 1.02) * 100; // Small curve to hold perceived saturation at high lightness
-  const surfaceSat = isDark
-    ? baseSurfaceSat
-    : Math.min(isApocalypse ? 88 : 72, Math.max(24, gammaLightSat * (isApocalypse ? 1.8 : 1.45)));
-
-  // Primary colors often need to be lighter in dark mode to stand out against dark bg
-  const brandLightness = isApocalypse ? (isDark ? 75 : 52) : (isDark ? 60 : 50); 
-  const accentLightness = isApocalypse ? (isDark ? 78 : 56) : (isDark ? 65 : 55);
-  const ctaLightness = isApocalypse ? (isDark ? 78 : 54) : (isDark ? 62 : 52);
-  const ctaHoverLightness = isApocalypse ? (isDark ? 82 : 50) : (isDark ? 68 : 48);
-
-  // Normalize saturation across hues for a more even visual balance
-  const satNormalizer = isApocalypse ? (isDark ? 1.35 : 1.5) : (isDark ? 0.92 : 0.86);
-  const primarySat = isApocalypse ? 1.5 : 0.9;
-  const secondarySat = secSat * satNormalizer;
-  const accentSat = accSat * satNormalizer;
-
-  // Define Palette Bases
-  const primary = getColor(hsl, 0, primarySat, brandLightness); 
-  const secondary = getColor(hsl, secH, secondarySat * 0.96, brandLightness);
-  const accent = getColor(hsl, accH, accentSat * 0.9, accentLightness);
-  const accentStrong = getColor(hsl, accH, (accentSat * 0.9) + 0.04, accentLightness + 5);
-  const cta = getColor(hsl, accH, (accentSat * 0.88) + 0.02, ctaLightness);
-  const ctaHover = getColor(hsl, accH, (accentSat * 0.88) + 0.05, ctaHoverLightness);
-  const gradientStart = getColor(hsl, 0, 1, isDark ? brandLightness + 5 : brandLightness + 8);
-  const gradientEnd = getColor(hsl, accH, accentSat * 0.9, isDark ? brandLightness - 4 : brandLightness - 2);
-
-  // Neutrals (Tinted by hue)
-  const surfaceHue = blendHue(hsl.h, secH, surfaceMix);
-  const backgroundHue = blendHue(hsl.h, accH, backgroundMix);
-  const backgroundBase = { h: backgroundHue, s: surfaceSat * (isDark ? 0.85 : 1.2), l: bgL };
-  const surfaceBase = { h: surfaceHue, s: surfaceSat, l: bgL };
-  const neutralColor = (lightness, satMult = 0.3) =>
-    getColor({ h: backgroundHue, s: surfaceSat * satMult, l: lightness }, 0, 1, lightness);
-  const neutralSteps = isDark
-    ? (isApocalypse ? [94, 80, 64, 50, 40, 30, 18, 10, 6, 3] : [96, 88, 78, 68, 55, 45, 32, 22, 14, 8])
-    : (isApocalypse ? [100, 98, 94, 84, 70, 56, 40, 28, 16, 8] : [100, 96, 90, 78, 66, 52, 38, 26, 16, 10]);
-
-  // Functional Colors
-  // In dark mode, error/success often need to be slightly pastel to be readable
-  const success = isApocalypse
-    ? (isDark ? hslToHex(145, 100, 60) : hslToHex(145, 95, 40))
-    : (isDark ? hslToHex(145, 65, 45) : hslToHex(145, 65, 40)); 
-  const warning = isApocalypse
-    ? (isDark ? hslToHex(45, 100, 60) : hslToHex(45, 100, 50))
-    : (isDark ? hslToHex(45, 90, 50) : hslToHex(45, 90, 45));
-  const error = isApocalypse
-    ? (isDark ? hslToHex(0, 100, 65) : hslToHex(0, 100, 45))
-    : (isDark ? hslToHex(0, 70, 60) : hslToHex(0, 70, 50));
-  const info = isApocalypse
-    ? (isDark ? hslToHex(210, 100, 65) : hslToHex(210, 100, 50))
-    : (isDark ? hslToHex(210, 80, 60) : hslToHex(210, 80, 50));
-  const statusStrong = {
-    success: getColor({ h: 145, s: 65, l: 50 }, 0, 1, isDark ? 52 : 48),
-    warning: getColor({ h: 45, s: 90, l: 55 }, 0, 1, isDark ? 52 : 50),
-    error: getColor({ h: 0, s: 72, l: 55 }, 0, 1, isDark ? 58 : 52),
-  };
-  const glassNoiseOpacity = isApocalypse ? '0.9' : (isDark ? '0.08' : '0.04');
-  const glassBlur = isApocalypse ? '40px' : '16px';
-
-  const tokens = {
-    foundation: {
-      hue: hsl.h,
-      neutrals: meatMode ? {
-        "neutral-0": "#ffd7e0", // rosé
-        "neutral-1": "#ffb3c4",
-        "neutral-2": "#ff8aa3",
-        "neutral-3": "#ff5b79",
-        "neutral-4": "#e63a52",
-        "neutral-5": "#c2203b", // blood
-        "neutral-6": "#991a32",
-        "neutral-7": "#6e1326",
-        "neutral-8": "#470d1b",
-        "neutral-9": "#f5ede2", // bone
-      } : {
-        "neutral-0": neutralColor(neutralSteps[0], 0.15),
-        "neutral-1": neutralColor(neutralSteps[1], 0.18),
-        "neutral-2": neutralColor(neutralSteps[2], 0.2),
-        "neutral-3": neutralColor(neutralSteps[3], 0.22),
-        "neutral-4": neutralColor(neutralSteps[4], 0.24),
-        "neutral-5": neutralColor(neutralSteps[5], 0.26),
-        "neutral-6": neutralColor(neutralSteps[6], 0.28),
-        "neutral-7": neutralColor(neutralSteps[7], 0.3),
-        "neutral-8": neutralColor(neutralSteps[8], 0.32),
-        "neutral-9": neutralColor(neutralSteps[9], 0.34),
-      },
-      accents: {
-        "accent-1": getColor(hsl, accH, 0.8 * satNormalizer, isDark ? 70 : 62),
-        "accent-2": getColor(hsl, accH + 8, 0.95 * satNormalizer, isDark ? 62 : 56),
-        "accent-3": getColor(hsl, accH - 10, 1.05 * satNormalizer, isDark ? 54 : 50),
-        "accent-ink": getColor(hsl, accH - 18, 1.08 * satNormalizer, isDark ? 38 : 34),
-      },
-      status: {
-        success,
-        warning,
-        error,
-        info,
-      },
-    },
-
-    // --- Core Brand ---
-    brand: {
-      primary: primary,
-      secondary: secondary,
-      accent: accent,
-      "accent-strong": accentStrong,
-      "cta": cta,
-      "cta-hover": ctaHover,
-      "gradient-start": gradientStart,
-      "gradient-end": gradientEnd,
-      "link-color": getColor(hsl, accH, 1, isDark ? 70 : 45), // Lighter link in dark mode
-      "focus-ring": getColor(hsl, accH, 1, isDark ? 40 : 70),
-    },
-
-    // --- Typography ---
-    typography: {
-      "heading": getColor(hsl, 0, 0.1, textMainL),
-      "text-strong": getColor(hsl, 0, 0.1, isDark ? 90 : 15),
-      "text-body": getColor(hsl, 0, 0.1, isDark ? 80 : 25),
-      "text-muted": getColor(hsl, 0, 0.1, textMutedL),
-      "text-hint": getColor(hsl, 0, 0.2, isDark ? 50 : 60),
-      "text-disabled": getColor(hsl, 0, 0.1, isDark ? 30 : 80),
-      "text-accent": getColor(hsl, accH, 1, isDark ? 75 : 40),
-      "text-accent-strong": getColor(hsl, accH, 1, isDark ? 85 : 30),
-      "footer-text": getColor(hsl, 0, 0.1, isDark ? 60 : 85),
-      "footer-text-muted": getColor(hsl, 0, 0.1, isDark ? 40 : 60),
-    },
-    textPalette: {
-      "text-primary": getColor(hsl, 0, 0.1, isDark ? 92 : 18),
-      "text-secondary": getColor(hsl, 0, 0.1, isDark ? 86 : 24),
-      "text-tertiary": getColor(hsl, 0, 0.1, isDark ? 78 : 32),
-      "text-hint": getColor(hsl, 0, 0.2, isDark ? 60 : 50),
-      "text-disabled": getColor(hsl, 0, 0.1, isDark ? 38 : 80),
-      "text-accent": getColor(hsl, accH, 1, isDark ? 75 : 40),
-      "text-accent-strong": getColor(hsl, accH, 1, isDark ? 85 : 30),
-      "link-color": getColor(hsl, accH, 1, isDark ? 70 : 45),
-    },
-
-    // --- Borders ---
-    borders: {
-      "border-subtle": getColor(surfaceBase, 0, 0.9, borderL),
-      "border-strong": getColor(surfaceBase, 0, 0.9, isDark ? borderL + 12 : borderL - 12),
-      "border-accent-subtle": getColor(hsl, accH, 0.15, isDark ? borderL + 5 : borderL - 5),
-      "border-accent-medium": getColor(hsl, accH, 0.25, isDark ? borderL + 10 : borderL - 10),
-      "border-accent-strong": getColor(hsl, accH, 0.35, isDark ? borderL + 18 : borderL - 18),
-      "border-accent-hover": getColor(hsl, accH, 0.4, isDark ? borderL + 22 : borderL - 22),
-    },
-
-    // --- Backgrounds & Surfaces ---
-    surfaces: {
-      "background": getColor(backgroundBase, 0, 1, bgL),
-      "page-background": getColor(backgroundBase, 0, 1, isDark ? bgL - 2 : bgL - 2),
-      "header-background": getColor(backgroundBase, 0, 1, isDark ? bgL + 2 : 99),
-      "surface-plain": getColor(surfaceBase, 0, 1, surfaceL),
-      "surface-plain-border": getColor(surfaceBase, 0, 1, borderL),
-    },
-
-    // --- Cards & Panels ---
-    cards: {
-      "card-panel-surface": getColor(surfaceBase, 0, 1, surfaceL),
-      "card-panel-surface-strong": getColor(surfaceBase, 0, 1, isDark ? surfaceL + 5 : 97),
-      "card-panel-border": getColor(surfaceBase, 0, 1, borderL),
-      "card-panel-border-soft": getColor(surfaceBase, 0, 1, isDark ? borderL - 5 : 95),
-      "card-panel-border-strong": getColor(surfaceBase, 0, 1, isDark ? borderL + 15 : 85),
-      "card-tag-bg": getColor(hsl, 0, 0.2, isDark ? 20 : 94),
-      "card-tag-text": getColor(hsl, 0, 0.4, isDark ? 80 : 30),
-      "card-tag-border": getColor(hsl, 0, 0.2, isDark ? 30 : 85),
-    },
-
-    // --- Glass Layers (Simulated) ---
-    // In dark mode, glass is usually a light white tint with low opacity
-    // In light mode, glass is usually a white tint or dark tint depending on design
-    glass: {
-      "glass-surface": getColor(hsl, 0, 0.1, isDark ? 20 : 95),
-      "glass-surface-strong": getColor(hsl, 0, 0.1, isDark ? 30 : 90),
-      "glass-border": getColor(hsl, 0, 0.1, isDark ? 35 : 85),
-      "glass-border-strong": getColor(hsl, 0, 0.2, isDark ? 45 : 80),
-      "glass-hover": getColor(hsl, accH, 0.3, isDark ? 25 : 95),
-      "glass-shadow": getColor(hsl, 0, 0.3, isDark ? 5 : 80), // Shadows are dark in both, but deeper in dark mode
-      "glass-highlight": getColor(hsl, 0, 0, isDark ? 30 : 99),
-      "glass-glow": getColor(hsl, accH, 0.5, isDark ? 28 : 72),
-      "glass-shadow-soft": isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.1)',
-      "glass-shadow-strong": isDark ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.18)',
-      "glass-blur": glassBlur,
-      "glass-noise-opacity": glassNoiseOpacity,
-    },
-
-    // --- Entity Special ---
-    entity: {
-      "entity-card-surface": getColor(hsl, secH, 0.15, isDark ? 18 : 98),
-      "entity-card-border": getColor(hsl, secH, 0.2, isDark ? 35 : 85),
-      "entity-card-glow": getColor(hsl, secH, 0.6, isDark ? 25 : 90), // Glows are darker in value but act as light sources in dark mode
-      "entity-card-highlight": getColor(hsl, secH, 0.4, isDark ? 30 : 95),
-      "entity-card-heading": getColor(hsl, secH, 0.5, isDark ? 80 : 20),
-    },
-
-    // --- The "Named" Palette (Swatches) ---
-    // These need to shift meaning slightly. 
-    // "Midnight" is always dark. "Fog" is always light.
-    // However, their USE changes.
-    named: {
-      "color-midnight": getColor(hsl, 0, 0.8, 10),  // Always Dark
-      "color-night": getColor(hsl, 10, 0.6, 15),    // Always Dark
-      "color-dusk": getColor(hsl, secH, 0.4, 30),   // Always Darkish
-      "color-ink": getColor(hsl, 0, 0.1, 20),       // Always Dark
-      "color-amethyst": getColor(hsl, accH, 0.7, 60), 
-      "color-iris": getColor(hsl, accH, 0.9, 75),     
-      "color-gold": getColor(hsl, 45, 0.8, 60),     
-      "color-rune": getColor(hsl, secH, 0.6, 85),   // Always Light
-      "color-fog": getColor(hsl, 0, 0.1, 90),       // Always Light
-    },
-
-    // --- Status ---
-    status: {
-      "success": success,
-      "warning": warning,
-      "error": error,
-      "info": info,
-      "success-strong": statusStrong.success,
-      "warning-strong": statusStrong.warning,
-      "error-strong": statusStrong.error,
-    },
-
-    // --- Admin Palette ---
-    admin: {
-      "admin-surface-base": getColor(backgroundBase, 0, 1, isDark ? bgL + 6 : 99),
-      "admin-accent": getColor(hsl, accH, 0.95, isDark ? 64 : 54),
-    },
-
-    // --- Back-Compat Aliases ---
-    aliases: {
-      "surface-panel-primary": getColor(surfaceBase, 0, 1, surfaceL),
-      "surface-panel-secondary": getColor(surfaceBase, 0, 1, isDark ? surfaceL + 4 : surfaceL - 2),
-      "surface-card-hover": getColor(surfaceBase, 0, 1, isDark ? surfaceL + 6 : surfaceL - 4),
-      "surface-muted": getColor(surfaceBase, 0, 1, isDark ? surfaceL - 2 : surfaceL + 2),
-      "border-purple-subtle": getColor(hsl, accH, 0.25, borderL),
-      "border-purple-medium": getColor(hsl, accH, 0.35, isDark ? borderL + 8 : borderL - 8),
-      "border-accent-subtle": getColor(hsl, accH, 0.2, isDark ? borderL + 5 : borderL - 5),
-      "border-accent-medium": getColor(hsl, accH, 0.35, isDark ? borderL + 10 : borderL - 10),
-      "border-accent-strong": getColor(hsl, accH, 0.5, isDark ? borderL + 18 : borderL - 18),
-      "border-accent-hover": getColor(hsl, accH, 0.6, isDark ? borderL + 22 : borderL - 22),
-      "text-subtle": getColor(hsl, 0, 0.1, textMutedL),
-      "text-accent-strong": getColor(hsl, accH, 1.05, isDark ? 88 : 34),
-      "accent-purple-strong": accentStrong,
-      "accent-purple-soft": getColor(hsl, accH, 0.7, isDark ? 75 : 70),
-      "overlay-panel": getColor(surfaceBase, 0, 1, isDark ? surfaceL + 2 : surfaceL),
-      "overlay-panel-strong": getColor(surfaceBase, 0, 1, isDark ? surfaceL + 6 : surfaceL - 2),
-      "focus-ring": getColor(hsl, accH, 1, isDark ? 40 : 70),
-      "shadow-card": isDark ? '0 20px 50px -20px rgba(0,0,0,0.55)' : '0 12px 30px -18px rgba(0,0,0,0.15)',
-      "shadow-card-hover": isDark ? '0 24px 60px -22px rgba(0,0,0,0.6)' : '0 14px 40px -20px rgba(0,0,0,0.2)',
-      "chip-background": getColor(surfaceBase, 0, 1, isDark ? surfaceL - 2 : surfaceL + 2),
-      "chip-border": getColor(surfaceBase, 0, 1, isDark ? borderL + 6 : borderL - 6),
-    },
-
-    // --- Dawn (Light) Overrides ---
-    dawn: {
-      "surface-base": getColor({ h: backgroundHue, s: Math.max(surfaceSat * 0.55, 10), l: 98 }, 0, 1, 98),
-      "surface-panel": getColor({ h: backgroundHue, s: Math.max(surfaceSat * 0.55, 10), l: 98 }, 0, 1, 98),
-      "surface-card": getColor({ h: backgroundHue, s: Math.max(surfaceSat * 0.6, 12), l: 97 }, 0, 1, 97),
-      "surface-elevated": getColor({ h: backgroundHue, s: Math.max(surfaceSat * 0.6, 12), l: 96 }, 0, 1, 96),
-      "surface-hover": getColor({ h: backgroundHue, s: Math.max(surfaceSat * 0.5, 10), l: 94 }, 0, 1, 94),
-      "text-strong": getColor(hsl, 0, 0.1, 18),
-      "text-body": getColor(hsl, 0, 0.1, 26),
-      "text-muted": getColor(hsl, 0, 0.1, 36),
-      "border-subtle": getColor(surfaceBase, 0, 1, 90),
-      "border-strong": getColor(surfaceBase, 0, 1, 78),
-      "accent-link": getColor(hsl, accH, 1, 45),
-      "accent-code": getColor(hsl, accH, 0.95, 42),
-      "prose-bg-soft": getColor(surfaceBase, 0, 1, 94),
-      "prose-bg-strong": getColor(surfaceBase, 0, 1, 92),
-    },
-  };
-
-  return tokens;
-};
-
-const addPrintMode = (tokensObj, baseColorInput, modeName, isDark) => {
-  const printTokens = { ...tokensObj, print: {} };
-
-  const richBlack = isDark ? '#0a0a0a' : '#111111';
-  const paperWhite = '#fdfdf9';
-
-  const toCmykSafe = (hex) => {
-    const baseHsl = hexToHsl(hex);
-    const s = Math.min(baseHsl.s, 88);
-    const l = baseHsl.l < 15 ? 8 : baseHsl.l > 92 ? 92 : baseHsl.l;
-    return hslToHex(baseHsl.h, s, l);
-  };
-
-  const isHex = (val) => typeof val === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(val);
-
-  const mutateForPrint = (obj, path = []) => {
-    Object.entries(obj).forEach(([key, token]) => {
-      if (token && typeof token === 'object' && !Array.isArray(token)) {
-        if ('type' in token && 'value' in token) {
-          if (token.type === 'color' && isHex(token.value)) {
-            const safe = toCmykSafe(token.value);
-            const printKey = [...path, key].join('/');
-            printTokens.print[printKey] = { type: 'color', value: safe };
-          }
-          return;
-        }
-        mutateForPrint(token, [...path, key]);
-        return;
-      }
-      const val = typeof token === 'string' ? token : token?.value;
-      if (isHex(val)) {
-        const safe = toCmykSafe(val);
-        const printKey = [...path, key].join('/');
-        printTokens.print[printKey] = { type: 'color', value: safe };
-      }
-    });
-  };
-
-  ['foundation', 'brand', 'typography', 'surfaces', 'cards', 'glass', 'entity', 'status'].forEach((section) => {
-    if (tokensObj[section]) mutateForPrint(tokensObj[section], [section]);
-  });
-
-  Object.assign(printTokens.print, {
-    'description': { type: 'string', value: 'Print-optimized • CMYK-safe • high-contrast • foil-ready' },
-    'background/paper': { type: 'color', value: paperWhite },
-    'ink/richblack': { type: 'color', value: richBlack },
-    'ink/dark': { type: 'color', value: '#111111' },
-    'ink/mid': { type: 'color', value: '#333333' },
-    'coat/gloss-overlay': { type: 'color', value: 'rgba(0,0,0,0.04)' }, // fake spot gloss
-    'foil/gold': { type: 'color', value: '#d4af37' },
-    'foil/silver': { type: 'color', value: '#e8e8e8' },
-    'foil/rose': { type: 'color', value: '#c8a2c8' },
-    'bleed': { type: 'dimension', value: '8px' },
-    'safe-margin': { type: 'dimension', value: '24px' },
-    'glass-replacement/border': { type: 'color', value: isDark ? '#333333' : '#cccccc' },
-    'glass-replacement/fill': { type: 'color', value: isDark ? '#1a1a1a' : '#f8f8f8' },
-    'meta/base-color': { type: 'color', value: baseColorInput },
-    'meta/harmony': { type: 'string', value: modeName },
-  });
-
-  return printTokens;
-};
-
-const ColorSwatch = ({ name, color }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(String(color ?? ''));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  const isColorString = (val) => typeof val === 'string' && (
-    /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(val) ||
-    /^rgba?\(/i.test(val) ||
-    /^hsla?\(/i.test(val)
-  );
-
-  const isDark = (c) => {
-    if(!c || !/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c)) return false;
-    const rgb = parseInt(c.slice(1), 16);
-    const r = (rgb >> 16) & 0xff;
-    const g = (rgb >>  8) & 0xff;
-    const b = (rgb >>  0) & 0xff;
-    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b; 
-    return luma < 120;
-  };
-
-  const displayColor = typeof color === 'string' ? color : String(color ?? '');
-  const swatchBg = isColorString(color) ? color : '#f8fafc';
-
-  return (
-    <div 
-      onClick={handleCopy}
-      className={`group cursor-pointer flex items-center justify-between p-2 rounded-md transition-all hover:scale-[1.02] active:scale-95 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm`}
-    >
-      <div className="flex items-center gap-3 w-full">
-        <div 
-          className="h-10 w-10 rounded-full border border-black/10 shadow-inner flex items-center justify-center shrink-0"
-          style={{ backgroundColor: swatchBg }}
-        >
-          {copied && <Check size={16} className={isDark(color) ? "text-white" : "text-black"} />}
-        </div>
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">{name}</span>
-          <span className="text-sm font-mono text-slate-700 dark:text-slate-200 truncate">{displayColor}</span>
-        </div>
-      </div>
-      <Copy size={14} className="opacity-0 group-hover:opacity-30 text-slate-500" />
-    </div>
-  );
-};
-
-const Section = ({ title, icon, children }) => (
-  <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
-      {icon}
-      <h3 className="font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider text-sm">{title}</h3>
-    </div>
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-      {children}
-    </div>
-  </div>
-);
-
 const PaletteRow = ({ title, colors }) => (
   <div className="p-4 rounded-lg border shadow-sm bg-white/70 dark:bg-slate-900/40 backdrop-blur-sm border-slate-200/70 dark:border-slate-800/70">
     <div className="flex items-center justify-between mb-3">
@@ -1168,21 +369,39 @@ const presets = [
 ];
 
 export default function App() {
+  const { notify } = useNotification();
+  const isInternal = import.meta.env.VITE_INTERNAL === 'true';
   const [baseColor, setBaseColor] = useState('#6366f1');
+  const [baseInput, setBaseInput] = useState('#6366f1');
+  const [baseError, setBaseError] = useState('');
   const [mode, setMode] = useState('Monochromatic');
   const [isDark, setIsDark] = useState(false); // Controls the GENERATED tokens
   const [printMode, setPrintMode] = useState(false);
   const [customThemeName, setCustomThemeName] = useState('');
   const [showContrast, setShowContrast] = useState(true);
+  const [harmonyIntensity, setHarmonyIntensity] = useState(100);
   const [apocalypseIntensity, setApocalypseIntensity] = useState(100);
+  const [neutralCurve, setNeutralCurve] = useState(100);
+  const [accentStrength, setAccentStrength] = useState(100);
+  const [tokenPrefix, setTokenPrefix] = useState('');
+  const [savedPalettes, setSavedPalettes] = useState([]);
+  const [saveStatus, setSaveStatus] = useState('');
+  const [storageAvailable, setStorageAvailable] = useState(true);
+  const [storageCorrupt, setStorageCorrupt] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const [exportBlocked, setExportBlocked] = useState(false);
+  const [printSupported, setPrintSupported] = useState(true);
   const [isExportingAssets, setIsExportingAssets] = useState(false);
   const [printMeta, setPrintMeta] = useState(() => getPrintTimestamps());
   const savedTitleRef = useRef('');
+  const statusTimerRef = useRef(null);
   const pickerColor = baseColor.length === 9 && baseColor.startsWith('#') ? baseColor.slice(0, 7) : baseColor;
   // Controls the UI theme (preview background)
   // Usually we want this to sync with generated tokens for best preview, but nice to keep separate for inspection
   // For this UX, I will sync them. When you generate Dark Tokens, the UI becomes dark.
-  
+
+  useDarkClassSync(isDark);
+
   const sanitizeColorInput = useCallback((value, fallback) => {
     if (typeof value !== 'string') return fallback;
     const match = value.match(/#[0-9a-fA-F]{3,8}/);
@@ -1194,9 +413,173 @@ export default function App() {
     return fallback;
   }, []);
 
+  const applySavedPalette = useCallback((payload) => {
+    if (!payload || typeof payload !== 'object') return;
+    const sanitized = sanitizeColorInput(payload.baseColor, '#6366f1');
+    setBaseColor(sanitized);
+    setBaseInput(sanitized);
+    setBaseError('');
+    setMode(payload.mode || 'Monochromatic');
+    setIsDark(Boolean(payload.isDark));
+    setPrintMode(Boolean(payload.printMode));
+    setCustomThemeName(payload.customThemeName || '');
+    setHarmonyIntensity(payload.harmonyIntensity ?? 100);
+    setApocalypseIntensity(payload.apocalypseIntensity ?? 100);
+    setNeutralCurve(payload.neutralCurve ?? 100);
+    setAccentStrength(payload.accentStrength ?? 100);
+    setTokenPrefix(payload.tokenPrefix || '');
+  }, [sanitizeColorInput]);
+
+  const handleBaseColorChange = useCallback((value) => {
+    setBaseInput(value);
+    const match = value.match(/^#[0-9a-fA-F]{3,8}$/);
+    if (!match) {
+      setBaseError('Enter a hex value like #FF00FF or #ABC');
+      return;
+    }
+    let next = match[0];
+    if (next.length === 9) next = next.slice(0, 7); // strip alpha for generation
+    setBaseError('');
+    setBaseColor(next);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const key = '__token-gen-check__';
+      localStorage.setItem(key, '1');
+      localStorage.removeItem(key);
+      setStorageAvailable(true);
+    } catch (err) {
+      console.warn('Local storage unavailable', err);
+      setStorageAvailable(false);
+      notify('Local storage is blocked in this session', 'warn');
+    }
+    setPrintSupported(typeof window !== 'undefined' && typeof window.print === 'function');
+  }, [notify]);
+
+  useEffect(() => {
+    try {
+      const savedRaw = localStorage.getItem(STORAGE_KEYS.saved);
+      if (savedRaw) {
+        const parsed = JSON.parse(savedRaw);
+        if (Array.isArray(parsed)) setSavedPalettes(parsed);
+        else setStorageCorrupt(true);
+      }
+      const currentRaw = localStorage.getItem(STORAGE_KEYS.current);
+      if (currentRaw) {
+        const parsed = JSON.parse(currentRaw);
+        applySavedPalette(parsed);
+      }
+    } catch (err) {
+      console.warn('Failed to hydrate palette state', err);
+      setStorageCorrupt(true);
+      notify('Could not load saved palettes; storage may be blocked or corrupted', 'warn');
+    }
+  }, [applySavedPalette, notify]);
+
+  useEffect(() => {
+    try {
+      const payload = {
+        baseColor,
+        mode,
+        isDark,
+        printMode,
+        customThemeName,
+        harmonyIntensity,
+        apocalypseIntensity,
+        neutralCurve,
+        accentStrength,
+        tokenPrefix,
+      };
+      localStorage.setItem(STORAGE_KEYS.current, JSON.stringify(payload));
+    } catch (err) {
+      console.warn('Failed to persist palette state', err);
+      setStorageAvailable(false);
+      notify('Saving is unavailable; storage is blocked', 'warn');
+    }
+  }, [baseColor, mode, isDark, printMode, customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, tokenPrefix, notify]);
+
+  useEffect(() => () => {
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+  }, []);
+
   const autoThemeName = useMemo(() => `${mode} ${isDark ? 'Dark' : 'Light'}`, [mode, isDark]);
   const displayThemeName = customThemeName || autoThemeName;
-  const tokens = useMemo(() => generateTokens(baseColor, mode, isDark, mode === 'Apocalypse' ? apocalypseIntensity : 100), [baseColor, mode, isDark, apocalypseIntensity]);
+  const tokens = useMemo(
+    () => generateTokens(baseColor, mode, isDark, apocalypseIntensity, {
+      harmonyIntensity,
+      neutralCurve,
+      accentStrength,
+    }),
+    [baseColor, mode, isDark, apocalypseIntensity, harmonyIntensity, neutralCurve, accentStrength]
+  );
+  const setStatusMessage = useCallback((message, tone = 'info') => {
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    setSaveStatus(message);
+    notify(message, tone);
+    statusTimerRef.current = setTimeout(() => setSaveStatus(''), 2400);
+  }, [notify]);
+
+  const serializePalette = useCallback(() => ({
+    id: Date.now(),
+    name: displayThemeName,
+    baseColor,
+    mode,
+    isDark,
+    printMode,
+    customThemeName,
+    harmonyIntensity,
+    apocalypseIntensity,
+    neutralCurve,
+    accentStrength,
+    tokenPrefix,
+  }), [displayThemeName, baseColor, mode, isDark, printMode, customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, tokenPrefix]);
+
+  const saveCurrentPalette = useCallback(() => {
+    if (!storageAvailable) {
+      setStatusMessage('Saving is unavailable; storage is blocked', 'warn');
+      return;
+    }
+    try {
+      const payload = serializePalette();
+      setSavedPalettes((prev) => {
+        const filtered = prev.filter((item) => item.name !== payload.name);
+        const next = [payload, ...filtered].slice(0, 20);
+        localStorage.setItem(STORAGE_KEYS.saved, JSON.stringify(next));
+        return next;
+      });
+      setStatusMessage('Palette saved to this browser', 'success');
+    } catch (err) {
+      console.warn('Failed to save palette', err);
+      setStatusMessage('Save failed — check storage permissions', 'error');
+      setStorageCorrupt(true);
+    }
+  }, [serializePalette, setStatusMessage, storageAvailable]);
+
+  const clearSavedData = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.saved);
+      localStorage.removeItem(STORAGE_KEYS.current);
+      setSavedPalettes([]);
+      setStorageCorrupt(false);
+      setStatusMessage('Saved data cleared', 'success');
+    } catch (err) {
+      console.warn('Failed to clear saved data', err);
+      setStatusMessage('Failed to clear saved data', 'error');
+    }
+  }, [setStatusMessage]);
+
+  const loadSavedPalette = useCallback((id) => {
+    if (!id) return;
+    const numericId = Number(id);
+    const target = savedPalettes.find((item) => item.id === numericId);
+    if (!target) {
+      setStatusMessage('Saved palette not found', 'warn');
+      return;
+    }
+    applySavedPalette(target);
+    setStatusMessage(`Loaded "${target.name}"`, 'success');
+  }, [savedPalettes, applySavedPalette, setStatusMessage]);
   const finalTokens = useMemo(
     () => (printMode ? addPrintMode(tokens, baseColor, mode, isDark) : tokens),
     [tokens, printMode, baseColor, mode, isDark]
@@ -1237,6 +620,8 @@ export default function App() {
     return baseList.map((entry) => ({ name: entry.name, color: readColor(entry.path, entry.fallback) }))
       .filter(({ color }) => Boolean(color));
   }, [finalTokens, tokens]);
+  const ctaTextColor = useMemo(() => pickReadableText(tokens.brand.primary), [tokens.brand.primary]);
+  const neutralButtonText = useMemo(() => pickReadableText(tokens.cards['card-panel-surface'], '#0f172a', '#ffffff'), [tokens.cards]);
   const paletteRows = useMemo(() => ([
     { 
       title: 'Foundation Neutrals', 
@@ -1271,7 +656,7 @@ export default function App() {
       { label: 'Text on Background', fg: textStrong, bg, ratio: getContrastRatio(textStrong, bg) },
       { label: 'Text on Card', fg: textBody, bg: card, ratio: getContrastRatio(textBody, card) },
       { label: 'Muted on Card', fg: textMuted, bg: card, ratio: getContrastRatio(textMuted, card) },
-    ];
+    ].map((entry) => ({ ...entry, badge: getWCAGBadge(entry.ratio) }));
   }, [finalTokens]);
 
   const applyPreset = useCallback((presetName) => {
@@ -1281,7 +666,12 @@ export default function App() {
     setMode(p.mode);
     setIsDark(p.dark);
     setCustomThemeName(p.name);
-  }, []);
+    setHarmonyIntensity(100);
+    setNeutralCurve(100);
+    setAccentStrength(100);
+    setApocalypseIntensity(100);
+    setStatusMessage(`Preset "${p.name}" applied`, 'success');
+  }, [setStatusMessage]);
 
   const randomize = useCallback(() => {
     const hues = ['#ef4444', '#f59e0b', '#84cc16', '#22c55e', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899'];
@@ -1293,6 +683,9 @@ export default function App() {
     setBaseColor(nextBase);
     setMode(nextMode);
     setIsDark(nextDark);
+    setHarmonyIntensity(Math.round(70 + Math.random() * 80));
+    setNeutralCurve(Math.round(80 + Math.random() * 50));
+    setAccentStrength(Math.round(80 + Math.random() * 50));
 
     if (nextMode === 'Apocalypse') {
       setApocalypseIntensity(Math.round(50 + Math.random() * 100));
@@ -1301,6 +694,7 @@ export default function App() {
 
   const toggleTheme = () => {
     setIsDark(!isDark);
+    setStatusMessage(`Theme set to ${!isDark ? 'Dark' : 'Light'}`, 'info');
   };
 
   const updatePrintMeta = useCallback(() => {
@@ -1339,12 +733,33 @@ export default function App() {
       isDark,
       printMode,
       generatedAt: new Date().toISOString(),
-    }
-  ), [finalTokens, orderedStack, displayThemeName, mode, baseColor, isDark, printMode]);
+      tokenPrefix: tokenPrefix || undefined,
+    },
+    { namingPrefix: tokenPrefix }
+  ), [finalTokens, orderedStack, displayThemeName, mode, baseColor, isDark, printMode, tokenPrefix]);
 
   const exportJson = (filename) => {
     const penpotPayload = buildExportPayload();
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(penpotPayload, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute('href', dataStr);
+    downloadAnchorNode.setAttribute('download', filename);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const exportGenericJson = (filename) => {
+    const payload = buildGenericPayload(finalTokens, {
+      themeName: displayThemeName,
+      mode,
+      baseColor,
+      isDark,
+      printMode,
+      generatedAt: new Date().toISOString(),
+      tokenPrefix: tokenPrefix || undefined,
+    });
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute('href', dataStr);
     downloadAnchorNode.setAttribute('download', filename);
@@ -1364,7 +779,46 @@ export default function App() {
     downloadAnchorNode.remove();
   };
 
+  const exportFigmaTokensJson = (filename) => {
+    const payload = buildFigmaTokensPayload(finalTokens, { namingPrefix: tokenPrefix || undefined });
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+    const anchor = document.createElement('a');
+    anchor.setAttribute('href', dataStr);
+    anchor.setAttribute('download', filename);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const exportStyleDictionaryJson = (filename) => {
+    const payload = buildStyleDictionaryPayload(finalTokens, { namingPrefix: tokenPrefix || undefined });
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+    const anchor = document.createElement('a');
+    anchor.setAttribute('href', dataStr);
+    anchor.setAttribute('download', filename);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
   const exportAllAssets = useCallback(async () => {
+    if (typeof Blob === 'undefined') {
+      const msg = 'File export is not supported in this browser';
+      notify(msg, 'error');
+      setExportError(msg);
+      setExportBlocked(true);
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    if (!canvas?.getContext) {
+      const msg = 'Canvas is not supported; cannot render assets';
+      notify(msg, 'error');
+      setExportError(msg);
+      setExportBlocked(true);
+      return;
+    }
+    setExportError('');
+    setExportBlocked(false);
     setIsExportingAssets(true);
     try {
       const slug = (currentTheme.name || 'theme').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'theme';
@@ -1394,14 +848,19 @@ export default function App() {
       anchor.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Asset export failed. Check console for details.');
+      notify('Asset export failed. Check console for details.', 'error', 4000);
       console.error('Asset export failed', err);
     } finally {
       setIsExportingAssets(false);
     }
-  }, [buildExportPayload, currentTheme]);
+  }, [buildExportPayload, currentTheme, notify]);
 
   const handleExportPdf = () => {
+    if (typeof window.print !== 'function') {
+      notify('Print is not supported in this browser', 'error');
+      setExportError('Print is not supported in this browser');
+      return;
+    }
     const meta = updatePrintMeta();
     const originalTitle = document.title;
     savedTitleRef.current = originalTitle;
@@ -1416,35 +875,51 @@ export default function App() {
   };
 
   return (
-    <div 
-      className={`min-h-screen transition-colors duration-500 ${isDark ? 'dark' : ''}`}
-      style={{
-        backgroundColor: printMode ? '#fdfdf9' : tokens.surfaces["page-background"],
-        backgroundImage: printMode
-          ? 'radial-gradient(circle at 25% 25%, #f0f0f0 1px, transparent 1px), radial-gradient(circle at 75% 75%, #e0e0e0 1px, transparent 1px)'
-          : 'none',
-        backgroundSize: printMode ? '40px 40px' : 'auto',
-      }}
-    >
       <div 
-        className="hidden print:flex items-start justify-between gap-6 max-w-7xl mx-auto px-6 py-4 mb-4 rounded-xl border print-header"
-        style={{ 
-          backgroundColor: tokens.cards["card-panel-surface"],
-          color: tokens.typography["text-strong"],
-          borderColor: tokens.cards["card-panel-border"]
+        className={`min-h-screen transition-colors duration-500 ${isDark ? 'dark' : ''}`}
+        style={{
+          backgroundColor: printMode ? '#fdfdf9' : tokens.surfaces["page-background"],
+          backgroundImage: printMode
+            ? 'radial-gradient(circle at 25% 25%, #f0f0f0 1px, transparent 1px), radial-gradient(circle at 75% 75%, #e0e0e0 1px, transparent 1px)'
+            : 'none',
+          backgroundSize: printMode ? '40px 40px' : 'auto',
         }}
       >
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Theme</p>
-          <p className="text-lg font-bold leading-tight">{displayThemeName}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-300 opacity-80">Base color: {baseColor.toUpperCase()}</p>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 bg-indigo-600 text-white px-3 py-2 rounded">Skip to content</a>
+        <div 
+          className="hidden print:flex items-start justify-between gap-6 max-w-7xl mx-auto px-6 py-4 mb-4 rounded-xl border print-header"
+          style={{ 
+            backgroundColor: tokens.cards["card-panel-surface"],
+            color: tokens.typography["text-strong"],
+            borderColor: tokens.cards["card-panel-border"]
+          }}
+        >
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Theme</p>
+            <p className="text-lg font-bold leading-tight">{displayThemeName}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-300 opacity-80">Base color: {baseColor.toUpperCase()}</p>
+          </div>
+          <div className="space-y-1 text-right">
+            <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Mode</p>
+            <p className="text-sm font-bold">{mode}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-300 opacity-80">{printMeta.dateTime}</p>
+          </div>
         </div>
-        <div className="space-y-1 text-right">
-          <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Mode</p>
-          <p className="text-sm font-bold">{mode}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-300 opacity-80">{printMeta.dateTime}</p>
-        </div>
-      </div>
+
+        {(!storageAvailable || storageCorrupt) && (
+          <div className="max-w-7xl mx-auto px-6 py-3 mb-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 flex items-center justify-between gap-3" role="alert">
+            <div className="text-sm font-semibold">
+              {storageCorrupt ? 'Saved palettes look corrupted. Save/load is disabled.' : 'Local storage is blocked; saving is disabled.'}
+            </div>
+            <button
+              type="button"
+              onClick={clearSavedData}
+              className="px-3 py-1.5 rounded-md bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              Clear saved data
+            </button>
+          </div>
+        )}
 
       {/* Header */}
       <header 
@@ -1455,6 +930,7 @@ export default function App() {
         }}
       >
         <div className="max-w-7xl mx-auto px-6 py-4">
+          <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Header" reset={reset} message={message} />}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             
             <div className="flex items-center gap-3">
@@ -1479,16 +955,20 @@ export default function App() {
                 <input 
                   type="color" 
                   value={pickerColor} 
-                  onChange={(e) => setBaseColor(sanitizeColorInput(e.target.value, baseColor))}
-                  className="w-8 h-8 rounded cursor-pointer bg-transparent border-none outline-none" 
+                  onChange={(e) => handleBaseColorChange(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2" 
+                  aria-label="Choose base color"
                 />
                 <input 
                   type="text" 
-                  value={baseColor}
-                  onChange={(e) => setBaseColor(sanitizeColorInput(e.target.value, baseColor))}
-                  className="w-32 bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 outline-none uppercase"
+                  value={baseInput}
+                  onChange={(e) => handleBaseColorChange(e.target.value)}
+                  className={`w-32 bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 outline-none uppercase ${baseError ? 'border-b border-rose-500' : ''}`}
+                  aria-label="Base color hex value"
+                  aria-invalid={Boolean(baseError)}
                 />
               </div>
+              {baseError && <p className="text-xs text-rose-600 font-semibold" role="alert">{baseError}</p>}
 
 
               {/* Theme Name */}
@@ -1498,13 +978,23 @@ export default function App() {
                 onChange={(e) => setCustomThemeName(e.target.value)}
                 placeholder={autoThemeName}
                 className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                aria-label="Theme name"
+              />
+
+              <input
+                type="text"
+                value={tokenPrefix}
+                onChange={(e) => setTokenPrefix(e.target.value.trim())}
+                placeholder="Token prefix (optional)"
+                className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               />
 
               {/* Presets */}
               <select
                 onChange={(e) => applyPreset(e.target.value)}
-                className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                 defaultValue=""
+                aria-label="Choose a preset palette"
               >
                 <option value="" disabled>Presets…</option>
                 {presets.map((p) => (
@@ -1521,8 +1011,15 @@ export default function App() {
                 <Shuffle size={18} />
               </button>
 
+              <a
+                href="docs/README.md"
+                className="px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              >
+                Docs
+              </a>
+
               {/* Mode Toggle */}
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700" role="group" aria-label="Harmony mode">
                 {['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'].map((m) => (
                   <button
                     key={m}
@@ -1531,7 +1028,9 @@ export default function App() {
                       mode === m 
                         ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
                         : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                    }`}
+                    } focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
+                    aria-pressed={mode === m}
+                    aria-label={`Set harmony mode to ${m}`}
                   >
                     {m}
                   </button>
@@ -1539,140 +1038,169 @@ export default function App() {
               </div>
 
               
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Harmony spread</span>
+                <input
+                  type="range"
+                  min="50"
+                  max="160"
+                  value={harmonyIntensity}
+                  onChange={(e) => setHarmonyIntensity(clampValue(e.target.value, 50, 160))}
+                  className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  aria-label="Adjust harmony spread"
+                />
+                <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{harmonyIntensity}%</span>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Neutral depth</span>
+                <input
+                  type="range"
+                  min="60"
+                  max="140"
+                  value={neutralCurve}
+                  onChange={(e) => setNeutralCurve(clampValue(e.target.value, 60, 140))}
+                  className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  aria-label="Adjust neutral depth"
+                />
+                <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{neutralCurve}%</span>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Accent punch</span>
+                <input
+                  type="range"
+                  min="60"
+                  max="140"
+                  value={accentStrength}
+                  onChange={(e) => setAccentStrength(clampValue(e.target.value, 60, 140))}
+                  className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  aria-label="Adjust accent punch"
+                />
+                <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{accentStrength}%</span>
+              </div>
+
               {mode === 'Apocalypse' && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Intensity</span>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-slate-800 border border-rose-200 dark:border-rose-800">
+                  <span className="text-xs font-bold text-rose-700 dark:text-rose-300">Apocalypse drive</span>
                   <input
                     type="range"
                     min="20"
                     max="150"
                     value={apocalypseIntensity}
-                    onChange={(e) => setApocalypseIntensity(Number(e.target.value))}
-                    className="w-32"
+                    onChange={(e) => setApocalypseIntensity(clampValue(e.target.value, 20, 150))}
+                    className="w-32 accent-rose-500 focus-visible:ring-2 focus-visible:ring-rose-500"
+                    aria-label="Adjust apocalypse intensity"
                   />
-                  <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{apocalypseIntensity}%</span>
+                  <span className="text-xs w-10 text-right font-mono text-rose-700 dark:text-rose-200">{apocalypseIntensity}%</span>
                 </div>
               )}
 
 {/* Dark/Light Toggle */}
                <button 
                 onClick={toggleTheme}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                aria-pressed={isDark}
               >
                 {isDark ? <Moon size={18} /> : <Sun size={18} />}
                 <span className="text-xs font-bold">{isDark ? "Dark Mode" : "Light Mode"}</span>
               </button>
 
+          <button
+            type="button"
+            onClick={() => setShowContrast((v) => !v)}
+            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            title="Toggle contrast diagnostics"
+            aria-pressed={showContrast}
+            aria-label="Toggle contrast diagnostics panel"
+          >
+            {showContrast ? <Eye size={18} /> : <EyeOff size={18} />}
+          </button>
+
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <input 
+                  type="checkbox" 
+                  checked={printMode} 
+                  onChange={(e) => setPrintMode(e.target.checked)} 
+                  className="accent-indigo-500 h-4 w-4"
+                  aria-label="Toggle print mode"
+                />
+                <span>Print Mode (CMYK-safe + foil tokens)</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
               <button
                 type="button"
-                onClick={() => setShowContrast((v) => !v)}
-                className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
-                title="Toggle contrast diagnostics"
+                onClick={saveCurrentPalette}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                aria-label="Save current palette to browser"
+                disabled={!storageAvailable}
               >
-                {showContrast ? <Eye size={18} /> : <EyeOff size={18} />}
-              </button>
-
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  <input 
-                    type="checkbox" 
-                    checked={printMode} 
-                    onChange={(e) => setPrintMode(e.target.checked)} 
-                    className="accent-indigo-500 h-4 w-4"
-                  />
-                  <span>Print Mode (CMYK-safe + foil tokens)</span>
-                </label>
-                <button 
-                  onClick={() => exportJson(`${displayThemeName}${printMode ? '-PRINT' : ''}.json`)}
-                  className="px-4 py-2 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
-                  style={{ 
-                    backgroundColor: tokens.brand["cta"],
-                    color: tokens.typography["text-strong"],
-                    borderColor: tokens.brand["cta-hover"]
-                  }}
-                >
-                  <Download size={14} />
-                  {printMode ? 'Export Penpot PRINT json' : 'Export Penpot json'}
+                <Save size={14} />
+                Save palette
                 </button>
-                <button 
-                  onClick={() => exportWitchcraftJson(`witchcraft-theme.json`)}
-                  className="px-4 py-2 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
-                  style={{ 
-                    backgroundColor: tokens.brand["cta"],
-                    color: tokens.typography["text-strong"],
-                    borderColor: tokens.brand["cta-hover"]
-                  }}
-                >
-                  <Download size={14} />
-                  Export Witchcraft Theme json
-                </button>
+                <div className="flex items-center gap-2">
+                  <FolderOpen size={14} className="text-slate-500" aria-hidden />
+                  <select
+                    onChange={(e) => { loadSavedPalette(e.target.value); e.target.value = ''; }}
+                    className="px-2 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                    defaultValue=""
+                    aria-label="Load a saved palette"
+                  >
+                    <option value="" disabled>Load saved…</option>
+                    {savedPalettes.map((palette) => (
+                      <option key={palette.id} value={palette.id}>
+                        {palette.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {saveStatus && (
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-300" role="status" aria-live="polite">{saveStatus}</span>
+                )}
+                {!storageAvailable && (
+                  <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300" role="alert">
+                    Saving disabled (storage blocked)
+                  </span>
+                )}
               </div>
             </div>
           </div>
+          </ErrorBoundary>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        <button 
-          onClick={exportAllAssets}
-          disabled={isExportingAssets}
-          className="print:hidden fixed bottom-20 right-6 z-50 px-8 py-5 rounded-2xl shadow-2xl hover:scale-110 transition-all font-bold text-2xl flex items-center gap-4 backdrop-blur-xl"
-          style={{ 
-            backgroundColor: tokens.brand.primary,
-            color: '#fff',
-            boxShadow: `0 20px 50px -20px ${tokens.brand.primary}`
-          }}
-        >
-          <Wand2 size={32} />
-          {isExportingAssets ? 'Building assets…' : (printMode ? 'FORGE THE RELICS (Print + Foil Pack)' : 'BIRTH THE ASSETS (SVG + PNG pack)')}
-        </button>
+        {/* Main Content */}
+        <main id="main-content" className="max-w-7xl mx-auto px-6 py-12">
+          <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Exports" reset={reset} message={message} />}>
+            <ExportsPanel
+              tokens={finalTokens}
+              printMode={printMode}
+          isExporting={isExportingAssets}
+          exportError={exportError}
+          exportBlocked={exportBlocked}
+          canPrint={printSupported}
+          ctaTextColor={ctaTextColor}
+          neutralButtonTextColor={neutralButtonText}
+          onExportAssets={exportAllAssets}
+          onRetryAssets={exportAllAssets}
+          onExportPdf={handleExportPdf}
+          onExportPenpot={() => exportJson(`${displayThemeName}${printMode ? '-PRINT' : ''}.json`)}
+          onExportGeneric={() => exportGenericJson('generic-tokens.json')}
+          onExportFigmaTokens={() => exportFigmaTokensJson('figma-tokens.json')}
+          onExportStyleDictionary={() => exportStyleDictionaryJson('style-dictionary.json')}
+              onExportWitchcraft={() => exportWitchcraftJson('witchcraft-theme.json')}
+              isInternal={isInternal}
+            />
+          </ErrorBoundary>
 
-        <button
-          type="button"
-          onClick={handleExportPdf}
-          className="print:hidden fixed bottom-6 right-6 z-30 px-4 py-3 rounded-full shadow-xl hover:translate-y-[-2px] active:translate-y-[1px] transition-all border flex items-center gap-2 text-sm font-semibold"
-          style={{ 
-            backgroundColor: tokens.brand.primary,
-            color: tokens.typography["text-strong"],
-            borderColor: tokens.brand["cta-hover"],
-            boxShadow: `0 18px 40px -18px ${tokens.brand.primary}`
-          }}
-          aria-label="Export palette as PDF"
-        >
-          <Download size={16} />
-          Export PDF
-        </button>
-
-        {showContrast && (
-          <div className="print:hidden mb-10 max-w-7xl mx-auto">
-            <div className="p-6 rounded-2xl border shadow-sm bg-white/80 dark:bg-slate-900/60 backdrop-blur"
-              style={{ borderColor: finalTokens.cards["card-panel-border"] }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Live WCAG Contrast Checks</h3>
-                <div className="text-[11px] px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                  Based on your current tokens
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {contrastChecks.map((c) => {
-                  const badge = getWCAGBadge(c.ratio);
-                  return (
-                    <div key={c.label} className="p-4 rounded-lg border bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                      <div className="text-sm font-medium text-slate-700 dark:text-slate-200">{c.label}</div>
-                      <div className="text-2xl font-bold my-2 text-slate-900 dark:text-white">{c.ratio.toFixed(2)}:1</div>
-                      <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${badge.color}`}>{badge.text}</div>
-                      <div className="mt-2 text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                        {c.fg.toUpperCase()} on {c.bg.toUpperCase()}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
+          {showContrast && (
+            <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Contrast checks" reset={reset} message={message} />}>
+              <ContrastPanel contrastChecks={contrastChecks} finalTokens={finalTokens} />
+            </ErrorBoundary>
+          )}
 
         {printMode && (
           <div 
@@ -1727,12 +1255,13 @@ export default function App() {
           </div>
         )}
 
-        <div 
-          className="mb-12 p-6 rounded-2xl border shadow-sm bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm"
-          style={{ 
-            borderColor: tokens.cards["card-panel-border"]
-          }}
-        >
+        <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Ordered stack" reset={reset} message={message} />}>
+          <div 
+            className="mb-12 p-6 rounded-2xl border shadow-sm bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm"
+            style={{ 
+              borderColor: tokens.cards["card-panel-border"]
+            }}
+          >
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Ordered token stack</h2>
@@ -1745,7 +1274,8 @@ export default function App() {
               <ColorSwatch key={`${name}-${index}`} name={name} color={color} />
             ))}
           </div>
-        </div>
+          </div>
+        </ErrorBoundary>
         
         {/* Swatch Preview Grid */}
         <div 
@@ -1910,31 +1440,35 @@ export default function App() {
             ))}
           </Section>
 
-          <Section title="Admin Palette" icon={<Box size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.admin).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+          {isInternal && (
+            <>
+              <Section title="Admin Palette" icon={<Box size={18} className="text-slate-400" />}>
+                {Object.entries(tokens.admin).map(([key, val]) => (
+                  <ColorSwatch key={key} name={key} color={val} />
+                ))}
+              </Section>
 
-          <Section title="Back-Compat Aliases" icon={<Box size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.aliases).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+              <Section title="Back-Compat Aliases" icon={<Box size={18} className="text-slate-400" />}>
+                {Object.entries(tokens.aliases).map(([key, val]) => (
+                  <ColorSwatch key={key} name={key} color={val} />
+                ))}
+              </Section>
 
-          <Section title="Dawn Overrides" icon={<Sun size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.dawn).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+              <Section title="Dawn Overrides" icon={<Sun size={18} className="text-slate-400" />}>
+                {Object.entries(tokens.dawn).map(([key, val]) => (
+                  <ColorSwatch key={key} name={key} color={val} />
+                ))}
+              </Section>
 
-          <Section title="Legacy Palette" icon={<Box size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.named).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+              <Section title="Legacy Palette" icon={<Box size={18} className="text-slate-400" />}>
+                {Object.entries(tokens.named).map(([key, val]) => (
+                  <ColorSwatch key={key} name={key} color={val} />
+                ))}
+              </Section>
+            </>
+          )}
         </div>
-      </main>
-    </div>
+        </main>
+      </div>
   );
 }
