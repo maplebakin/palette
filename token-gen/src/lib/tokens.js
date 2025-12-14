@@ -1,4 +1,4 @@
-import { blendHue, getColor, getContrastRatio, hexToHsl, hslToHex } from './colorUtils.js';
+import { blendColorsPerceptual, blendHue, getColor, getContrastRatio, hexToHsl, hslToHex } from './colorUtils.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -118,18 +118,21 @@ export const buildOrderedStack = (tokens) => orderedSwatchSpec
   .filter(Boolean);
 
 // Token Generation
-export const generateTokens = (baseColor, mode, isDark, apocalypseIntensity = 100, options = {}) => {
+export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity = 100, options = {}) => {
   const meatMode = baseColor.toLowerCase() === '#beefbeef';
   const normalizedBase = meatMode
     ? '#beefbe'
     : (baseColor.length === 9 && baseColor.startsWith('#') ? baseColor.slice(0, 7) : baseColor);
   const hsl = hexToHsl(normalizedBase);
+  const isDark = themeMode === 'dark';
+  const isPop = themeMode === 'pop';
   const isApocalypse = mode === 'Apocalypse';
   const intensity = isApocalypse ? (Math.max(20, Math.min(150, apocalypseIntensity)) / 100) : 1;
-  const { harmonyIntensity = 100, neutralCurve = 100, accentStrength = 100 } = options;
+  const { harmonyIntensity = 100, neutralCurve = 100, accentStrength = 100, popIntensity = 100 } = options;
   const harmonyScale = clamp(harmonyIntensity, 40, 160) / 100;
   const accentScale = clamp(accentStrength, 50, 150) / 100;
   const neutralCurveScale = clamp(neutralCurve, 50, 150) / 100;
+  const popScale = clamp(popIntensity, 60, 140) / 100;
   
   const harmonySpec = {
     Monochromatic: { secH: 8, accH: -8, secSat: 0.9, accSat: 0.95, surfaceMix: 0.08, backgroundMix: 0.06 },
@@ -142,29 +145,48 @@ export const generateTokens = (baseColor, mode, isDark, apocalypseIntensity = 10
   const surfaceMix = clamp(surfaceMixBase * harmonyScale, 0, isApocalypse ? 0.6 : 0.5);
   const backgroundMix = clamp(backgroundMixBase * harmonyScale, 0, isApocalypse ? 0.55 : 0.45);
 
-  const bgL = isApocalypse ? (isDark ? 2 : 99) : (isDark ? 10 : 98);
-  const surfaceL = isApocalypse ? (isDark ? 6 : 98) : (isDark ? 16 : 93);
-  const textMainL = isApocalypse ? (isDark ? 98 : 8) : (isDark ? 95 : 10);
-  const textMutedL = isApocalypse ? (isDark ? 70 : 35) : (isDark ? 65 : 40);
-  const borderL = isApocalypse ? (isDark ? 10 : 88) : (isDark ? 25 : 90);
+  let bgL = isApocalypse ? (isDark ? 2 : 99) : (isDark ? 10 : 98);
+  let surfaceL = isApocalypse ? (isDark ? 6 : 98) : (isDark ? 16 : 93);
+  let textMainL = isApocalypse ? (isDark ? 98 : 8) : (isDark ? 95 : 10);
+  let textMutedL = isApocalypse ? (isDark ? 70 : 35) : (isDark ? 65 : 40);
+  let borderL = isApocalypse ? (isDark ? 10 : 88) : (isDark ? 25 : 90);
   
-  const baseSurfaceSat = isApocalypse
+  let baseSurfaceSat = isApocalypse
     ? Math.max(32, Math.min(82, hsl.s * 0.8))
     : Math.max(14, Math.min(56, hsl.s * 0.42));
   const gammaLightSat = Math.pow(baseSurfaceSat / 100, 1.02) * 100;
-  const surfaceSat = isDark
+  let surfaceSat = isDark
     ? baseSurfaceSat
     : Math.min(isApocalypse ? 88 : 72, Math.max(24, gammaLightSat * (isApocalypse ? 1.8 : 1.45)));
 
-  const brandLightness = isApocalypse ? (isDark ? 75 : 52) : (isDark ? 60 : 50); 
-  const accentLightness = isApocalypse ? (isDark ? 78 : 56) : (isDark ? 67 : 55);
-  const ctaLightness = isApocalypse ? (isDark ? 78 : 54) : (isDark ? 62 : 52);
-  const ctaHoverLightness = isApocalypse ? (isDark ? 82 : 50) : (isDark ? 68 : 48);
+  let brandLightness = isApocalypse ? (isDark ? 75 : 52) : (isDark ? 60 : 50); 
+  let accentLightness = isApocalypse ? (isDark ? 78 : 56) : (isDark ? 67 : 55);
+  let ctaLightness = isApocalypse ? (isDark ? 78 : 54) : (isDark ? 62 : 52);
+  let ctaHoverLightness = isApocalypse ? (isDark ? 82 : 50) : (isDark ? 68 : 48);
 
-  const satNormalizer = isApocalypse ? (isDark ? 1.35 : 1.5) : (isDark ? 0.92 : 0.86);
-  const primarySat = (isApocalypse ? 1.5 : 0.9) * accentScale;
-  const secondarySat = secSat * satNormalizer * harmonyScale * accentScale;
-  const accentSat = accSat * satNormalizer * harmonyScale * accentScale;
+  let satNormalizer = isApocalypse ? (isDark ? 1.35 : 1.5) : (isDark ? 0.92 : 0.86);
+  let primarySat = (isApocalypse ? 1.5 : 0.9) * accentScale;
+  let secondarySat = secSat * satNormalizer * harmonyScale * accentScale;
+  let accentSat = accSat * satNormalizer * harmonyScale * accentScale;
+
+  if (isPop) {
+    const popBg = clamp(hsl.l + ((popScale - 1) * 14), 40, 60);
+    bgL = popBg;
+    surfaceL = clamp(popBg + (isApocalypse ? 10 : 6), 38, 72);
+    textMainL = 92;
+    textMutedL = 74;
+    borderL = clamp(popBg + 6, 32, 88);
+    baseSurfaceSat = clamp(hsl.s * 1.2 * popScale + 20, 35, 95);
+    surfaceSat = clamp(baseSurfaceSat * (isApocalypse ? 1.25 : 1.05), 35, 98);
+    satNormalizer = isApocalypse ? 1.8 : 1.2;
+    primarySat *= popScale * 1.15;
+    secondarySat *= popScale * 1.2;
+    accentSat *= popScale * 1.35;
+    brandLightness = clamp(popBg + 8, 48, 70);
+    accentLightness = clamp(popBg + 6, 46, 68);
+    ctaLightness = clamp(popBg + 4, 44, 66);
+    ctaHoverLightness = clamp(popBg + 2, 42, 64);
+  }
 
   const primary = getColor(hsl, 0, primarySat, brandLightness); 
   const secondary = getColor(hsl, secH, secondarySat * 0.96, brandLightness);
@@ -175,13 +197,23 @@ export const generateTokens = (baseColor, mode, isDark, apocalypseIntensity = 10
   const gradientStart = getColor(hsl, 0, 1, isDark ? brandLightness + 5 : brandLightness + 8);
   const gradientEnd = getColor(hsl, accH, accentSat * 0.9, isDark ? brandLightness - 4 : brandLightness - 2);
 
-  const surfaceHue = blendHue(hsl.h, secH, surfaceMix);
-  const backgroundHue = blendHue(hsl.h, accH, backgroundMix);
+  const secondaryTarget = getColor(hsl, secH, 1, hsl.l);
+  const accentTarget = getColor(hsl, accH, 1, hsl.l);
+
+  // Use perceptual blending when the mix is strong enough to avoid muddy cross-wheel travel.
+  const surfaceHue = isPop ? hsl.h : surfaceMix > 0.2
+    ? hexToHsl(blendColorsPerceptual(normalizedBase, secondaryTarget, surfaceMix)).h
+    : blendHue(hsl.h, secH, surfaceMix);
+  const backgroundHue = isPop ? hsl.h : backgroundMix > 0.2
+    ? hexToHsl(blendColorsPerceptual(normalizedBase, accentTarget, backgroundMix)).h
+    : blendHue(hsl.h, accH, backgroundMix);
   const backgroundBase = { h: backgroundHue, s: surfaceSat * (isDark ? 0.85 : 1.2), l: bgL };
   const surfaceBase = { h: surfaceHue, s: surfaceSat, l: bgL };
   const neutralColor = (lightness, satMult = 0.3) =>
     getColor({ h: backgroundHue, s: surfaceSat * satMult, l: lightness }, 0, 1, lightness);
-  const baseNeutralSteps = isDark
+  const baseNeutralSteps = isPop
+    ? [98, 90, 82, 74, 66, 58, 52, 46, 42, 38]
+    : isDark
     ? (isApocalypse ? [94, 80, 64, 50, 40, 30, 18, 10, 6, 3] : [96, 88, 78, 68, 55, 45, 32, 22, 14, 8])
     : (isApocalypse ? [100, 98, 94, 84, 70, 56, 40, 28, 16, 8] : [100, 96, 90, 78, 66, 52, 38, 26, 16, 10]);
   const neutralPivot = isDark ? 55 : 50;
@@ -279,15 +311,15 @@ export const generateTokens = (baseColor, mode, isDark, apocalypseIntensity = 10
     },
 
     typography: {
-      "heading": getColor(hsl, 0, 0.1, textMainL),
-      "text-strong": getColor(hsl, 0, 0.1, isDark ? 90 : 15),
-      "text-body": getColor(hsl, 0, 0.1, isDark ? 80 : 25),
-      "text-muted": getColor(hsl, 0, 0.1, textMutedL),
+      "heading": getColor(isPop ? { h: (hsl.h + 180) % 360, s: Math.min(90, surfaceSat * 1.2), l: textMainL } : hsl, 0, isPop ? 0.35 : 0.1, textMainL),
+      "text-strong": getColor(isPop ? { h: (hsl.h + 180) % 360, s: Math.min(90, surfaceSat * 1.2), l: textMainL } : hsl, 0, isPop ? 0.35 : 0.1, isDark ? 90 : (isPop ? 18 : 15)),
+      "text-body": getColor(isPop ? { h: (hsl.h + 180) % 360, s: Math.min(90, surfaceSat * 1.1), l: textMainL } : hsl, 0, isPop ? 0.3 : 0.1, isDark ? 80 : (isPop ? 26 : 25)),
+      "text-muted": getColor(isPop ? { h: (hsl.h + 180) % 360, s: Math.min(85, surfaceSat), l: textMutedL } : hsl, 0, isPop ? 0.25 : 0.1, textMutedL),
       "text-hint": getColor(hsl, 0, 0.2, isDark ? 50 : 60),
       "text-disabled": getColor(hsl, 0, 0.1, isDark ? 30 : 80),
-      "text-accent": getColor(hsl, accH, 1, isDark ? 75 : 40),
-      "text-accent-strong": getColor(hsl, accH, 1, isDark ? 85 : 30),
-      "footer-text": getColor(hsl, 0, 0.1, isDark ? 60 : 85),
+      "text-accent": getColor(hsl, accH, isPop ? 1.2 : 1, isDark ? 75 : 40),
+      "text-accent-strong": getColor(hsl, accH, isPop ? 1.3 : 1, isDark ? 85 : 30),
+      "footer-text": getColor(isPop ? { h: (hsl.h + 180) % 360, s: Math.min(90, surfaceSat * 1.1), l: textMainL } : hsl, 0, isPop ? 0.28 : 0.1, isDark ? 60 : 85),
       "footer-text-muted": getColor(hsl, 0, 0.1, isDark ? 40 : 60),
     },
     textPalette: {

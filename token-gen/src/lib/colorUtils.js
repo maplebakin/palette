@@ -1,4 +1,22 @@
 // Color helpers for palette generation and contrast checks.
+const clamp01 = (value) => Math.min(1, Math.max(0, value));
+const wrapHue = (value) => ((value % 360) + 360) % 360;
+const hueDelta = (from, to) => ((to - from + 540) % 360) - 180;
+const interpolateHue = (from, to, t) => wrapHue(from + hueDelta(from, to) * t);
+
+const toLinear = (value) => {
+  if (value <= 0.04045) return value / 12.92;
+  return Math.pow((value + 0.055) / 1.055, 2.4);
+};
+
+const toSrgb = (value) => {
+  const clamped = clamp01(value);
+  if (clamped <= 0.0031308) return clamped * 12.92;
+  return 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+};
+
+const toByte = (value) => Math.round(clamp01(value) * 255);
+
 export const hexToHsl = (hex) => {
   let r = 0, g = 0, b = 0;
   if (hex.length === 4) {
@@ -66,9 +84,9 @@ export const getColor = (baseHsl, hueShift = 0, satMult = 1, lightSet = null, li
 };
 
 export const blendHue = (base, shift, weight = 0) => {
-  const target = (base + shift + 360) % 360;
-  const h = (base * (1 - weight)) + (target * weight);
-  return (h + 360) % 360;
+  const origin = wrapHue(base);
+  const target = wrapHue(base + shift);
+  return interpolateHue(origin, target, weight);
 };
 
 export const normalizeHex = (hex, fallback = '#111827') => {
@@ -95,6 +113,62 @@ export const hexToRgb = (hex) => {
 export const hexWithAlpha = (hex, alpha = 1) => {
   const { r, g, b } = hexToRgb(hex);
   return `rgba(${r},${g},${b},${alpha})`;
+};
+
+const hexToOklch = (hex) => {
+  const { r, g, b } = hexToRgb(hex);
+  const lr = toLinear(r / 255);
+  const lg = toLinear(g / 255);
+  const lb = toLinear(b / 255);
+
+  const l = Math.cbrt((0.4122214708 * lr) + (0.5363325363 * lg) + (0.0514459929 * lb));
+  const m = Math.cbrt((0.2119034982 * lr) + (0.6806995451 * lg) + (0.1073969566 * lb));
+  const s = Math.cbrt((0.0883024619 * lr) + (0.2817188376 * lg) + (0.6299787005 * lb));
+
+  const L = (0.2104542553 * l) + (0.793617785 * m) - (0.0040720468 * s);
+  const a = (1.9779984951 * l) - (2.428592205 * m) + (0.4505937099 * s);
+  const b2 = (0.0259040371 * l) + (0.7827717662 * m) - (0.808675766 * s);
+
+  const C = Math.sqrt((a * a) + (b2 * b2));
+  const h = C < 1e-7 ? 0 : wrapHue((Math.atan2(b2, a) * 180) / Math.PI);
+
+  return { l: clamp01(L), c: C, h };
+};
+
+const oklchToHex = ({ l, c, h }) => {
+  const hr = (wrapHue(h) * Math.PI) / 180;
+  const a = Math.cos(hr) * Math.max(0, c);
+  const b = Math.sin(hr) * Math.max(0, c);
+
+  const l_ = l + (0.3963377774 * a) + (0.2158037573 * b);
+  const m_ = l - (0.1055613458 * a) - (0.0638541728 * b);
+  const s_ = l - (0.0894841775 * a) - (1.291485548 * b);
+
+  const lr = l_ * l_ * l_;
+  const lg = m_ * m_ * m_;
+  const lb = s_ * s_ * s_;
+
+  const r = toSrgb((4.0767416621 * lr) - (3.3077115913 * lg) + (0.2309699292 * lb));
+  const g = toSrgb((-1.2684380046 * lr) + (2.6097574011 * lg) - (0.3413193965 * lb));
+  const bChannel = toSrgb((-0.0041960863 * lr) - (0.7034186147 * lg) + (1.707614701 * lb));
+
+  const toHex = (value) => toByte(value).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(bChannel)}`;
+};
+
+export const blendColorsPerceptual = (hex1, hex2, weight = 0) => {
+  const t = Math.max(0, Math.min(1, weight ?? 0));
+  const colorA = hexToOklch(normalizeHex(hex1));
+  const colorB = hexToOklch(normalizeHex(hex2));
+  const preferredHue = colorA.c >= colorB.c ? colorA.h : colorB.h;
+  const h1 = Number.isFinite(colorA.h) ? colorA.h : preferredHue;
+  const h2 = Number.isFinite(colorB.h) ? colorB.h : preferredHue;
+
+  const l = colorA.l + ((colorB.l - colorA.l) * t);
+  const c = Math.max(0, colorA.c + ((colorB.c - colorA.c) * t));
+  const h = interpolateHue(h1, h2, t);
+
+  return oklchToHex({ l, c, h });
 };
 
 export const pickReadableText = (bgHex, light = '#ffffff', dark = '#0f172a', threshold = 4.5) => {

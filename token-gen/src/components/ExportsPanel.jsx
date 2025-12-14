@@ -19,6 +19,7 @@ export default function ExportsPanel({
   onExportWitchcraft,
   onExportFigmaTokens,
   onExportStyleDictionary,
+  onExportCssVars,
   onRetryAssets,
   isInternal,
 }) {
@@ -128,6 +129,18 @@ export default function ExportsPanel({
         >
           <Download size={14} />
           Style Dictionary
+        </button>
+        <button
+          onClick={onExportCssVars}
+          className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
+          style={{
+            backgroundColor: tokens.cards['card-panel-surface'],
+            color: neutralButtonTextColor || pickReadableText(tokens.cards['card-panel-surface']),
+            borderColor: tokens.cards['card-panel-border'],
+          }}
+        >
+          <FileText size={14} />
+          CSS Variables
         </button>
         {isInternal && (
           <button

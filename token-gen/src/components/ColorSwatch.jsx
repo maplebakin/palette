@@ -80,6 +80,7 @@ export default function ColorSwatch({ name, color }) {
       className="group cursor-pointer flex items-center justify-between p-2 rounded-md transition-all hover:scale-[1.02] active:scale-95 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
       aria-label={`Copy ${name} ${displayColor}`}
       aria-live="polite"
+      role="listitem"
     >
       <div className="flex items-center gap-3 w-full">
         <div
@@ -94,7 +95,7 @@ export default function ColorSwatch({ name, color }) {
         </div>
       </div>
       <Copy size={14} className="opacity-0 group-hover:opacity-30 text-slate-500" aria-hidden />
-      <span className="sr-only">{status}</span>
+      <span className="sr-only" aria-live="polite">{status}</span>
     </button>
   );
 }

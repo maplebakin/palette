@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Check, Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Download, Wand2, Printer, FileText, Image, EyeOff, Shuffle, Eye, Save, FolderOpen } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
+import { Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Download, Wand2, Printer, FileText, Image, EyeOff, Shuffle, Eye, Save, FolderOpen, Link as LinkIcon, Check } from 'lucide-react';
 import ColorSwatch from './components/ColorSwatch';
 import Section from './components/Section';
-import ExportsPanel from './components/ExportsPanel';
-import ContrastPanel from './components/ContrastPanel';
+const ExportsPanel = lazy(() => import('./components/ExportsPanel'));
+const ContrastPanel = lazy(() => import('./components/ContrastPanel'));
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import useDarkClassSync from './hooks/useDarkClassSync';
 import { useNotification } from './context/NotificationContext.jsx';
 import {
@@ -51,6 +52,40 @@ const STORAGE_KEYS = {
 };
 
 const clampValue = (val, min, max) => Math.min(max, Math.max(min, Number(val)));
+const sanitizeHexInput = (value, fallback = null) => {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  const match = trimmed.match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/);
+  if (!match) return fallback;
+  let hex = match[1].toLowerCase();
+  if (hex.length === 8) hex = hex.slice(0, 6);
+  return `#${hex}`;
+};
+const sanitizeThemeName = (value, fallback = '') => {
+  if (typeof value !== 'string') return fallback;
+  const clean = value.replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  return clean || fallback;
+};
+const sanitizePrefix = (value) => {
+  if (typeof value !== 'string') return '';
+  return value.replace(/[^a-z0-9_.-]/gi, '').slice(0, 32);
+};
+const downloadFile = (filename, content, mime = 'text/plain') => {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+};
+const buildCssVariables = (stack, prefix = '') => {
+  const safePrefix = prefix ? `${prefix}-` : '';
+  const lines = stack.map(({ path, value }) => `  --${safePrefix}${path.replace(/\./g, '-')}: ${value};`);
+  return `:root {\n${lines.join('\n')}\n}\n`;
+};
 
 const SectionFallback = ({ reset, message, label }) => (
   <div className="p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
@@ -102,6 +137,7 @@ const renderPaletteCardPng = async (theme) => {
   const brand = theme.tokens.brand ?? {};
   const surfaces = theme.tokens.surfaces ?? {};
   const typography = theme.tokens.typography ?? {};
+  const safeName = sanitizeThemeName(theme.name || 'Palette', 'Palette');
   const base = normalizeHex(theme.baseColor || '#6366f1');
   const primary = normalizeHex(brand.primary || '#6366f1');
   const secondary = normalizeHex(brand.secondary || '#8b5cf6');
@@ -140,10 +176,11 @@ const renderPaletteCardPng = async (theme) => {
   // Text
   ctx.fillStyle = text;
   ctx.font = '700 18px system-ui, -apple-system, Segoe UI, sans-serif';
-  ctx.fillText(theme.name, 80, 120);
+  ctx.fillText(safeName, 80, 120);
   ctx.fillStyle = muted;
   ctx.font = '500 14px system-ui, -apple-system, Segoe UI, sans-serif';
-  ctx.fillText(`Base ${base} • ${theme.mode} • ${theme.isDark ? 'Dark' : 'Light'}`, 80, 170);
+  const themeLabel = theme.themeMode === 'pop' ? 'Pop' : (theme.isDark ? 'Dark' : 'Light');
+  ctx.fillText(`Base ${base} • ${theme.mode} • ${themeLabel}`, 80, 170);
 
   // Gradient card
   const grad = ctx.createLinearGradient(720, 200, 1080, 520);
@@ -201,6 +238,7 @@ const renderPaletteCardPng = async (theme) => {
 const renderStripPng = async (theme) => {
   const brand = theme.tokens.brand ?? {};
   const foundation = theme.tokens.foundation?.neutrals ?? {};
+  const safeName = sanitizeThemeName(theme.name || 'Palette', 'Palette');
   const swatches = [
     brand.primary,
     brand.secondary,
@@ -220,7 +258,7 @@ const renderStripPng = async (theme) => {
   ctx.fillRect(0, 0, 1500, 420);
   ctx.fillStyle = '#0f172a';
   ctx.font = '800 22px system-ui, -apple-system, Segoe UI, sans-serif';
-  ctx.fillText(`${theme.name} • Swatch Strip`, 60, 60);
+  ctx.fillText(`${safeName} • Swatch Strip`, 60, 60);
 
   swatches.forEach((color, idx) => {
     const x = 40 + idx * 170;
@@ -247,6 +285,7 @@ const buildPaletteCardSvg = (theme) => {
   const brand = theme.tokens.brand ?? {};
   const surfaces = theme.tokens.surfaces ?? {};
   const typography = theme.tokens.typography ?? {};
+  const safeName = sanitizeThemeName(theme.name || 'Palette', 'Palette');
   const base = normalizeHex(theme.baseColor || '#6366f1');
   const primary = normalizeHex(brand.primary || '#6366f1');
   const secondary = normalizeHex(brand.secondary || '#8b5cf6');
@@ -256,7 +295,7 @@ const buildPaletteCardSvg = (theme) => {
   const text = normalizeHex(typography['text-strong'] || '#0f172a');
   const muted = normalizeHex(typography['text-muted'] || '#64748b');
 
-  const header = escapeXml(theme.name);
+  const header = escapeXml(safeName);
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
@@ -272,7 +311,7 @@ const buildPaletteCardSvg = (theme) => {
   <rect x="60" y="140" width="1080" height="18" rx="9" fill="${hexWithAlpha(primary, 0.13)}"/>
   <rect x="60" y="100" width="360" height="28" rx="14" fill="${hexWithAlpha(primary, 0.2)}"/>
   <text x="80" y="120" fill="${text}" font-family="Inter, system-ui" font-weight="700" font-size="18">${header}</text>
-  <text x="80" y="170" fill="${muted}" font-family="Inter, system-ui" font-weight="500" font-size="14">Base ${base} • ${escapeXml(theme.mode)} • ${theme.isDark ? 'Dark' : 'Light'}</text>
+  <text x="80" y="170" fill="${muted}" font-family="Inter, system-ui" font-weight="500" font-size="14">Base ${base} • ${escapeXml(theme.mode)} • ${theme.themeMode === 'pop' ? 'Pop' : (theme.isDark ? 'Dark' : 'Light')}</text>
   <rect x="720" y="200" width="360" height="320" rx="24" fill="url(#grad)" opacity="0.9"/>
   <text x="760" y="250" fill="#fff" font-family="Inter, system-ui" font-size="32" font-weight="800">Primary</text>
   <text x="760" y="290" fill="#fff" font-family="Inter, system-ui" font-size="18" font-weight="600">${primary}</text>
@@ -294,6 +333,7 @@ const buildPaletteCardSvg = (theme) => {
 const buildStripSvg = (theme) => {
   const brand = theme.tokens.brand ?? {};
   const foundation = theme.tokens.foundation?.neutrals ?? {};
+  const safeName = sanitizeThemeName(theme.name || 'Palette', 'Palette');
   const primaries = [
     brand.primary,
     brand.secondary,
@@ -317,7 +357,7 @@ const buildStripSvg = (theme) => {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1500" height="420" viewBox="0 0 1500 420" xmlns="http://www.w3.org/2000/svg">
   <rect width="1500" height="420" rx="32" fill="#f8fafc" />
-  <text x="60" y="60" fill="#0f172a" font-family="Inter, system-ui" font-size="22" font-weight="800">${escapeXml(theme.name)} • Swatch Strip</text>
+  <text x="60" y="60" fill="#0f172a" font-family="Inter, system-ui" font-size="22" font-weight="800">${escapeXml(safeName)} • Swatch Strip</text>
   ${rects}
 </svg>`;
 };
@@ -363,19 +403,22 @@ const PaletteRow = ({ title, colors }) => (
 // --- Presets ---
 const presets = [
   { name: 'Midnight Indigo', base: '#6366f1', mode: 'Monochromatic', dark: true },
+  { name: 'Beef Ritual', base: '#7b241c', mode: 'Monochromatic', dark: true },
   { name: 'Solar Flare', base: '#f59e0b', mode: 'Analogous', dark: false },
-  { name: 'Beef Ritual', base: '#beefbe', mode: 'Monochromatic', dark: true },
+  { name: 'Terracotta Sunrise', base: '#e2725b', mode: 'Analogous', dark: false },
+  { name: 'Vapor Dream', base: '#ff8b94', mode: 'Tertiary', dark: false },
+  { name: 'Nuclear Winter', base: '#a7f432', mode: 'Apocalypse', dark: true },
   { name: 'Corporate Compliance', base: '#000000', mode: 'Monochromatic', dark: true },
 ];
 
 export default function App() {
   const { notify } = useNotification();
   const isInternal = import.meta.env.VITE_INTERNAL === 'true';
-  const [baseColor, setBaseColor] = useState('#6366f1');
-  const [baseInput, setBaseInput] = useState('#6366f1');
+  const [baseColor, setBaseColor] = useState('#7b241c');
+  const [baseInput, setBaseInput] = useState('#7b241c');
   const [baseError, setBaseError] = useState('');
   const [mode, setMode] = useState('Monochromatic');
-  const [isDark, setIsDark] = useState(false); // Controls the GENERATED tokens
+  const [themeMode, setThemeMode] = useState('dark'); // light | dark | pop
   const [printMode, setPrintMode] = useState(false);
   const [customThemeName, setCustomThemeName] = useState('');
   const [showContrast, setShowContrast] = useState(true);
@@ -383,11 +426,19 @@ export default function App() {
   const [apocalypseIntensity, setApocalypseIntensity] = useState(100);
   const [neutralCurve, setNeutralCurve] = useState(100);
   const [accentStrength, setAccentStrength] = useState(100);
+  const [popIntensity, setPopIntensity] = useState(100);
+  const [harmonyInput, setHarmonyInput] = useState(100);
+  const [neutralInput, setNeutralInput] = useState(100);
+  const [accentInput, setAccentInput] = useState(100);
+  const [apocalypseInput, setApocalypseInput] = useState(100);
+  const [popInput, setPopInput] = useState(100);
+  const [activeTab, setActiveTab] = useState('Quick view');
   const [tokenPrefix, setTokenPrefix] = useState('');
   const [savedPalettes, setSavedPalettes] = useState([]);
   const [saveStatus, setSaveStatus] = useState('');
-  const [storageAvailable, setStorageAvailable] = useState(true);
+  const [storageAvailable, setStorageAvailable] = useState(null);
   const [storageCorrupt, setStorageCorrupt] = useState(false);
+  const [storageQuotaExceeded, setStorageQuotaExceeded] = useState(false);
   const [exportError, setExportError] = useState('');
   const [exportBlocked, setExportBlocked] = useState(false);
   const [printSupported, setPrintSupported] = useState(true);
@@ -395,52 +446,57 @@ export default function App() {
   const [printMeta, setPrintMeta] = useState(() => getPrintTimestamps());
   const savedTitleRef = useRef('');
   const statusTimerRef = useRef(null);
+  const harmonyDebounceRef = useRef(null);
+  const neutralDebounceRef = useRef(null);
+  const accentDebounceRef = useRef(null);
+  const apocalypseDebounceRef = useRef(null);
+  const popDebounceRef = useRef(null);
   const pickerColor = baseColor.length === 9 && baseColor.startsWith('#') ? baseColor.slice(0, 7) : baseColor;
   // Controls the UI theme (preview background)
   // Usually we want this to sync with generated tokens for best preview, but nice to keep separate for inspection
   // For this UX, I will sync them. When you generate Dark Tokens, the UI becomes dark.
 
+  const isDark = themeMode === 'dark';
   useDarkClassSync(isDark);
-
-  const sanitizeColorInput = useCallback((value, fallback) => {
-    if (typeof value !== 'string') return fallback;
-    const match = value.match(/#[0-9a-fA-F]{3,8}/);
-    if (match) {
-      const hex = match[0];
-      if (hex.length === 4 || hex.length === 7 || hex.length === 9) return hex;
-      if (hex.length > 7) return hex.slice(0, 7);
-    }
-    return fallback;
-  }, []);
 
   const applySavedPalette = useCallback((payload) => {
     if (!payload || typeof payload !== 'object') return;
-    const sanitized = sanitizeColorInput(payload.baseColor, '#6366f1');
+    const sanitized = sanitizeHexInput(payload.baseColor, '#6366f1');
     setBaseColor(sanitized);
     setBaseInput(sanitized);
     setBaseError('');
     setMode(payload.mode || 'Monochromatic');
-    setIsDark(Boolean(payload.isDark));
+    const savedThemeMode = payload.themeMode || (payload.isDark ? 'dark' : 'light');
+    setThemeMode(savedThemeMode);
     setPrintMode(Boolean(payload.printMode));
-    setCustomThemeName(payload.customThemeName || '');
-    setHarmonyIntensity(payload.harmonyIntensity ?? 100);
-    setApocalypseIntensity(payload.apocalypseIntensity ?? 100);
-    setNeutralCurve(payload.neutralCurve ?? 100);
-    setAccentStrength(payload.accentStrength ?? 100);
-    setTokenPrefix(payload.tokenPrefix || '');
-  }, [sanitizeColorInput]);
+    setCustomThemeName(sanitizeThemeName(payload.customThemeName || '', ''));
+    const nextHarmony = payload.harmonyIntensity ?? 100;
+    const nextApoc = payload.apocalypseIntensity ?? 100;
+    const nextNeutral = payload.neutralCurve ?? 100;
+    const nextAccent = payload.accentStrength ?? 100;
+    const nextPop = payload.popIntensity ?? 100;
+    setHarmonyIntensity(nextHarmony);
+    setApocalypseIntensity(nextApoc);
+    setNeutralCurve(nextNeutral);
+    setAccentStrength(nextAccent);
+    setPopIntensity(nextPop);
+    setHarmonyInput(nextHarmony);
+    setApocalypseInput(nextApoc);
+    setNeutralInput(nextNeutral);
+    setAccentInput(nextAccent);
+    setPopInput(nextPop);
+    setTokenPrefix(sanitizePrefix(payload.tokenPrefix || ''));
+  }, []);
 
   const handleBaseColorChange = useCallback((value) => {
     setBaseInput(value);
-    const match = value.match(/^#[0-9a-fA-F]{3,8}$/);
-    if (!match) {
+    const sanitized = sanitizeHexInput(value);
+    if (!sanitized) {
       setBaseError('Enter a hex value like #FF00FF or #ABC');
       return;
     }
-    let next = match[0];
-    if (next.length === 9) next = next.slice(0, 7); // strip alpha for generation
     setBaseError('');
-    setBaseColor(next);
+    setBaseColor(sanitized);
   }, []);
 
   useEffect(() => {
@@ -458,6 +514,7 @@ export default function App() {
   }, [notify]);
 
   useEffect(() => {
+    if (storageAvailable !== true) return;
     try {
       const savedRaw = localStorage.getItem(STORAGE_KEYS.saved);
       if (savedRaw) {
@@ -474,22 +531,42 @@ export default function App() {
       console.warn('Failed to hydrate palette state', err);
       setStorageCorrupt(true);
       notify('Could not load saved palettes; storage may be blocked or corrupted', 'warn');
+      localStorage.removeItem(STORAGE_KEYS.saved);
+      localStorage.removeItem(STORAGE_KEYS.current);
+    }
+  }, [applySavedPalette, notify, storageAvailable]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const prefix = '#palette=';
+    const hash = window.location.hash || '';
+    if (!hash.startsWith(prefix)) return;
+    try {
+      const decoded = decodeURIComponent(escape(atob(hash.slice(prefix.length))));
+      const payload = JSON.parse(decoded);
+      applySavedPalette(payload);
+      notify('Palette loaded from link', 'success');
+    } catch (err) {
+      console.warn('Failed to parse shared palette', err);
+      notify('Share link was invalid', 'warn');
     }
   }, [applySavedPalette, notify]);
 
   useEffect(() => {
+    if (storageAvailable !== true) return;
     try {
       const payload = {
         baseColor,
         mode,
-        isDark,
+        themeMode,
         printMode,
-        customThemeName,
+        customThemeName: sanitizeThemeName(customThemeName, ''),
         harmonyIntensity,
         apocalypseIntensity,
         neutralCurve,
         accentStrength,
-        tokenPrefix,
+        popIntensity,
+        tokenPrefix: sanitizePrefix(tokenPrefix),
       };
       localStorage.setItem(STORAGE_KEYS.current, JSON.stringify(payload));
     } catch (err) {
@@ -497,21 +574,36 @@ export default function App() {
       setStorageAvailable(false);
       notify('Saving is unavailable; storage is blocked', 'warn');
     }
-  }, [baseColor, mode, isDark, printMode, customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, tokenPrefix, notify]);
+  }, [baseColor, mode, themeMode, printMode, customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix, notify, storageAvailable]);
+
+  useEffect(() => {
+    setHarmonyInput(harmonyIntensity);
+    setNeutralInput(neutralCurve);
+    setAccentInput(accentStrength);
+    setApocalypseInput(apocalypseIntensity);
+    setPopInput(popIntensity);
+  }, [harmonyIntensity, neutralCurve, accentStrength, apocalypseIntensity, popIntensity]);
 
   useEffect(() => () => {
     if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    if (harmonyDebounceRef.current) clearTimeout(harmonyDebounceRef.current);
+    if (neutralDebounceRef.current) clearTimeout(neutralDebounceRef.current);
+    if (accentDebounceRef.current) clearTimeout(accentDebounceRef.current);
+    if (apocalypseDebounceRef.current) clearTimeout(apocalypseDebounceRef.current);
+    if (popDebounceRef.current) clearTimeout(popDebounceRef.current);
   }, []);
 
-  const autoThemeName = useMemo(() => `${mode} ${isDark ? 'Dark' : 'Light'}`, [mode, isDark]);
-  const displayThemeName = customThemeName || autoThemeName;
+  const autoThemeName = useMemo(() => `${mode} ${themeMode === 'dark' ? 'Dark' : themeMode === 'pop' ? 'Pop' : 'Light'}`, [mode, themeMode]);
+  const safeCustomThemeName = useMemo(() => sanitizeThemeName(customThemeName, ''), [customThemeName]);
+  const displayThemeName = safeCustomThemeName || autoThemeName;
   const tokens = useMemo(
-    () => generateTokens(baseColor, mode, isDark, apocalypseIntensity, {
+    () => generateTokens(baseColor, mode, themeMode, apocalypseIntensity, {
       harmonyIntensity,
       neutralCurve,
       accentStrength,
+      popIntensity,
     }),
-    [baseColor, mode, isDark, apocalypseIntensity, harmonyIntensity, neutralCurve, accentStrength]
+    [baseColor, mode, themeMode, apocalypseIntensity, harmonyIntensity, neutralCurve, accentStrength, popIntensity]
   );
   const setStatusMessage = useCallback((message, tone = 'info') => {
     if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
@@ -525,18 +617,52 @@ export default function App() {
     name: displayThemeName,
     baseColor,
     mode,
+    themeMode,
     isDark,
     printMode,
-    customThemeName,
+    customThemeName: safeCustomThemeName,
     harmonyIntensity,
     apocalypseIntensity,
     neutralCurve,
     accentStrength,
-    tokenPrefix,
-  }), [displayThemeName, baseColor, mode, isDark, printMode, customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, tokenPrefix]);
+    popIntensity,
+    tokenPrefix: sanitizePrefix(tokenPrefix),
+  }), [displayThemeName, baseColor, mode, themeMode, isDark, printMode, safeCustomThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix]);
+  const shareState = useMemo(() => ({
+    baseColor,
+    mode,
+    themeMode,
+    isDark,
+    printMode,
+    customThemeName: safeCustomThemeName,
+    harmonyIntensity,
+    apocalypseIntensity,
+    neutralCurve,
+    accentStrength,
+    popIntensity,
+    tokenPrefix: sanitizePrefix(tokenPrefix),
+  }), [baseColor, mode, themeMode, isDark, printMode, safeCustomThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix]);
+  const buildShareHash = useCallback(() => {
+    const json = JSON.stringify(shareState);
+    const encoded = typeof btoa === 'function' ? btoa(unescape(encodeURIComponent(json))) : '';
+    return encoded ? `#palette=${encoded}` : '';
+  }, [shareState]);
+  const quickEssentials = useMemo(() => ([
+    { key: 'Primary', color: tokens.brand.primary },
+    { key: 'Secondary', color: tokens.brand.secondary },
+    { key: 'Accent', color: tokens.brand.accent },
+    { key: 'Base', color: baseColor },
+    { key: 'Neutral 2', color: tokens.foundation.neutrals['neutral-2'] },
+    { key: 'Neutral 4', color: tokens.foundation.neutrals['neutral-4'] },
+    { key: 'Neutral 6', color: tokens.foundation.neutrals['neutral-6'] },
+    { key: 'Neutral 8', color: tokens.foundation.neutrals['neutral-8'] },
+    { key: 'Text strong', color: tokens.typography['text-strong'] },
+    { key: 'Text muted', color: tokens.typography['text-muted'] },
+  ]).filter(({ color }) => Boolean(color)), [tokens, baseColor]);
+  const tabOptions = useMemo(() => (['Quick view', 'Full system', 'Print assets', 'Exports']), []);
 
   const saveCurrentPalette = useCallback(() => {
-    if (!storageAvailable) {
+    if (storageAvailable !== true || storageCorrupt) {
       setStatusMessage('Saving is unavailable; storage is blocked', 'warn');
       return;
     }
@@ -554,7 +680,7 @@ export default function App() {
       setStatusMessage('Save failed — check storage permissions', 'error');
       setStorageCorrupt(true);
     }
-  }, [serializePalette, setStatusMessage, storageAvailable]);
+  }, [serializePalette, setStatusMessage, storageAvailable, storageCorrupt]);
 
   const clearSavedData = useCallback(() => {
     try {
@@ -587,11 +713,12 @@ export default function App() {
   const currentTheme = useMemo(() => ({
     name: displayThemeName,
     mode,
+    themeMode,
     isDark,
     baseColor,
     tokens: finalTokens,
     printMode,
-  }), [displayThemeName, mode, isDark, baseColor, finalTokens, printMode]);
+  }), [displayThemeName, mode, themeMode, isDark, baseColor, finalTokens, printMode]);
   const orderedStack = useMemo(() => buildOrderedStack(finalTokens), [finalTokens]);
   const orderedSwatches = useMemo(
     () => orderedStack.map(({ name, value }) => ({ name, color: value })),
@@ -664,7 +791,7 @@ export default function App() {
     if (!p) return;
     setBaseColor(p.base);
     setMode(p.mode);
-    setIsDark(p.dark);
+    setThemeMode(p.dark ? 'dark' : 'light');
     setCustomThemeName(p.name);
     setHarmonyIntensity(100);
     setNeutralCurve(100);
@@ -682,7 +809,7 @@ export default function App() {
 
     setBaseColor(nextBase);
     setMode(nextMode);
-    setIsDark(nextDark);
+    setThemeMode(nextDark ? 'dark' : 'light');
     setHarmonyIntensity(Math.round(70 + Math.random() * 80));
     setNeutralCurve(Math.round(80 + Math.random() * 50));
     setAccentStrength(Math.round(80 + Math.random() * 50));
@@ -691,17 +818,81 @@ export default function App() {
       setApocalypseIntensity(Math.round(50 + Math.random() * 100));
     }
   }, []);
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    setStatusMessage(`Theme set to ${!isDark ? 'Dark' : 'Light'}`, 'info');
-  };
+  const debouncedHarmonyChange = useCallback((value) => {
+    const next = clampValue(value, 50, 160);
+    setHarmonyInput(next);
+    if (harmonyDebounceRef.current) clearTimeout(harmonyDebounceRef.current);
+    harmonyDebounceRef.current = setTimeout(() => setHarmonyIntensity(next), 120);
+  }, []);
+  const debouncedNeutralChange = useCallback((value) => {
+    const next = clampValue(value, 60, 140);
+    setNeutralInput(next);
+    if (neutralDebounceRef.current) clearTimeout(neutralDebounceRef.current);
+    neutralDebounceRef.current = setTimeout(() => setNeutralCurve(next), 120);
+  }, []);
+  const debouncedAccentChange = useCallback((value) => {
+    const next = clampValue(value, 60, 140);
+    setAccentInput(next);
+    if (accentDebounceRef.current) clearTimeout(accentDebounceRef.current);
+    accentDebounceRef.current = setTimeout(() => setAccentStrength(next), 120);
+  }, []);
+  const debouncedApocalypseChange = useCallback((value) => {
+    const next = clampValue(value, 20, 150);
+    setApocalypseInput(next);
+    if (apocalypseDebounceRef.current) clearTimeout(apocalypseDebounceRef.current);
+    apocalypseDebounceRef.current = setTimeout(() => setApocalypseIntensity(next), 120);
+  }, []);
+  const debouncedPopChange = useCallback((value) => {
+    const next = clampValue(value, 60, 140);
+    setPopInput(next);
+    if (popDebounceRef.current) clearTimeout(popDebounceRef.current);
+    popDebounceRef.current = setTimeout(() => setPopIntensity(next), 120);
+  }, []);
 
   const updatePrintMeta = useCallback(() => {
     const next = getPrintTimestamps();
     setPrintMeta(next);
     return next;
   }, []);
+  const copyHexValue = useCallback(async (value, label = 'Value') => {
+    const text = String(value ?? '').trim();
+    if (!text) {
+      notify('Nothing to copy', 'warn');
+      return;
+    }
+    try {
+      if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+        throw new Error('Clipboard API unavailable');
+      }
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.warn('Primary clipboard copy failed, using fallback', err);
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch (fallbackErr) {
+        console.warn('Copy failed', fallbackErr);
+        notify('Copy failed — check browser permissions', 'warn');
+        return;
+      }
+    }
+    notify(`${label} copied`, 'success', 1600);
+  }, [notify]);
+  const copyAllEssentials = useCallback(async () => {
+    const list = quickEssentials.map(({ color }) => normalizeHex(color, color)).filter(Boolean);
+    if (!list.length) {
+      notify('No colors to copy', 'warn');
+      return;
+    }
+    await copyHexValue(list.join('\n'), 'Hex list');
+  }, [copyHexValue, notify, quickEssentials]);
 
   useEffect(() => {
     const handleBeforePrint = () => {
@@ -740,13 +931,7 @@ export default function App() {
 
   const exportJson = (filename) => {
     const penpotPayload = buildExportPayload();
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(penpotPayload, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute('href', dataStr);
-    downloadAnchorNode.setAttribute('download', filename);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    downloadFile(filename, JSON.stringify(penpotPayload, null, 2), 'application/json');
   };
 
   const exportGenericJson = (filename) => {
@@ -759,47 +944,58 @@ export default function App() {
       generatedAt: new Date().toISOString(),
       tokenPrefix: tokenPrefix || undefined,
     });
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute('href', dataStr);
-    downloadAnchorNode.setAttribute('download', filename);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    downloadFile(filename, JSON.stringify(payload, null, 2), 'application/json');
   };
 
   const exportWitchcraftJson = (filename) => {
     const witchcraftPayload = buildWitchcraftPayload(finalTokens, displayThemeName, mode, isDark);
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(witchcraftPayload, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute('href', dataStr);
-    downloadAnchorNode.setAttribute('download', filename);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    downloadFile(filename, JSON.stringify(witchcraftPayload, null, 2), 'application/json');
   };
 
   const exportFigmaTokensJson = (filename) => {
     const payload = buildFigmaTokensPayload(finalTokens, { namingPrefix: tokenPrefix || undefined });
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
-    const anchor = document.createElement('a');
-    anchor.setAttribute('href', dataStr);
-    anchor.setAttribute('download', filename);
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
+    downloadFile(filename, JSON.stringify(payload, null, 2), 'application/json');
   };
 
   const exportStyleDictionaryJson = (filename) => {
     const payload = buildStyleDictionaryPayload(finalTokens, { namingPrefix: tokenPrefix || undefined });
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
-    const anchor = document.createElement('a');
-    anchor.setAttribute('href', dataStr);
-    anchor.setAttribute('download', filename);
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
+    downloadFile(filename, JSON.stringify(payload, null, 2), 'application/json');
   };
+  const exportCssVars = () => {
+    const css = buildCssVariables(orderedStack, sanitizePrefix(tokenPrefix));
+    const slugBase = sanitizeThemeName(displayThemeName || 'theme', 'theme');
+    const slug = slugBase.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'theme';
+    downloadFile(`${slug}-tokens.css`, css, 'text/css');
+    setStatusMessage('CSS variables exported', 'success');
+  };
+
+  const copyShareLink = useCallback(async () => {
+    try {
+      const hash = buildShareHash();
+      if (!hash) throw new Error('Share link unavailable');
+      const url = `${window.location.origin}${window.location.pathname}${hash}`;
+      if (url.length > 1900) {
+        notify('Share link too long; try shorter names/prefix', 'warn');
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+      }
+      notify('Share link copied', 'success');
+    } catch (err) {
+      console.warn('Failed to copy share link', err);
+      notify('Could not copy share link', 'error');
+    }
+  }, [buildShareHash, notify]);
 
   const exportAllAssets = useCallback(async () => {
     if (typeof Blob === 'undefined') {
@@ -821,7 +1017,9 @@ export default function App() {
     setExportBlocked(false);
     setIsExportingAssets(true);
     try {
-      const slug = (currentTheme.name || 'theme').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'theme';
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const slugBase = sanitizeThemeName(currentTheme.name || 'theme', 'theme');
+      const slug = slugBase.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'theme';
       const paletteSvg = buildPaletteCardSvg(currentTheme);
       const stripSvg = buildStripSvg(currentTheme);
       const [palettePng, stripPng] = await Promise.all([
@@ -906,10 +1104,11 @@ export default function App() {
           </div>
         </div>
 
-        {(!storageAvailable || storageCorrupt) && (
-          <div className="max-w-7xl mx-auto px-6 py-3 mb-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 flex items-center justify-between gap-3" role="alert">
+        {(storageAvailable === false || storageCorrupt) && (
+          <div className="max-w-7xl mx-auto px-6 py-3 mb-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 flex items-center justify-between gap-3" role="status" aria-live="polite">
             <div className="text-sm font-semibold">
               {storageCorrupt ? 'Saved palettes look corrupted. Save/load is disabled.' : 'Local storage is blocked; saving is disabled.'}
+              {storageQuotaExceeded && ' Storage quota exceeded; clear saved data to re-enable saving.'}
             </div>
             <button
               type="button"
@@ -972,22 +1171,31 @@ export default function App() {
 
 
               {/* Theme Name */}
-              <input
-                type="text"
-                value={customThemeName}
-                onChange={(e) => setCustomThemeName(e.target.value)}
-                placeholder={autoThemeName}
-                className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
-                aria-label="Theme name"
-              />
+              <label className="flex flex-col text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <span className="sr-only">Theme name</span>
+                <input
+                  type="text"
+                  value={customThemeName}
+                  onChange={(e) => setCustomThemeName(sanitizeThemeName(e.target.value, ''))}
+                  placeholder={autoThemeName}
+                  className="mt-1 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  aria-label="Theme name"
+                  maxLength={60}
+                />
+              </label>
 
-              <input
-                type="text"
-                value={tokenPrefix}
-                onChange={(e) => setTokenPrefix(e.target.value.trim())}
-                placeholder="Token prefix (optional)"
-                className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-              />
+              <label className="flex flex-col text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <span className="sr-only">Token prefix</span>
+                <input
+                  type="text"
+                  value={tokenPrefix}
+                  onChange={(e) => setTokenPrefix(sanitizePrefix(e.target.value))}
+                  placeholder="Token prefix (optional)"
+                  className="mt-1 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  aria-label="Token prefix"
+                  maxLength={32}
+                />
+              </label>
 
               {/* Presets */}
               <select
@@ -1044,12 +1252,15 @@ export default function App() {
                   type="range"
                   min="50"
                   max="160"
-                  value={harmonyIntensity}
-                  onChange={(e) => setHarmonyIntensity(clampValue(e.target.value, 50, 160))}
+                  value={harmonyInput}
+                  onChange={(e) => debouncedHarmonyChange(e.target.value)}
                   className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
                   aria-label="Adjust harmony spread"
+                  aria-valuemin={50}
+                  aria-valuemax={160}
+                  aria-valuenow={harmonyInput}
                 />
-                <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{harmonyIntensity}%</span>
+                <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{harmonyInput}%</span>
               </div>
 
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
@@ -1058,12 +1269,15 @@ export default function App() {
                   type="range"
                   min="60"
                   max="140"
-                  value={neutralCurve}
-                  onChange={(e) => setNeutralCurve(clampValue(e.target.value, 60, 140))}
+                  value={neutralInput}
+                  onChange={(e) => debouncedNeutralChange(e.target.value)}
                   className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
                   aria-label="Adjust neutral depth"
+                  aria-valuemin={60}
+                  aria-valuemax={140}
+                  aria-valuenow={neutralInput}
                 />
-                <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{neutralCurve}%</span>
+                <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{neutralInput}%</span>
               </div>
 
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
@@ -1072,12 +1286,15 @@ export default function App() {
                   type="range"
                   min="60"
                   max="140"
-                  value={accentStrength}
-                  onChange={(e) => setAccentStrength(clampValue(e.target.value, 60, 140))}
+                  value={accentInput}
+                  onChange={(e) => debouncedAccentChange(e.target.value)}
                   className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
                   aria-label="Adjust accent punch"
+                  aria-valuemin={60}
+                  aria-valuemax={140}
+                  aria-valuenow={accentInput}
                 />
-                <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{accentStrength}%</span>
+                <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{accentInput}%</span>
               </div>
 
               {mode === 'Apocalypse' && (
@@ -1087,24 +1304,60 @@ export default function App() {
                     type="range"
                     min="20"
                     max="150"
-                    value={apocalypseIntensity}
-                    onChange={(e) => setApocalypseIntensity(clampValue(e.target.value, 20, 150))}
+                    value={apocalypseInput}
+                    onChange={(e) => debouncedApocalypseChange(e.target.value)}
                     className="w-32 accent-rose-500 focus-visible:ring-2 focus-visible:ring-rose-500"
                     aria-label="Adjust apocalypse intensity"
+                    aria-valuemin={20}
+                    aria-valuemax={150}
+                    aria-valuenow={apocalypseInput}
                   />
-                  <span className="text-xs w-10 text-right font-mono text-rose-700 dark:text-rose-200">{apocalypseIntensity}%</span>
+                  <span className="text-xs w-10 text-right font-mono text-rose-700 dark:text-rose-200">{apocalypseInput}%</span>
                 </div>
               )}
 
-{/* Dark/Light Toggle */}
-               <button 
-                onClick={toggleTheme}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                aria-pressed={isDark}
-              >
-                {isDark ? <Moon size={18} /> : <Sun size={18} />}
-                <span className="text-xs font-bold">{isDark ? "Dark Mode" : "Light Mode"}</span>
-              </button>
+              {/* Theme mode toggle */}
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700" role="group" aria-label="Theme mode">
+                {[
+                  { key: 'light', label: 'Light', icon: <Sun size={14} /> },
+                  { key: 'dark', label: 'Dark', icon: <Moon size={14} /> },
+                  { key: 'pop', label: 'Pop', icon: <Palette size={14} /> },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setThemeMode(item.key)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1 ${
+                      themeMode === item.key 
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    } focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
+                    aria-pressed={themeMode === item.key}
+                    aria-label={`Set theme mode to ${item.label}`}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {themeMode === 'pop' && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-fuchsia-50 dark:bg-slate-800 border border-fuchsia-200 dark:border-fuchsia-700">
+                  <span className="text-xs font-bold text-fuchsia-700 dark:text-fuchsia-300">Pop intensity</span>
+                  <input
+                    type="range"
+                    min="60"
+                    max="140"
+                    value={popInput}
+                    onChange={(e) => debouncedPopChange(e.target.value)}
+                    className="w-32 accent-fuchsia-500 focus-visible:ring-2 focus-visible:ring-fuchsia-500"
+                    aria-label="Adjust pop intensity"
+                    aria-valuemin={60}
+                    aria-valuemax={140}
+                    aria-valuenow={popInput}
+                  />
+                  <span className="text-xs w-10 text-right font-mono text-fuchsia-700 dark:text-fuchsia-200">{popInput}%</span>
+                </div>
+              )}
 
           <button
             type="button"
@@ -1136,10 +1389,18 @@ export default function App() {
                 onClick={saveCurrentPalette}
                   className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                 aria-label="Save current palette to browser"
-                disabled={!storageAvailable}
+                disabled={storageAvailable !== true || storageCorrupt || storageQuotaExceeded}
               >
                 <Save size={14} />
                 Save palette
+                </button>
+                <button
+                  type="button"
+                  onClick={copyShareLink}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md bg-white dark:bg-slate-900 text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                >
+                  <LinkIcon size={14} />
+                  Copy link
                 </button>
                 <div className="flex items-center gap-2">
                   <FolderOpen size={14} className="text-slate-500" aria-hidden />
@@ -1148,6 +1409,7 @@ export default function App() {
                     className="px-2 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                     defaultValue=""
                     aria-label="Load a saved palette"
+                    disabled={storageAvailable !== true || storageCorrupt}
                   >
                     <option value="" disabled>Load saved…</option>
                     {savedPalettes.map((palette) => (
@@ -1160,9 +1422,14 @@ export default function App() {
                 {saveStatus && (
                   <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-300" role="status" aria-live="polite">{saveStatus}</span>
                 )}
-                {!storageAvailable && (
+                {storageAvailable === false && (
                   <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300" role="alert">
                     Saving disabled (storage blocked)
+                  </span>
+                )}
+                {storageQuotaExceeded && (
+                  <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300" role="alert">
+                    Storage quota exceeded — clear saved data to resume saving
                   </span>
                 )}
               </div>
@@ -1173,301 +1440,417 @@ export default function App() {
       </header>
 
         {/* Main Content */}
-        <main id="main-content" className="max-w-7xl mx-auto px-6 py-12">
-          <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Exports" reset={reset} message={message} />}>
-            <ExportsPanel
-              tokens={finalTokens}
-              printMode={printMode}
-          isExporting={isExportingAssets}
-          exportError={exportError}
-          exportBlocked={exportBlocked}
-          canPrint={printSupported}
-          ctaTextColor={ctaTextColor}
-          neutralButtonTextColor={neutralButtonText}
-          onExportAssets={exportAllAssets}
-          onRetryAssets={exportAllAssets}
-          onExportPdf={handleExportPdf}
-          onExportPenpot={() => exportJson(`${displayThemeName}${printMode ? '-PRINT' : ''}.json`)}
-          onExportGeneric={() => exportGenericJson('generic-tokens.json')}
-          onExportFigmaTokens={() => exportFigmaTokensJson('figma-tokens.json')}
-          onExportStyleDictionary={() => exportStyleDictionaryJson('style-dictionary.json')}
-              onExportWitchcraft={() => exportWitchcraftJson('witchcraft-theme.json')}
-              isInternal={isInternal}
-            />
-          </ErrorBoundary>
-
-          {showContrast && (
-            <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Contrast checks" reset={reset} message={message} />}>
-              <ContrastPanel contrastChecks={contrastChecks} finalTokens={finalTokens} />
-            </ErrorBoundary>
-          )}
-
-        {printMode && (
-          <div 
-            className="print:hidden mb-10 p-6 rounded-2xl border shadow-sm bg-amber-50/80 dark:bg-slate-900/60 backdrop-blur-sm"
+        <main id="main-content" className="max-w-7xl mx-auto px-6 py-12 space-y-10">
+          <section 
+            className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] animate-in fade-in slide-in-from-bottom-2 duration-500"
             style={{ 
-              borderColor: tokens.cards["card-panel-border"],
-              boxShadow: `0 12px 40px -24px ${tokens.brand.primary}`
-            }}
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <Printer size={16} />
-                  <span>Print asset pack preview</span>
-                </div>
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  With Print Mode enabled, exports stay CMYK-safe and add foil + ink tokens. The tarball will include:
-                </p>
-                <div className="space-y-2">
-                  {printAssetPack.map((item) => (
-                    <div 
-                      key={item.name}
-                      className="flex items-start gap-3 p-3 rounded-lg border bg-white/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 shadow-sm"
-                    >
-                      <div className="mt-0.5 text-indigo-500 dark:text-indigo-300">
-                        {item.icon}
-                      </div>
-                      <div className="space-y-1">
-                        <div className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.name}</div>
-                        <div className="text-xs font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider">{item.files}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">{item.note}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  <Palette size={16} />
-                  <span>Brand hex set for Canva</span>
-                </div>
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  Click any swatch to copy the print-tuned hex values for quick brand kits in Canva.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {canvaPrintHexes.map(({ name, color }) => (
-                    <ColorSwatch key={name} name={name} color={color} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Ordered stack" reset={reset} message={message} />}>
-          <div 
-            className="mb-12 p-6 rounded-2xl border shadow-sm bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm"
-            style={{ 
+              boxShadow: `0 35px 120px -80px ${tokens.brand.primary}aa`,
+              backgroundImage: `linear-gradient(140deg, ${hexWithAlpha(tokens.surfaces["background"], 1)} 0%, ${hexWithAlpha(tokens.brand.primary, 0.32)} 45%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.32)} 90%)`,
               borderColor: tokens.cards["card-panel-border"]
             }}
           >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Ordered token stack</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Aligned to the requested handoff order for quick scanning.</p>
-            </div>
-            <div className="text-[11px] px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">Click swatches to copy</div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {orderedSwatches.map(({ name, color }, index) => (
-              <ColorSwatch key={`${name}-${index}`} name={name} color={color} />
-            ))}
-          </div>
-          </div>
-        </ErrorBoundary>
-        
-        {/* Swatch Preview Grid */}
-        <div 
-          className="mb-12 p-6 rounded-2xl border shadow-sm transition-colors duration-500"
-          style={{ 
-            backgroundColor: tokens.cards["card-panel-surface"],
-            borderColor: tokens.cards["card-panel-border"]
-          }}
-        >
-           <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Harmony Preview</h2>
-              <div className="h-1 flex-1 mx-6 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent w-full opacity-50"></div>
+            <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `radial-gradient(circle at 20% 20%, ${hexWithAlpha('#ffffff', 0.08)}, transparent 35%)` }} />
+            <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `linear-gradient(120deg, ${hexWithAlpha(tokens.brand.secondary || tokens.brand.primary, 0.18)}, transparent 50%)` }} />
+            <div className="relative p-6 md:p-10 space-y-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Apocapalette live</p>
+                  <h2 className="text-3xl md:text-4xl font-black text-white">{displayThemeName}</h2>
+                  <p className="text-sm text-slate-300">Base {baseColor.toUpperCase()} • {mode} • {themeMode === 'pop' ? 'Pop' : (isDark ? 'Dark' : 'Light')}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-100">
+                  <span className="px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Live preview</span>
+                  <span className="px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Chaos tuned</span>
+                </div>
               </div>
-           </div>
-           
-           {/* Live Preview Card */}
-           <div className="relative rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 shadow-2xl transition-all duration-500"
-                style={{ backgroundColor: tokens.surfaces["background"] }}
-           >
-              {/* Fake Navigation */}
-              <div className="h-12 border-b flex items-center px-4 gap-4" style={{ borderColor: tokens.surfaces["surface-plain-border"] }}>
+              <div 
+                className="relative rounded-2xl overflow-hidden ring-1 bg-white/5 backdrop-blur-md transition-all duration-500 ease-out animate-in fade-in slide-in-from-bottom-4"
+                style={{ 
+                  backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.65),
+                  boxShadow: `0 24px 70px -50px ${tokens.brand.primary}`,
+                  borderColor: hexWithAlpha(tokens.cards["card-panel-border"], 0.5),
+                  color: tokens.typography["text-strong"]
+                }}
+              >
+                {/* Fake Navigation */}
+                <div className="h-12 border-b flex items-center px-4 gap-4" style={{ borderColor: tokens.surfaces["surface-plain-border"], backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.7) }}>
                   <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
                   <div className="w-3 h-3 rounded-full bg-yellow-400/80"></div>
                   <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
-              </div>
+                  <span className="text-xs font-semibold text-slate-200">Preview • Instant harmony</span>
+                </div>
 
-              <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-3 gap-8">
                   {/* Sidebar Simulation */}
                   <div className="space-y-4">
-                      <div className="h-8 w-3/4 rounded mb-6" style={{ backgroundColor: tokens.brand.primary, opacity: 0.2 }}></div>
-                      <div className="h-4 w-full rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.1 }}></div>
-                      <div className="h-4 w-5/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.1 }}></div>
-                      <div className="h-4 w-4/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.1 }}></div>
+                    <div className="h-8 w-3/4 rounded mb-6" style={{ backgroundColor: tokens.brand.primary, opacity: 0.25 }}></div>
+                    <div className="h-4 w-full rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
+                    <div className="h-4 w-5/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
+                    <div className="h-4 w-4/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
                   </div>
 
                   {/* Main Card Simulation */}
-                  <div className="col-span-2 p-6 rounded-lg border shadow-sm transition-colors duration-500"
-                       style={{ 
-                         backgroundColor: tokens.cards["card-panel-surface"],
-                         borderColor: tokens.cards["card-panel-border"]
-                       }}
+                  <div 
+                    className="col-span-2 p-6 rounded-xl border shadow-2xl transition-all duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_30px_90px_-60px_rgba(0,0,0,0.5)]"
+                    style={{ 
+                      backgroundColor: tokens.cards["card-panel-surface"],
+                      borderColor: tokens.cards["card-panel-border"]
+                    }}
                   >
-                      <h3 className="text-2xl font-bold mb-2" style={{ color: tokens.typography["heading"] }}>Thematic Output</h3>
-                      <p className="mb-6" style={{ color: tokens.typography["text-body"] }}>
-                        This is a live preview of how your tokens interact. Note the contrast between the surface, the text, and the primary actions.
-                      </p>
-                      
-                      <div className="flex gap-3">
-                        <button className="px-4 py-2 rounded font-medium transition-transform active:scale-95"
-                                style={{ backgroundColor: tokens.brand.primary, color: '#fff' }}>
-                          Primary Action
-                        </button>
-                        <button className="px-4 py-2 rounded font-medium border transition-transform active:scale-95"
-                                style={{ 
-                                  borderColor: tokens.brand.primary, 
-                                  color: tokens.brand.primary 
-                                }}>
-                          Secondary
-                        </button>
-                      </div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-2xl font-extrabold" style={{ color: tokens.typography["heading"] }}>Thematic Output</h3>
+                      <span className="text-[11px] px-3 py-1 rounded-full border" style={{ borderColor: tokens.brand.primary, color: tokens.brand.primary }}>Instant copy</span>
+                    </div>
+                    <p className="mb-6" style={{ color: tokens.typography["text-body"] }}>
+                      Feel the palette first; tweak later. Surfaces, text, and primary action sit in balance so you can decide fast.
+                    </p>
+                    
+                    <div className="flex flex-wrap gap-3">
+                      <button className="px-4 py-2 rounded-lg font-semibold transition-transform active:scale-95 shadow-[0_10px_40px_-20px]" style={{ backgroundColor: tokens.brand.primary, color: '#fff', boxShadow: `0 12px 30px -18px ${tokens.brand.primary}` }}>
+                        Primary Action
+                      </button>
+                      <button className="px-4 py-2 rounded-lg font-semibold border transition-transform active:scale-95"
+                              style={{ 
+                                borderColor: tokens.brand.primary, 
+                                color: tokens.brand.primary 
+                              }}>
+                        Secondary
+                      </button>
+                    </div>
 
-                      <div className="mt-8 p-4 rounded border flex items-center gap-3"
-                           style={{ 
-                             backgroundColor: tokens.entity["entity-card-surface"],
-                             borderColor: tokens.entity["entity-card-border"]
-                           }}
-                      >
-                         <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                              style={{ backgroundColor: tokens.brand.accent, color: '#fff' }}>
-                            <Check size={20} />
-                         </div>
-                         <div>
-                           <div className="font-bold text-sm" style={{ color: tokens.entity["entity-card-heading"] }}>Entity Highlight</div>
-                           <div className="text-xs opacity-70" style={{ color: tokens.typography["text-body"] }}>Unique component tokens</div>
-                         </div>
+                    <div className="mt-8 p-4 rounded border flex items-center gap-3"
+                         style={{ 
+                           backgroundColor: tokens.entity["entity-card-surface"],
+                           borderColor: tokens.entity["entity-card-border"]
+                         }}
+                    >
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner"
+                           style={{ backgroundColor: tokens.brand.accent, color: '#fff' }}>
+                        <Check size={20} />
                       </div>
+                      <div>
+                        <div className="font-bold text-sm" style={{ color: tokens.entity["entity-card-heading"] }}>Entity Highlight</div>
+                        <div className="text-xs opacity-80" style={{ color: tokens.typography["text-body"] }}>Unique component tokens</div>
+                      </div>
+                    </div>
                   </div>
+                </div>
               </div>
-           </div>
-        </div>
+            </div>
+          </section>
 
-        {/* Cohesive Palette Overview */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Cohesive Palette</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Quick scan of the main token families</p>
+          {/* Quick essentials */}
+          <section className="space-y-3 animate-in fade-in duration-500">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Quick essentials</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Tap to copy. Instant gratification before the deep dive.</p>
+              </div>
+              <button
+                type="button"
+                onClick={copyAllEssentials}
+                className="text-xs font-bold px-4 py-2 rounded-full bg-slate-900 text-white hover:-translate-y-[2px] transition shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              >
+                Copy all as hex list
+              </button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3">
+              {quickEssentials.slice(0, 10).map(({ key, color }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => copyHexValue(color, `${key} hex`)}
+                  className="group relative p-3 rounded-xl border shadow-sm flex flex-col gap-2 hover:-translate-y-1 transition-all duration-300 hover:shadow-xl bg-white/80 dark:bg-slate-900/70"
+                  style={{ borderColor: tokens.cards["card-panel-border"] }}
+                >
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-300">{key}</span>
+                  <div className="h-12 rounded-lg border" style={{ backgroundColor: color, borderColor: hexWithAlpha(color, 0.18) }} />
+                  <span className="text-[11px] font-mono text-slate-700 dark:text-slate-100 uppercase tracking-wide">{color}</span>
+                  <span className="absolute right-3 top-3 text-[10px] opacity-0 group-hover:opacity-80 text-slate-500">Copy</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Pinned swatch strip */}
+          <div className="sticky top-16 z-10">
+            <div className="rounded-2xl border bg-white/80 dark:bg-slate-900/70 shadow-sm px-4 py-3 flex items-center gap-3 overflow-x-auto snap-x snap-mandatory">
+              {quickEssentials.slice(0, 8).map(({ key, color }) => (
+                <div 
+                  key={key}
+                  className="min-w-[120px] flex-1 rounded-xl p-2 border shadow-sm snap-start"
+                  style={{ backgroundColor: color, borderColor: hexWithAlpha(color, 0.25) }}
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-tight bg-white/80 text-slate-800 px-2 py-1 rounded-full inline-block shadow-sm">
+                    {color}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {paletteRows.map((row) => (
-              <PaletteRow key={row.title} title={row.title} colors={row.colors} />
-            ))}
+
+          {/* Tabs */}
+          <div className="flex justify-center">
+            <div className="inline-flex gap-2 p-1 rounded-full border bg-white/80 dark:bg-slate-900/60 shadow-sm">
+              {tabOptions.map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 text-xs font-bold rounded-full transition-all ${
+                    activeTab === tab
+                      ? 'bg-slate-900 text-white shadow-md dark:bg-slate-100 dark:text-slate-900'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white'
+                  }`}
+                  aria-pressed={activeTab === tab}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Token Sections */}
-        <div className="space-y-2">
-          
-          <Section title="Foundation: Neutral Ladder" icon={<Layers size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.foundation.neutrals).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+          <div className="space-y-10">
+            {activeTab === 'Quick view' && (
+              <>
+                <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Ordered stack" reset={reset} message={message} />}>
+                  <div 
+                    className="p-6 rounded-2xl border shadow-sm bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm"
+                    style={{ 
+                      borderColor: tokens.cards["card-panel-border"]
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Ordered token stack</h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Aligned to the handoff order for quick scanning.</p>
+                      </div>
+                      <div className="text-[11px] px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">Click swatches to copy</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" role="list" aria-label="Ordered tokens">
+                      {orderedSwatches.map(({ name, color }, index) => (
+                        <ColorSwatch key={`${name}-${index}`} name={name} color={color} />
+                      ))}
+                    </div>
+                  </div>
+                </ErrorBoundary>
 
-          <Section title="Foundation: Accents" icon={<Droplet size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.foundation.accents).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+                {showContrast && (
+                  <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Contrast checks" reset={reset} message={message} />}>
+                    <Suspense fallback={<div className="p-4 rounded-lg border bg-white/70 dark:bg-slate-900/60 text-sm">Loading contrast…</div>}>
+                      <ContrastPanel contrastChecks={contrastChecks} finalTokens={finalTokens} />
+                    </Suspense>
+                  </ErrorBoundary>
+                )}
 
-          <Section title="Brand & Core" icon={<Droplet size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.brand).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Cohesive palette</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Main families at a glance</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {paletteRows.map((row) => (
+                      <PaletteRow key={row.title} title={row.title} colors={row.colors} />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
-          <Section title="Text Palette" icon={<Type size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.textPalette).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+            {activeTab === 'Full system' && (
+              <div className="space-y-2">
+                <Section title="Foundation: Neutral Ladder" icon={<Layers size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.foundation.neutrals).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-          <Section title="Typography" icon={<Type size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.typography).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+                <Section title="Foundation: Accents" icon={<Droplet size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.foundation.accents).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-          <Section title="Borders" icon={<Grid size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.borders).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+                <Section title="Brand & Core" icon={<Droplet size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.brand).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-          <Section title="Surfaces & Backgrounds" icon={<Layers size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.surfaces).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+                <Section title="Text Palette" icon={<Type size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.textPalette).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-          <Section title="Components: Cards & Tags" icon={<Grid size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.cards).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+                <Section title="Typography" icon={<Type size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.typography).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-          <Section title="Components: Glass" icon={<Box size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.glass).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+                <Section title="Borders" icon={<Grid size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.borders).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-           <Section title="Components: Entity" icon={<Box size={18} className="text-slate-400" />}>
-            {Object.entries(tokens.entity).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+                <Section title="Surfaces & Backgrounds" icon={<Layers size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.surfaces).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-          <Section title="Status & Feedback" icon={<Check size={18} className="text-slate-400" />}>
-             {Object.entries(tokens.status).map(([key, val]) => (
-              <ColorSwatch key={key} name={key} color={val} />
-            ))}
-          </Section>
+                <Section title="Components: Cards & Tags" icon={<Grid size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.cards).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-          {isInternal && (
-            <>
-              <Section title="Admin Palette" icon={<Box size={18} className="text-slate-400" />}>
-                {Object.entries(tokens.admin).map(([key, val]) => (
-                  <ColorSwatch key={key} name={key} color={val} />
-                ))}
-              </Section>
+                <Section title="Components: Glass" icon={<Box size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.glass).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-              <Section title="Back-Compat Aliases" icon={<Box size={18} className="text-slate-400" />}>
-                {Object.entries(tokens.aliases).map(([key, val]) => (
-                  <ColorSwatch key={key} name={key} color={val} />
-                ))}
-              </Section>
+                <Section title="Components: Entity" icon={<Box size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.entity).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-              <Section title="Dawn Overrides" icon={<Sun size={18} className="text-slate-400" />}>
-                {Object.entries(tokens.dawn).map(([key, val]) => (
-                  <ColorSwatch key={key} name={key} color={val} />
-                ))}
-              </Section>
+                <Section title="Status & Feedback" icon={<Check size={18} className="text-slate-400" />}>
+                  {Object.entries(tokens.status).map(([key, val]) => (
+                    <ColorSwatch key={key} name={key} color={val} />
+                  ))}
+                </Section>
 
-              <Section title="Legacy Palette" icon={<Box size={18} className="text-slate-400" />}>
-                {Object.entries(tokens.named).map(([key, val]) => (
-                  <ColorSwatch key={key} name={key} color={val} />
-                ))}
-              </Section>
-            </>
-          )}
-        </div>
+                {isInternal && (
+                  <>
+                    <Section title="Admin Palette" icon={<Box size={18} className="text-slate-400" />}>
+                      {Object.entries(tokens.admin).map(([key, val]) => (
+                        <ColorSwatch key={key} name={key} color={val} />
+                      ))}
+                    </Section>
+
+                    <Section title="Back-Compat Aliases" icon={<Box size={18} className="text-slate-400" />}>
+                      {Object.entries(tokens.aliases).map(([key, val]) => (
+                        <ColorSwatch key={key} name={key} color={val} />
+                      ))}
+                    </Section>
+
+                    <Section title="Dawn Overrides" icon={<Sun size={18} className="text-slate-400" />}>
+                      {Object.entries(tokens.dawn).map(([key, val]) => (
+                        <ColorSwatch key={key} name={key} color={val} />
+                      ))}
+                    </Section>
+
+                    <Section title="Legacy Palette" icon={<Box size={18} className="text-slate-400" />}>
+                      {Object.entries(tokens.named).map(([key, val]) => (
+                        <ColorSwatch key={key} name={key} color={val} />
+                      ))}
+                    </Section>
+                  </>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'Print assets' && (
+              <div className="space-y-4">
+                {printMode ? (
+                  <div 
+                    className="print:hidden p-6 rounded-2xl border shadow-sm bg-amber-50/80 dark:bg-slate-900/60 backdrop-blur-sm"
+                    style={{ 
+                      borderColor: tokens.cards["card-panel-border"],
+                      boxShadow: `0 12px 40px -24px ${tokens.brand.primary}`
+                    }}
+                  >
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                          <Printer size={16} />
+                          <span>Print asset pack preview</span>
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                          With Print Mode enabled, exports stay CMYK-safe and add foil + ink tokens. The tarball will include:
+                        </p>
+                        <div className="space-y-2">
+                          {printAssetPack.map((item) => (
+                            <div 
+                              key={item.name}
+                              className="flex items-start gap-3 p-3 rounded-lg border bg-white/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 shadow-sm"
+                            >
+                              <div className="mt-0.5 text-indigo-500 dark:text-indigo-300">
+                                {item.icon}
+                              </div>
+                              <div className="space-y-1">
+                                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.name}</div>
+                                <div className="text-xs font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider">{item.files}</div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400">{item.note}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                          <Palette size={16} />
+                          <span>Brand hex set for Canva</span>
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                          Click any swatch to copy the print-tuned hex values for quick brand kits in Canva.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list" aria-label="Print hex swatches">
+                          {canvaPrintHexes.map(({ name, color }) => (
+                            <ColorSwatch key={name} name={name} color={color} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-6 rounded-2xl border shadow-sm bg-white/80 dark:bg-slate-900/60 text-sm text-slate-700 dark:text-slate-200">
+                    <p className="font-semibold mb-2">Enable Print Mode to unlock the asset pack preview.</p>
+                    <p className="text-slate-500 dark:text-slate-400 mb-4">We’ll tune tokens for CMYK-safe values and add foil + ink layers before exporting.</p>
+                    <button
+                      type="button"
+                      onClick={() => setPrintMode(true)}
+                      className="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:-translate-y-[1px] transition shadow"
+                    >
+                      Turn on Print Mode
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'Exports' && (
+              <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Exports" reset={reset} message={message} />}>
+                <Suspense fallback={<div className="p-4 rounded-lg border bg-white/70 dark:bg-slate-900/60 text-sm">Loading exports…</div>}>
+                  <ExportsPanel
+                    tokens={finalTokens}
+                    printMode={printMode}
+                    isExporting={isExportingAssets}
+                    exportError={exportError}
+                    exportBlocked={exportBlocked}
+                    canPrint={printSupported}
+                    ctaTextColor={ctaTextColor}
+                    neutralButtonTextColor={neutralButtonText}
+                    onExportAssets={exportAllAssets}
+                    onRetryAssets={exportAllAssets}
+                    onExportPdf={handleExportPdf}
+                    onExportPenpot={() => exportJson(`${displayThemeName}${printMode ? '-PRINT' : ''}.json`)}
+                    onExportGeneric={() => exportGenericJson('generic-tokens.json')}
+                    onExportFigmaTokens={() => exportFigmaTokensJson('figma-tokens.json')}
+                    onExportStyleDictionary={() => exportStyleDictionaryJson('style-dictionary.json')}
+                    onExportCssVars={exportCssVars}
+                    onExportWitchcraft={() => exportWitchcraftJson('witchcraft-theme.json')}
+                    isInternal={isInternal}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+          </div>
         </main>
       </div>
   );

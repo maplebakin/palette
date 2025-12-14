@@ -36,9 +36,10 @@ describe('colorUtils', () => {
     expect(getWCAGBadge(2.5).text).toBe('FAIL');
   });
 
-  it('blendHue averages between angles', () => {
+  it('blendHue follows the shortest hue path', () => {
     expect(blendHue(0, 120, 0.5)).toBe(60);
-    expect(blendHue(350, 30, 0.5)).toBe(185);
+    expect(blendHue(350, 20, 0.5)).toBeCloseTo(0);
+    expect(blendHue(240, -210, 0.5)).toBeCloseTo(315);
   });
 
   it('hexWithAlpha wraps RGB channels', () => {

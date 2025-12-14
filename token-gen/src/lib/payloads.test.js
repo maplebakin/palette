@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildGenericPayload, buildPenpotPayload, buildWitchcraftPayload, buildFigmaTokensPayload, buildStyleDictionaryPayload } from './payloads.js';
 import { generateTokens, buildOrderedStack } from './tokens.js';
 
-const sampleTokens = () => generateTokens('#6633ff', 'Monochromatic', true, 100);
+const sampleTokens = () => generateTokens('#6633ff', 'Monochromatic', 'dark', 100);
 
 describe('payload builders', () => {
   it('buildPenpotPayload applies naming prefixes', () => {
