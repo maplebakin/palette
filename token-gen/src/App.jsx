@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Printer, FileText, Image, EyeOff, Shuffle, Eye, Save, FolderOpen, Link as LinkIcon, Check, Download } from 'lucide-react';
+import { Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Printer, FileText, Image, EyeOff, Shuffle, Eye, Save, FolderOpen, Link as LinkIcon, Check, Download, Flame, Copy } from 'lucide-react';
 import ColorSwatch from './components/ColorSwatch';
 import Section from './components/Section';
 const ExportsPanel = lazy(() => import('./components/ExportsPanel'));
@@ -448,6 +448,8 @@ export default function App() {
   const exportsSectionRef = useRef(null);
   const [showFineTune, setShowFineTune] = useState(false);
   const [headerOpen, setHeaderOpen] = useState(true);
+  const [chaosMenuOpen, setChaosMenuOpen] = useState(false);
+  const [overflowOpen, setOverflowOpen] = useState(false);
   const statusTimerRef = useRef(null);
   const harmonyDebounceRef = useRef(null);
   const neutralDebounceRef = useRef(null);
@@ -486,6 +488,12 @@ export default function App() {
       }
     };
   }, []);
+  useEffect(() => {
+    if (!headerOpen) {
+      setChaosMenuOpen(false);
+      setOverflowOpen(false);
+    }
+  }, [headerOpen]);
 
   const applySavedPalette = useCallback((payload) => {
     if (!payload || typeof payload !== 'object') return;
@@ -1213,31 +1221,7 @@ export default function App() {
       >
         <div className="max-w-7xl mx-auto px-6 py-4">
           <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Header" reset={reset} message={message} />}>
-          <div className="md:hidden flex items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2">
-              <div 
-                className="p-2 rounded-lg shadow-lg"
-                style={{ 
-                  background: `linear-gradient(135deg, ${tokens.brand["gradient-start"]} 0%, ${tokens.brand.secondary} 50%, ${tokens.brand["gradient-end"]} 100%)`,
-                  boxShadow: `0 10px 30px -10px ${tokens.brand.primary}99`
-                }}
-              >
-                <Palette className="text-white drop-shadow-sm" size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500">Apocapalette</p>
-                <p className="text-xs text-slate-500 dark:text-slate-300">Chaos at your thumb</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setHeaderOpen((v) => !v)}
-              className="px-3 py-2 rounded-full text-[11px] font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 shadow-sm hover:-translate-y-[1px] active:scale-95 transition"
-            >
-              {headerOpen ? 'Hide controls' : 'Show controls'}
-            </button>
-          </div>
-          <div className={`${headerOpen ? 'flex' : 'hidden'} md:flex flex-col gap-5`}>
+          <div className="flex flex-col gap-5">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:gap-3">
@@ -1255,39 +1239,65 @@ export default function App() {
                     <h1 className="text-2xl font-black text-slate-800 dark:text-white">Apocapalette</h1>
                     <p className="text-xs text-slate-500 font-medium">Spin the chaos wheel, keep the pretty bits.</p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 lg:ml-4">
+                  <div className="relative flex flex-wrap items-center gap-2 lg:ml-4">
                     <button
                       type="button"
-                      onClick={randomRitual}
-                      className="px-3 py-2 rounded-full text-[11px] font-bold shadow-md hover:-translate-y-[1px] active:scale-95 transition border"
+                      onClick={() => setChaosMenuOpen((v) => !v)}
+                      className="px-3 py-2 rounded-full text-[11px] font-bold shadow-md hover:-translate-y-[1px] active:scale-95 transition border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100"
                       style={{
-                        backgroundImage: `linear-gradient(120deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary} 100%)`,
-                        color: ctaTextColor,
-                        borderColor: tokens.brand['cta-hover'] || tokens.brand.primary,
+                        borderColor: tokens.cards["card-panel-border"],
                       }}
+                      aria-expanded={chaosMenuOpen}
+                      aria-haspopup="true"
                     >
-                      Random ritual
+                      Chaos menu
                     </button>
-                    <button
-                      type="button"
-                      onClick={crankApocalypse}
-                      className="px-3 py-2 rounded-full text-[11px] font-bold border bg-slate-900 text-white shadow-md hover:bg-slate-800 active:scale-95 transition"
-                    >
-                      Crank Apocalypse
-                    </button>
-                    <button
-                      type="button"
-                      onClick={copyEssentialsList}
-                      className="px-3 py-2 rounded-full text-[11px] font-bold border bg-white/90 dark:bg-slate-800 text-slate-700 dark:text-slate-100 shadow-sm hover:-translate-y-[1px] active:scale-95 transition"
-                      style={{ borderColor: tokens.cards["card-panel-border"] }}
-                    >
-                      Copy quick kit
-                    </button>
+                    {chaosMenuOpen && (
+                      <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border bg-white dark:bg-slate-900 shadow-xl z-30"
+                        style={{ borderColor: tokens.cards["card-panel-border"] }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => { setChaosMenuOpen(false); randomRitual(); }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                          <span>Random ritual</span>
+                          <Shuffle size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setChaosMenuOpen(false); crankApocalypse(); }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                          <span>Crank Apocalypse</span>
+                          <Flame size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setChaosMenuOpen(false); copyEssentialsList(); }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
+                        >
+                          <span>Copy quick kit</span>
+                          <Copy size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
               <div className="flex flex-col items-start gap-2">
                 <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setHeaderOpen((v) => !v)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 hover:-translate-y-[1px] active:scale-95 transition"
+                    style={{ borderColor: tokens.cards["card-panel-border"] }}
+                    aria-expanded={headerOpen}
+                    aria-label={headerOpen ? 'Hide controls' : 'Show controls'}
+                  >
+                    {headerOpen ? <EyeOff size={14} /> : <Eye size={14} />}
+                    Controls
+                  </button>
                   <button
                     type="button"
                     onClick={handleJumpToExports}
@@ -1339,12 +1349,39 @@ export default function App() {
                     <LinkIcon size={14} />
                     Copy share link
                   </button>
-                  <a
-                    href="docs/README.md"
-                    className="px-3 py-2 rounded-full bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                  >
-                    Docs
-                  </a>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOverflowOpen((v) => !v)}
+                      className="px-3 py-2 rounded-full text-xs font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 hover:-translate-y-[1px] active:scale-95 transition"
+                      style={{ borderColor: tokens.cards["card-panel-border"] }}
+                      aria-expanded={overflowOpen}
+                      aria-haspopup="true"
+                      title="More actions"
+                    >
+                      ⋮
+                    </button>
+                    {overflowOpen && (
+                      <div
+                        className="absolute right-0 mt-2 w-40 rounded-xl border bg-white dark:bg-slate-900 shadow-xl z-30"
+                        style={{ borderColor: tokens.cards["card-panel-border"] }}
+                      >
+                        <a
+                          href="docs/README.md"
+                          className="block px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-t-xl"
+                        >
+                          Docs
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => { setOverflowOpen(false); copyShareLink(); }}
+                          className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-b-xl"
+                        >
+                          Copy share link
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-300">
                   {saveStatus && (
@@ -1364,6 +1401,7 @@ export default function App() {
               </div>
             </div>
 
+            {headerOpen && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               <div
                 className="flex flex-col gap-3 p-3 rounded-xl border bg-white/70 dark:bg-slate-900/50 backdrop-blur-sm"
@@ -1613,19 +1651,20 @@ export default function App() {
                 </div>
               </div>
             </div>
+            )}
           </div>
           </ErrorBoundary>
         </div>
       </header>
 
-      {/* Mobile quick controls */}
+      {/* Quick controls bar (sticky when header collapsed) */}
       {!headerOpen && (
-        <div className="md:hidden max-w-7xl mx-auto px-6 pb-4">
+        <div className="fixed bottom-3 left-0 right-0 z-30 px-4">
           <div
-            className="flex flex-col gap-3 rounded-xl border bg-white/80 dark:bg-slate-900/70 backdrop-blur p-3 shadow-sm"
+            className="max-w-5xl mx-auto rounded-2xl border bg-white/90 dark:bg-slate-900/90 backdrop-blur p-3 shadow-2xl flex flex-col gap-2"
             style={{ borderColor: tokens.cards["card-panel-border"] }}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 flex-1">
                 <input
                   type="color"
@@ -1646,7 +1685,6 @@ export default function App() {
             </div>
             {baseError && <p className="text-xs text-rose-600 font-semibold" role="alert">{baseError}</p>}
             <div className="flex flex-wrap items-center gap-2">
-              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Style</label>
               <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value)}
@@ -1684,7 +1722,7 @@ export default function App() {
       )}
 
         {/* Main Content */}
-        <main id="main-content" className="max-w-7xl mx-auto px-6 py-12 space-y-10">
+        <main id="main-content" className="max-w-7xl mx-auto px-6 pt-12 pb-28 md:pb-12 space-y-10">
           <section 
             className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-500"
             style={{ 
