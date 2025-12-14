@@ -1165,15 +1165,29 @@ export default function App() {
     }, 200);
   };
 
+  const headerBackground = hexWithAlpha(tokens.surfaces['header-background'], 0.9);
+  const headerGlowA = hexWithAlpha(tokens.brand.primary, 0.08);
+  const headerGlowB = hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.06);
+  const pageBackground = printMode ? '#fdfdf9' : tokens.surfaces['page-background'];
+  const backgroundImage = printMode
+    ? 'radial-gradient(circle at 25% 25%, #f0f0f0 1px, transparent 1px), radial-gradient(circle at 75% 75%, #e0e0e0 1px, transparent 1px)'
+    : [
+        `radial-gradient(circle at 16% 14%, ${hexWithAlpha(tokens.brand.primary, 0.12)}, transparent 28%)`,
+        `radial-gradient(circle at 82% 8%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.1)}, transparent 30%)`,
+        `linear-gradient(180deg, ${hexWithAlpha(tokens.surfaces['background'], 0.75)} 0%, ${hexWithAlpha(tokens.surfaces['page-background'], 0.9)} 42%, ${tokens.surfaces['page-background']} 100%)`,
+      ].join(', ');
+  const backgroundSize = printMode ? '40px 40px, 40px 40px' : '140% 140%, 120% 120%, auto';
+  const backgroundPosition = printMode ? '0 0, 0 0' : '0 0, 100% 0, 0 0';
+  const quickBarBottom = 'max(12px, env(safe-area-inset-bottom, 12px))';
+
   return (
       <div 
         className={`min-h-screen transition-colors duration-500 ${isDark ? 'dark' : ''}`}
         style={{
-          backgroundColor: printMode ? '#fdfdf9' : tokens.surfaces["page-background"],
-          backgroundImage: printMode
-            ? 'radial-gradient(circle at 25% 25%, #f0f0f0 1px, transparent 1px), radial-gradient(circle at 75% 75%, #e0e0e0 1px, transparent 1px)'
-            : 'none',
-          backgroundSize: printMode ? '40px 40px' : 'auto',
+          backgroundColor: pageBackground,
+          backgroundImage,
+          backgroundSize,
+          backgroundPosition,
         }}
       >
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 bg-indigo-600 text-white px-3 py-2 rounded">Skip to content</a>
@@ -1198,7 +1212,7 @@ export default function App() {
         </div>
 
         {(storageAvailable === false || storageCorrupt) && (
-          <div className="max-w-7xl mx-auto px-6 py-3 mb-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 flex items-center justify-between gap-3" role="status" aria-live="polite">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 mb-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 flex items-center justify-between gap-3" role="status" aria-live="polite">
             <div className="text-sm font-semibold">
               {storageCorrupt ? 'Saved palettes look corrupted. Save/load is disabled.' : 'Local storage is blocked; saving is disabled.'}
               {storageQuotaExceeded && ' Storage quota exceeded; clear saved data to re-enable saving.'}
@@ -1215,13 +1229,15 @@ export default function App() {
 
       {/* Header */}
       <header 
-        className="sticky top-0 z-20 backdrop-blur-md border-b"
+        className="md:sticky md:top-0 z-30 backdrop-blur-md border-b"
         style={{ 
-          backgroundColor: tokens.surfaces["header-background"] + 'CC',
-          borderColor: tokens.surfaces["surface-plain-border"]
+          backgroundColor: headerBackground,
+          backgroundImage: `linear-gradient(120deg, ${headerGlowA}, transparent 45%), linear-gradient(240deg, ${headerGlowB}, transparent 50%)`,
+          borderColor: tokens.surfaces["surface-plain-border"],
+          boxShadow: isDark ? '0 12px 38px -28px rgba(0,0,0,0.8)' : '0 12px 32px -28px rgba(15,23,42,0.25)',
         }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Header" reset={reset} message={message} />}>
           <div className="flex flex-col gap-5">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -1287,102 +1303,104 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col items-start gap-2">
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setHeaderOpen((v) => !v)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 hover:-translate-y-[1px] active:scale-95 transition"
-                    style={{ borderColor: tokens.cards["card-panel-border"] }}
-                    aria-expanded={headerOpen}
-                    aria-label={headerOpen ? 'Hide controls' : 'Show controls'}
-                  >
-                    {headerOpen ? <EyeOff size={14} /> : <Eye size={14} />}
-                    Controls
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleJumpToExports}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:-translate-y-[1px] active:scale-95 transition border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                    style={{
-                      backgroundImage: `linear-gradient(120deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary} 100%)`,
-                      color: ctaTextColor,
-                      borderColor: tokens.brand['cta-hover'] || tokens.brand.primary,
-                      boxShadow: `0 18px 35px -22px ${tokens.brand.primary}`,
-                    }}
-                    aria-label="Jump to exports"
-                  >
-                    <Download size={14} />
-                    Exports
-                  </button>
-                  <button
-                    type="button"
-                    onClick={saveCurrentPalette}
-                    className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                    aria-label="Save current palette to browser"
-                    disabled={storageAvailable !== true || storageCorrupt || storageQuotaExceeded}
-                  >
-                    <Save size={14} />
-                    Save
-                  </button>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white dark:bg-slate-900 text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
-                    <FolderOpen size={14} className="text-slate-500" aria-hidden />
-                    <select
-                      onChange={(e) => { loadSavedPalette(e.target.value); e.target.value = ''; }}
-                      className="bg-transparent outline-none text-xs"
-                      defaultValue=""
-                      aria-label="Load a saved palette"
-                      disabled={storageAvailable !== true || storageCorrupt}
-                    >
-                      <option value="" disabled>Load saved…</option>
-                      {savedPalettes.map((palette) => (
-                        <option key={palette.id} value={palette.id}>
-                          {palette.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={copyShareLink}
-                    className="flex items-center gap-2 px-3 py-2 rounded-full bg-white dark:bg-slate-900 text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                    title="Copy a shareable link to this palette"
-                  >
-                    <LinkIcon size={14} />
-                    Copy share link
-                  </button>
-                  <div className="relative">
+              <div className="flex flex-col items-start gap-2 w-full lg:w-auto">
+                <div className="w-full">
+                  <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mx-2 px-2 lg:flex-wrap lg:overflow-visible lg:pb-0 lg:px-0 lg:mx-0">
                     <button
                       type="button"
-                      onClick={() => setOverflowOpen((v) => !v)}
-                      className="px-3 py-2 rounded-full text-xs font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 hover:-translate-y-[1px] active:scale-95 transition"
+                      onClick={() => setHeaderOpen((v) => !v)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 hover:-translate-y-[1px] active:scale-95 transition shrink-0 whitespace-nowrap"
                       style={{ borderColor: tokens.cards["card-panel-border"] }}
-                      aria-expanded={overflowOpen}
-                      aria-haspopup="true"
-                      title="More actions"
+                      aria-expanded={headerOpen}
+                      aria-label={headerOpen ? 'Hide controls' : 'Show controls'}
                     >
-                      ⋮
+                      {headerOpen ? <EyeOff size={14} /> : <Eye size={14} />}
+                      Controls
                     </button>
-                    {overflowOpen && (
-                      <div
-                        className="absolute right-0 mt-2 w-40 rounded-xl border bg-white dark:bg-slate-900 shadow-xl z-30"
-                        style={{ borderColor: tokens.cards["card-panel-border"] }}
+                    <button
+                      type="button"
+                      onClick={handleJumpToExports}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:-translate-y-[1px] active:scale-95 transition border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
+                      style={{
+                        backgroundImage: `linear-gradient(120deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary} 100%)`,
+                        color: ctaTextColor,
+                        borderColor: tokens.brand['cta-hover'] || tokens.brand.primary,
+                        boxShadow: `0 18px 35px -22px ${tokens.brand.primary}`,
+                      }}
+                      aria-label="Jump to exports"
+                    >
+                      <Download size={14} />
+                      Exports
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveCurrentPalette}
+                      className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
+                      aria-label="Save current palette to browser"
+                      disabled={storageAvailable !== true || storageCorrupt || storageQuotaExceeded}
+                    >
+                      <Save size={14} />
+                      Save
+                    </button>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white dark:bg-slate-900 text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shrink-0 min-w-[180px]">
+                      <FolderOpen size={14} className="text-slate-500" aria-hidden />
+                      <select
+                        onChange={(e) => { loadSavedPalette(e.target.value); e.target.value = ''; }}
+                        className="bg-transparent outline-none text-xs"
+                        defaultValue=""
+                        aria-label="Load a saved palette"
+                        disabled={storageAvailable !== true || storageCorrupt}
                       >
-                        <a
-                          href="docs/README.md"
-                          className="block px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-t-xl"
+                        <option value="" disabled>Load saved…</option>
+                        {savedPalettes.map((palette) => (
+                          <option key={palette.id} value={palette.id}>
+                            {palette.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={copyShareLink}
+                      className="flex items-center gap-2 px-3 py-2 rounded-full bg-white dark:bg-slate-900 text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
+                      title="Copy a shareable link to this palette"
+                    >
+                      <LinkIcon size={14} />
+                      Copy share link
+                    </button>
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setOverflowOpen((v) => !v)}
+                        className="px-3 py-2 rounded-full text-xs font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 hover:-translate-y-[1px] active:scale-95 transition"
+                        style={{ borderColor: tokens.cards["card-panel-border"] }}
+                        aria-expanded={overflowOpen}
+                        aria-haspopup="true"
+                        title="More actions"
+                      >
+                        ⋮
+                      </button>
+                      {overflowOpen && (
+                        <div
+                          className="absolute right-0 mt-2 w-40 rounded-xl border bg-white dark:bg-slate-900 shadow-xl z-30"
+                          style={{ borderColor: tokens.cards["card-panel-border"] }}
                         >
-                          Docs
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => { setOverflowOpen(false); copyShareLink(); }}
-                          className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-b-xl"
-                        >
-                          Copy share link
-                        </button>
-                      </div>
-                    )}
+                          <a
+                            href="docs/README.md"
+                            className="block px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-t-xl"
+                          >
+                            Docs
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => { setOverflowOpen(false); copyShareLink(); }}
+                            className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-b-xl"
+                          >
+                            Copy share link
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-300">
@@ -1662,8 +1680,8 @@ export default function App() {
       {/* Quick controls bar (sticky when header collapsed) */}
       {!headerOpen && (
         <div
-          className="fixed bottom-3 left-3 z-30"
-          style={{ width: 'calc(100% - 24px)', maxWidth: '380px' }}
+          className="fixed left-3 z-30"
+          style={{ width: 'calc(100% - 24px)', maxWidth: '420px', bottom: quickBarBottom }}
         >
           <div
             className="rounded-2xl border bg-white/90 dark:bg-slate-900/90 backdrop-blur p-3 shadow-2xl flex flex-col gap-2"
@@ -1727,7 +1745,7 @@ export default function App() {
       )}
 
         {/* Main Content */}
-        <main id="main-content" className="max-w-7xl mx-auto px-6 pt-12 pb-28 md:pb-12 space-y-10">
+        <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 sm:pt-12 pb-28 md:pb-12 space-y-10">
           <section 
             className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-500"
             style={{ 
@@ -1862,7 +1880,7 @@ export default function App() {
           </section>
 
           {/* Pinned swatch strip */}
-          <div className="sticky top-16 z-10">
+          <div className="sticky top-3 md:top-16 z-10">
             <div
               className="rounded-2xl border bg-white/80 dark:bg-slate-900/70 shadow-sm px-4 py-3 flex items-center gap-3 overflow-x-auto snap-x snap-mandatory"
               aria-label="Pinned swatch strip — quick palette preview"
