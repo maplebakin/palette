@@ -1618,6 +1618,71 @@ export default function App() {
         </div>
       </header>
 
+      {/* Mobile quick controls */}
+      {!headerOpen && (
+        <div className="md:hidden max-w-7xl mx-auto px-6 pb-4">
+          <div
+            className="flex flex-col gap-3 rounded-xl border bg-white/80 dark:bg-slate-900/70 backdrop-blur p-3 shadow-sm"
+            style={{ borderColor: tokens.cards["card-panel-border"] }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 flex-1">
+                <input
+                  type="color"
+                  value={pickerColor}
+                  onChange={(e) => handleBaseColorChange(e.target.value)}
+                  className="w-9 h-9 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  aria-label="Choose base color"
+                />
+                <input
+                  type="text"
+                  value={baseInput}
+                  onChange={(e) => handleBaseColorChange(e.target.value)}
+                  className={`w-full bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 outline-none uppercase ${baseError ? 'border-b border-rose-500' : ''}`}
+                  aria-label="Base color hex value"
+                  aria-invalid={Boolean(baseError)}
+                />
+              </div>
+            </div>
+            {baseError && <p className="text-xs text-rose-600 font-semibold" role="alert">{baseError}</p>}
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Style</label>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                aria-label="Select style mode"
+              >
+                {['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'].map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700" role="group" aria-label="Theme mode">
+                {[
+                  { key: 'light', label: 'L' },
+                  { key: 'dark', label: 'D' },
+                  { key: 'pop', label: 'P' },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setThemeMode(item.key)}
+                    className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                      themeMode === item.key
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    } focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
+                    aria-pressed={themeMode === item.key}
+                    aria-label={`Set theme mode to ${item.label}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
         {/* Main Content */}
         <main id="main-content" className="max-w-7xl mx-auto px-6 py-12 space-y-10">
           <section 
