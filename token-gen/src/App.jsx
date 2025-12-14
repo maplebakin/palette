@@ -447,6 +447,7 @@ export default function App() {
   const savedTitleRef = useRef('');
   const exportsSectionRef = useRef(null);
   const [showFineTune, setShowFineTune] = useState(false);
+  const [headerOpen, setHeaderOpen] = useState(true);
   const statusTimerRef = useRef(null);
   const harmonyDebounceRef = useRef(null);
   const neutralDebounceRef = useRef(null);
@@ -467,6 +468,24 @@ export default function App() {
 
   const isDark = themeMode === 'dark';
   useDarkClassSync(isDark);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    setHeaderOpen(mq.matches);
+    const handler = (event) => setHeaderOpen(event.matches);
+    if (mq.addEventListener) {
+      mq.addEventListener('change', handler);
+    } else {
+      mq.addListener(handler);
+    }
+    return () => {
+      if (mq.removeEventListener) {
+        mq.removeEventListener('change', handler);
+      } else {
+        mq.removeListener(handler);
+      }
+    };
+  }, []);
 
   const applySavedPalette = useCallback((payload) => {
     if (!payload || typeof payload !== 'object') return;
@@ -1194,7 +1213,31 @@ export default function App() {
       >
         <div className="max-w-7xl mx-auto px-6 py-4">
           <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Header" reset={reset} message={message} />}>
-          <div className="flex flex-col gap-5">
+          <div className="md:hidden flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <div 
+                className="p-2 rounded-lg shadow-lg"
+                style={{ 
+                  background: `linear-gradient(135deg, ${tokens.brand["gradient-start"]} 0%, ${tokens.brand.secondary} 50%, ${tokens.brand["gradient-end"]} 100%)`,
+                  boxShadow: `0 10px 30px -10px ${tokens.brand.primary}99`
+                }}
+              >
+                <Palette className="text-white drop-shadow-sm" size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500">Apocapalette</p>
+                <p className="text-xs text-slate-500 dark:text-slate-300">Chaos at your thumb</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHeaderOpen((v) => !v)}
+              className="px-3 py-2 rounded-full text-[11px] font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 shadow-sm hover:-translate-y-[1px] active:scale-95 transition"
+            >
+              {headerOpen ? 'Hide controls' : 'Show controls'}
+            </button>
+          </div>
+          <div className={`${headerOpen ? 'flex' : 'hidden'} md:flex flex-col gap-5`}>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:gap-3">
