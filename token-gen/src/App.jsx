@@ -474,7 +474,9 @@ export default function App() {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(min-width: 768px)');
     setHeaderOpen(mq.matches);
-    const handler = (event) => setHeaderOpen(event.matches);
+    const handler = (event) => {
+      setHeaderOpen(event.matches);
+    };
     if (mq.addEventListener) {
       mq.addEventListener('change', handler);
     } else {
@@ -1659,9 +1661,12 @@ export default function App() {
 
       {/* Quick controls bar (sticky when header collapsed) */}
       {!headerOpen && (
-        <div className="fixed bottom-3 left-0 right-0 z-30 px-4">
+        <div
+          className="fixed bottom-3 left-3 z-30"
+          style={{ width: 'calc(100% - 24px)', maxWidth: '380px' }}
+        >
           <div
-            className="max-w-5xl mx-auto rounded-2xl border bg-white/90 dark:bg-slate-900/90 backdrop-blur p-3 shadow-2xl flex flex-col gap-2"
+            className="rounded-2xl border bg-white/90 dark:bg-slate-900/90 backdrop-blur p-3 shadow-2xl flex flex-col gap-2"
             style={{ borderColor: tokens.cards["card-panel-border"] }}
           >
             <div className="flex items-center gap-2">
