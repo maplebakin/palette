@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Download, Wand2, Printer, FileText, Image, EyeOff, Shuffle, Eye, Save, FolderOpen, Link as LinkIcon, Check } from 'lucide-react';
+import { Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Printer, FileText, Image, EyeOff, Shuffle, Eye, Save, FolderOpen, Link as LinkIcon, Check } from 'lucide-react';
 import ColorSwatch from './components/ColorSwatch';
 import Section from './components/Section';
 const ExportsPanel = lazy(() => import('./components/ExportsPanel'));
@@ -456,6 +456,13 @@ export default function App() {
   // Usually we want this to sync with generated tokens for best preview, but nice to keep separate for inspection
   // For this UX, I will sync them. When you generate Dark Tokens, the UI becomes dark.
 
+  const setStatusMessage = useCallback((message, tone = 'info') => {
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    setSaveStatus(message);
+    notify(message, tone);
+    statusTimerRef.current = setTimeout(() => setSaveStatus(''), 2400);
+  }, [notify]);
+
   const isDark = themeMode === 'dark';
   useDarkClassSync(isDark);
 
@@ -518,21 +525,34 @@ export default function App() {
     try {
       const savedRaw = localStorage.getItem(STORAGE_KEYS.saved);
       if (savedRaw) {
-        const parsed = JSON.parse(savedRaw);
-        if (Array.isArray(parsed)) setSavedPalettes(parsed);
-        else setStorageCorrupt(true);
+        try {
+          const parsed = JSON.parse(savedRaw);
+          if (Array.isArray(parsed)) {
+            const safe = parsed.filter((item) => item && typeof item === 'object');
+            setSavedPalettes(safe);
+          } else {
+            setStorageCorrupt(true);
+          }
+        } catch (parseErr) {
+          console.warn('Saved palettes corrupted', parseErr);
+          setStorageCorrupt(true);
+        }
       }
       const currentRaw = localStorage.getItem(STORAGE_KEYS.current);
       if (currentRaw) {
-        const parsed = JSON.parse(currentRaw);
-        applySavedPalette(parsed);
+        try {
+          const parsed = JSON.parse(currentRaw);
+          applySavedPalette(parsed);
+        } catch (parseErr) {
+          console.warn('Current palette corrupted', parseErr);
+          setStorageCorrupt(true);
+          notify('Current palette could not be restored', 'warn');
+        }
       }
     } catch (err) {
       console.warn('Failed to hydrate palette state', err);
       setStorageCorrupt(true);
       notify('Could not load saved palettes; storage may be blocked or corrupted', 'warn');
-      localStorage.removeItem(STORAGE_KEYS.saved);
-      localStorage.removeItem(STORAGE_KEYS.current);
     }
   }, [applySavedPalette, notify, storageAvailable]);
 
@@ -571,10 +591,15 @@ export default function App() {
       localStorage.setItem(STORAGE_KEYS.current, JSON.stringify(payload));
     } catch (err) {
       console.warn('Failed to persist palette state', err);
-      setStorageAvailable(false);
-      notify('Saving is unavailable; storage is blocked', 'warn');
+      if (err?.name === 'QuotaExceededError' || err?.code === 22) {
+        setStorageQuotaExceeded(true);
+        setStatusMessage('Storage quota exceeded — clear saved data to resume saving', 'warn');
+      } else {
+        setStorageAvailable(false);
+        notify('Saving is unavailable; storage is blocked', 'warn');
+      }
     }
-  }, [baseColor, mode, themeMode, printMode, customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix, notify, storageAvailable]);
+  }, [baseColor, mode, themeMode, printMode, customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix, notify, storageAvailable, setStatusMessage]);
 
   useEffect(() => {
     setHarmonyInput(harmonyIntensity);
@@ -605,13 +630,6 @@ export default function App() {
     }),
     [baseColor, mode, themeMode, apocalypseIntensity, harmonyIntensity, neutralCurve, accentStrength, popIntensity]
   );
-  const setStatusMessage = useCallback((message, tone = 'info') => {
-    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
-    setSaveStatus(message);
-    notify(message, tone);
-    statusTimerRef.current = setTimeout(() => setSaveStatus(''), 2400);
-  }, [notify]);
-
   const serializePalette = useCallback(() => ({
     id: Date.now(),
     name: displayThemeName,
@@ -660,6 +678,13 @@ export default function App() {
     { key: 'Text muted', color: tokens.typography['text-muted'] },
   ]).filter(({ color }) => Boolean(color)), [tokens, baseColor]);
   const tabOptions = useMemo(() => (['Quick view', 'Full system', 'Print assets', 'Exports']), []);
+  const tabIds = useMemo(() => ({
+    'Quick view': 'tab-quick',
+    'Full system': 'tab-full',
+    'Print assets': 'tab-print',
+    'Exports': 'tab-exports',
+  }), []);
+  const getTabId = useCallback((tab) => tabIds[tab] || `tab-${tab.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`, [tabIds]);
 
   const saveCurrentPalette = useCallback(() => {
     if (storageAvailable !== true || storageCorrupt) {
@@ -677,8 +702,13 @@ export default function App() {
       setStatusMessage('Palette saved to this browser', 'success');
     } catch (err) {
       console.warn('Failed to save palette', err);
-      setStatusMessage('Save failed — check storage permissions', 'error');
-      setStorageCorrupt(true);
+      if (err?.name === 'QuotaExceededError' || err?.code === 22) {
+        setStorageQuotaExceeded(true);
+        setStatusMessage('Storage quota exceeded — clear saved data to resume saving', 'warn');
+      } else {
+        setStatusMessage('Save failed — check storage permissions', 'error');
+        setStorageCorrupt(true);
+      }
     }
   }, [serializePalette, setStatusMessage, storageAvailable, storageCorrupt]);
 
@@ -688,6 +718,7 @@ export default function App() {
       localStorage.removeItem(STORAGE_KEYS.current);
       setSavedPalettes([]);
       setStorageCorrupt(false);
+      setStorageQuotaExceeded(false);
       setStatusMessage('Saved data cleared', 'success');
     } catch (err) {
       console.warn('Failed to clear saved data', err);
@@ -1442,7 +1473,7 @@ export default function App() {
         {/* Main Content */}
         <main id="main-content" className="max-w-7xl mx-auto px-6 py-12 space-y-10">
           <section 
-            className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] animate-in fade-in slide-in-from-bottom-2 duration-500"
+            className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-500"
             style={{ 
               boxShadow: `0 35px 120px -80px ${tokens.brand.primary}aa`,
               backgroundImage: `linear-gradient(140deg, ${hexWithAlpha(tokens.surfaces["background"], 1)} 0%, ${hexWithAlpha(tokens.brand.primary, 0.32)} 45%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.32)} 90%)`,
@@ -1464,13 +1495,14 @@ export default function App() {
                 </div>
               </div>
               <div 
-                className="relative rounded-2xl overflow-hidden ring-1 bg-white/5 backdrop-blur-md transition-all duration-500 ease-out animate-in fade-in slide-in-from-bottom-4"
+                className="relative rounded-2xl overflow-hidden ring-1 bg-white/5 backdrop-blur-md transition-all duration-500 ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4"
                 style={{ 
                   backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.65),
                   boxShadow: `0 24px 70px -50px ${tokens.brand.primary}`,
                   borderColor: hexWithAlpha(tokens.cards["card-panel-border"], 0.5),
                   color: tokens.typography["text-strong"]
                 }}
+                aria-label={`Live palette preview showing ${displayThemeName}`}
               >
                 {/* Fake Navigation */}
                 <div className="h-12 border-b flex items-center px-4 gap-4" style={{ borderColor: tokens.surfaces["surface-plain-border"], backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.7) }}>
@@ -1540,7 +1572,7 @@ export default function App() {
           </section>
 
           {/* Quick essentials */}
-          <section className="space-y-3 animate-in fade-in duration-500">
+          <section className="space-y-3 motion-safe:animate-in motion-safe:fade-in duration-500">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Quick essentials</h2>
@@ -1562,6 +1594,7 @@ export default function App() {
                   onClick={() => copyHexValue(color, `${key} hex`)}
                   className="group relative p-3 rounded-xl border shadow-sm flex flex-col gap-2 hover:-translate-y-1 transition-all duration-300 hover:shadow-xl bg-white/80 dark:bg-slate-900/70"
                   style={{ borderColor: tokens.cards["card-panel-border"] }}
+                  aria-label={`Copy ${key} ${color}`}
                 >
                   <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-300">{key}</span>
                   <div className="h-12 rounded-lg border" style={{ backgroundColor: color, borderColor: hexWithAlpha(color, 0.18) }} />
@@ -1574,35 +1607,56 @@ export default function App() {
 
           {/* Pinned swatch strip */}
           <div className="sticky top-16 z-10">
-            <div className="rounded-2xl border bg-white/80 dark:bg-slate-900/70 shadow-sm px-4 py-3 flex items-center gap-3 overflow-x-auto snap-x snap-mandatory">
+            <div
+              className="rounded-2xl border bg-white/80 dark:bg-slate-900/70 shadow-sm px-4 py-3 flex items-center gap-3 overflow-x-auto snap-x snap-mandatory"
+              aria-label="Pinned swatch strip — quick palette preview"
+            >
               {quickEssentials.slice(0, 8).map(({ key, color }) => (
-                <div 
+                <button
                   key={key}
-                  className="min-w-[120px] flex-1 rounded-xl p-2 border shadow-sm snap-start"
+                  type="button"
+                  onClick={() => copyHexValue(color, `${key} hex`)}
+                  className="min-w-[120px] flex-1 rounded-xl p-2 border shadow-sm snap-start text-left hover:-translate-y-0.5 transition"
                   style={{ backgroundColor: color, borderColor: hexWithAlpha(color, 0.25) }}
+                  aria-label={`Copy ${key} ${color}`}
                 >
                   <div className="text-[10px] font-bold uppercase tracking-tight bg-white/80 text-slate-800 px-2 py-1 rounded-full inline-block shadow-sm">
                     {color}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
 
           {/* Tabs */}
           <div className="flex justify-center">
-            <div className="inline-flex gap-2 p-1 rounded-full border bg-white/80 dark:bg-slate-900/60 shadow-sm">
-              {tabOptions.map((tab) => (
+            <div
+              role="tablist"
+              aria-label="Palette views"
+              className="inline-flex gap-2 p-1 rounded-full border bg-white/80 dark:bg-slate-900/60 shadow-sm"
+            >
+              {tabOptions.map((tab, index) => (
                 <button
                   key={tab}
+                  id={getTabId(tab)}
+                  role="tab"
+                  aria-selected={activeTab === tab}
+                  aria-controls={`tab-panel-${index}`}
+                  tabIndex={activeTab === tab ? 0 : -1}
                   type="button"
                   onClick={() => setActiveTab(tab)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                      const dir = e.key === 'ArrowRight' ? 1 : -1;
+                      const next = (index + dir + tabOptions.length) % tabOptions.length;
+                      setActiveTab(tabOptions[next]);
+                    }
+                  }}
                   className={`px-4 py-2 text-xs font-bold rounded-full transition-all ${
                     activeTab === tab
                       ? 'bg-slate-900 text-white shadow-md dark:bg-slate-100 dark:text-slate-900'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white'
                   }`}
-                  aria-pressed={activeTab === tab}
                 >
                   {tab}
                 </button>
@@ -1611,7 +1665,8 @@ export default function App() {
           </div>
 
           <div className="space-y-10">
-            {activeTab === 'Quick view' && (
+            <div id="tab-panel-0" role="tabpanel" aria-labelledby={getTabId('Quick view')} hidden={activeTab !== 'Quick view'}>
+              {activeTab === 'Quick view' && (
               <>
                 <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Ordered stack" reset={reset} message={message} />}>
                   <div 
@@ -1657,7 +1712,10 @@ export default function App() {
               </>
             )}
 
-            {activeTab === 'Full system' && (
+            </div>
+
+            <div id="tab-panel-1" role="tabpanel" aria-labelledby={getTabId('Full system')} hidden={activeTab !== 'Full system'}>
+              {activeTab === 'Full system' && (
               <div className="space-y-2">
                 <Section title="Foundation: Neutral Ladder" icon={<Layers size={18} className="text-slate-400" />}>
                   {Object.entries(tokens.foundation.neutrals).map(([key, val]) => (
@@ -1755,7 +1813,10 @@ export default function App() {
               </div>
             )}
 
-            {activeTab === 'Print assets' && (
+            </div>
+
+            <div id="tab-panel-2" role="tabpanel" aria-labelledby={getTabId('Print assets')} hidden={activeTab !== 'Print assets'}>
+              {activeTab === 'Print assets' && (
               <div className="space-y-4">
                 {printMode ? (
                   <div 
@@ -1824,7 +1885,10 @@ export default function App() {
               </div>
             )}
 
-            {activeTab === 'Exports' && (
+            </div>
+
+            <div id="tab-panel-3" role="tabpanel" aria-labelledby={getTabId('Exports')} hidden={activeTab !== 'Exports'}>
+              {activeTab === 'Exports' && (
               <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Exports" reset={reset} message={message} />}>
                 <Suspense fallback={<div className="p-4 rounded-lg border bg-white/70 dark:bg-slate-900/60 text-sm">Loading exports…</div>}>
                   <ExportsPanel
@@ -1850,6 +1914,7 @@ export default function App() {
                 </Suspense>
               </ErrorBoundary>
             )}
+            </div>
           </div>
         </main>
       </div>

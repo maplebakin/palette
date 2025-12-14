@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Apocapalette flame">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff5f6d"/>
+      <stop offset="50%" stop-color="#f8b500"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0b1021"/>
+  <path d="M32 8c4 9-3 12-3 17 0 3 2 5 4 6 6-2 10-9 8-16 6 5 8 12 6 18-2 6-8 11-15 11S16 45 14 37c-2-7 2-15 10-21-2 7 1 12 5 14-1-4-1-7 3-12z" fill="url(#g)"/>
+  <circle cx="32" cy="44" r="5" fill="#fef9c3" />
+</svg>

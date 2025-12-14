@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Section = ({ title, icon, children }) => (
-  <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+  <div className="mb-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 duration-500">
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
       {icon}
       <h3 className="font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider text-sm">{title}</h3>
