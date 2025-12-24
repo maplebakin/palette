@@ -1,0 +1,25 @@
+{
+  "name": "apocapalette-core",
+  "version": "1.0.0",
+  "description": "Core logic for Apocapalette VS Code extension",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "@vitest/ui": "^1.3.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.3.1"
+  },
+  "dependencies": {
+    "culori": "^4.0.1"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "name": "apocapalette",
+  "displayName": "Apocapalette",
+  "description": "Generate color themes from a single color.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Themes",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:apocapalette.generateTheme",
+    "onCommand:apocapalette.revertTheme"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "apocapalette.generateTheme",
+        "title": "Apocapalette: Generate Theme"
+      },
+      {
+        "command": "apocapalette.revertTheme",
+        "title": "Apocapalette: Revert to pre-apocalypse"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run esbuild",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "esbuild": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:apocapalette-core --format=cjs --platform=node",
+    "test": "node ./out/test/runTest.js"
+  },
+  "dependencies": {
+    "apocapalette-core": "file:../../core"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "18.x",
+    "eslint": "^8.45.0",
+    "typescript": "^5.1.6",
+    "@vscode/test-electron": "^2.3.2",
+    "esbuild": "^0.19.2"
+  }
+}
