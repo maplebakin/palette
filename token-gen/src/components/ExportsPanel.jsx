@@ -24,7 +24,7 @@ export default function ExportsPanel({
   isInternal,
 }) {
   return (
-    <div className="print:hidden mb-10 p-4 rounded-2xl border shadow-sm bg-white/80 dark:bg-slate-900/60 backdrop-blur flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
+    <div className="panel-surface print:hidden mb-10 p-4 rounded-2xl border shadow-sm backdrop-blur flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
       style={{ borderColor: tokens.cards['card-panel-border'] }}
       aria-busy={isExporting}
     >
@@ -61,7 +61,7 @@ export default function ExportsPanel({
             <button
               type="button"
               onClick={onRetryAssets}
-              className="px-3 py-2 rounded-md bg-white dark:bg-slate-900 border border-amber-400 text-amber-800 text-xs font-bold hover:bg-amber-50"
+              className="px-3 py-2 rounded-md panel-surface-strong border border-amber-400 text-amber-800 text-xs font-bold hover:opacity-90"
             >
               Retry
             </button>

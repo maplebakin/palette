@@ -144,6 +144,12 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const { secH, accH, secSat, accSat, surfaceMix: surfaceMixBase, backgroundMix: backgroundMixBase } = harmonySpec;
   const surfaceMix = clamp(surfaceMixBase * harmonyScale, 0, isApocalypse ? 0.6 : 0.5);
   const backgroundMix = clamp(backgroundMixBase * harmonyScale, 0, isApocalypse ? 0.55 : 0.45);
+  const resolvedSurfaceMix = isPop
+    ? clamp(surfaceMix * 1.2, 0, isApocalypse ? 0.6 : 0.55)
+    : surfaceMix;
+  const resolvedBackgroundMix = isPop
+    ? clamp(backgroundMix * 1.25, 0, isApocalypse ? 0.6 : 0.5)
+    : backgroundMix;
 
   let bgL = isApocalypse ? (isDark ? 2 : 99) : (isDark ? 10 : 98);
   let surfaceL = isApocalypse ? (isDark ? 6 : 98) : (isDark ? 16 : 93);
@@ -170,22 +176,22 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   let accentSat = accSat * satNormalizer * harmonyScale * accentScale;
 
   if (isPop) {
-    const popBg = clamp(hsl.l + ((popScale - 1) * 14), 40, 60);
+    const popBg = clamp(hsl.l + ((popScale - 1) * 12) - 6, 42, 58);
     bgL = popBg;
-    surfaceL = clamp(popBg + (isApocalypse ? 10 : 6), 38, 72);
-    textMainL = 92;
-    textMutedL = 74;
-    borderL = clamp(popBg + 6, 32, 88);
-    baseSurfaceSat = clamp(hsl.s * 1.2 * popScale + 20, 35, 95);
-    surfaceSat = clamp(baseSurfaceSat * (isApocalypse ? 1.25 : 1.05), 35, 98);
-    satNormalizer = isApocalypse ? 1.8 : 1.2;
-    primarySat *= popScale * 1.15;
-    secondarySat *= popScale * 1.2;
-    accentSat *= popScale * 1.35;
-    brandLightness = clamp(popBg + 8, 48, 70);
-    accentLightness = clamp(popBg + 6, 46, 68);
-    ctaLightness = clamp(popBg + 4, 44, 66);
-    ctaHoverLightness = clamp(popBg + 2, 42, 64);
+    surfaceL = clamp(popBg + (isApocalypse ? 8 : 4), 40, 66);
+    textMainL = 94;
+    textMutedL = 72;
+    borderL = clamp(popBg + 8, 32, 86);
+    baseSurfaceSat = clamp(hsl.s * (1.35 * popScale) + 24, 40, 98);
+    surfaceSat = clamp(baseSurfaceSat * (isApocalypse ? 1.35 : 1.15), 40, 100);
+    satNormalizer = isApocalypse ? 2.0 : 1.4;
+    primarySat *= popScale * 1.25;
+    secondarySat *= popScale * 1.3;
+    accentSat *= popScale * 1.45;
+    brandLightness = clamp(popBg + 10, 52, 74);
+    accentLightness = clamp(popBg + 8, 50, 72);
+    ctaLightness = clamp(popBg + 6, 48, 70);
+    ctaHoverLightness = clamp(popBg + 4, 46, 68);
   }
 
   const primary = getColor(hsl, 0, primarySat, brandLightness); 
@@ -201,18 +207,18 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const accentTarget = getColor(hsl, accH, 1, hsl.l);
 
   // Use perceptual blending when the mix is strong enough to avoid muddy cross-wheel travel.
-  const surfaceHue = isPop ? hsl.h : surfaceMix > 0.2
-    ? hexToHsl(blendColorsPerceptual(normalizedBase, secondaryTarget, surfaceMix)).h
-    : blendHue(hsl.h, secH, surfaceMix);
-  const backgroundHue = isPop ? hsl.h : backgroundMix > 0.2
-    ? hexToHsl(blendColorsPerceptual(normalizedBase, accentTarget, backgroundMix)).h
-    : blendHue(hsl.h, accH, backgroundMix);
+  const surfaceHue = resolvedSurfaceMix > 0.2
+    ? hexToHsl(blendColorsPerceptual(normalizedBase, secondaryTarget, resolvedSurfaceMix)).h
+    : blendHue(hsl.h, secH, resolvedSurfaceMix);
+  const backgroundHue = resolvedBackgroundMix > 0.2
+    ? hexToHsl(blendColorsPerceptual(normalizedBase, accentTarget, resolvedBackgroundMix)).h
+    : blendHue(hsl.h, accH, resolvedBackgroundMix);
   const backgroundBase = { h: backgroundHue, s: surfaceSat * (isDark ? 0.85 : 1.2), l: bgL };
   const surfaceBase = { h: surfaceHue, s: surfaceSat, l: bgL };
   const neutralColor = (lightness, satMult = 0.3) =>
     getColor({ h: backgroundHue, s: surfaceSat * satMult, l: lightness }, 0, 1, lightness);
   const baseNeutralSteps = isPop
-    ? [98, 90, 82, 74, 66, 58, 52, 46, 42, 38]
+    ? [92, 84, 76, 68, 58, 50, 42, 36, 30, 24]
     : isDark
     ? (isApocalypse ? [94, 80, 64, 50, 40, 30, 18, 10, 6, 3] : [96, 88, 78, 68, 55, 45, 32, 22, 14, 8])
     : (isApocalypse ? [100, 98, 94, 84, 70, 56, 40, 28, 16, 8] : [100, 96, 90, 78, 66, 52, 38, 26, 16, 10]);
@@ -246,15 +252,39 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const accentBaseSat = clamp(Math.max(20, hsl.s) * accentScale, 10, 100);
   const accentColor = (h, satMult, l) => getColor({ h, s: accentBaseSat, l }, 0, satMult, l);
 
-  const ensureContrast = (fg, bg, target, isDarkMode) => {
+  const ensureContrast = (fg, bg, target, preferLighten) => {
     let color = fg;
     let { h, s, l } = hexToHsl(color);
-    for (let i = 0; i < 25; i += 1) {
-      if (getContrastRatio(color, bg) >= target) break;
-      l = Math.min(99, Math.max(1, isDarkMode ? l + 2 : l - 2));
-      color = hslToHex(h, s, l);
+    let ratio = getContrastRatio(color, bg);
+    if (ratio >= target) return color;
+    for (let i = 0; i < 30; i += 1) {
+      const up = Math.min(99, l + 2);
+      const down = Math.max(1, l - 2);
+      const upColor = hslToHex(h, s, up);
+      const downColor = hslToHex(h, s, down);
+      const upRatio = getContrastRatio(upColor, bg);
+      const downRatio = getContrastRatio(downColor, bg);
+      if (upRatio === ratio && downRatio === ratio) break;
+      if (upRatio === downRatio) {
+        l = preferLighten ? up : down;
+        color = preferLighten ? upColor : downColor;
+        ratio = preferLighten ? upRatio : downRatio;
+      } else if (upRatio > downRatio) {
+        l = up;
+        color = upColor;
+        ratio = upRatio;
+      } else {
+        l = down;
+        color = downColor;
+        ratio = downRatio;
+      }
+      if (ratio >= target) return color;
     }
-    return color;
+    const black = '#000000';
+    const white = '#ffffff';
+    const blackRatio = getContrastRatio(black, bg);
+    const whiteRatio = getContrastRatio(white, bg);
+    return blackRatio >= whiteRatio ? black : white;
   };
 
   const tokens = {

@@ -77,7 +77,7 @@ export default function ColorSwatch({ name, color }) {
       type="button"
       onClick={handleCopy}
       disabled={!canCopy}
-      className="group cursor-pointer flex items-center justify-between p-2 rounded-md transition-all hover:scale-[1.02] active:scale-95 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+      className="group panel-surface cursor-pointer flex items-center justify-between p-2 rounded-md transition-all hover:scale-[1.02] active:scale-95 border shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
       aria-label={`Copy ${name} ${displayColor}`}
       aria-live="polite"
     >
@@ -89,11 +89,11 @@ export default function ColorSwatch({ name, color }) {
           {copied && <Check size={16} className={isDarkColor(color) ? 'text-white' : 'text-black'} />}
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">{name}</span>
-          <span className="text-sm font-mono text-slate-700 dark:text-slate-200 truncate">{displayColor}</span>
+          <span className="text-xs font-semibold panel-muted uppercase tracking-wider truncate">{name}</span>
+          <span className="text-sm font-mono panel-text truncate">{displayColor}</span>
         </div>
       </div>
-      <Copy size={14} className="opacity-0 group-hover:opacity-30 text-slate-500" aria-hidden />
+      <Copy size={14} className="opacity-0 group-hover:opacity-30 panel-muted" aria-hidden />
       <span className="sr-only" aria-live="polite">{status}</span>
     </button>
   );

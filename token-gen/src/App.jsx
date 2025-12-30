@@ -1,21 +1,24 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Printer, FileText, Image, EyeOff, Shuffle, Eye, Save, FolderOpen, Link as LinkIcon, Check, Download, Flame, Copy } from 'lucide-react';
+import { Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Printer, FileText, Image, EyeOff, Shuffle, Eye, Save, FolderOpen, Link as LinkIcon, Check, Download, Flame } from 'lucide-react';
 import ColorSwatch from './components/ColorSwatch';
 import Section from './components/Section';
+import ProjectView from './components/ProjectView';
 const ExportsPanel = lazy(() => import('./components/ExportsPanel'));
 const ContrastPanel = lazy(() => import('./components/ContrastPanel'));
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import useDarkClassSync from './hooks/useDarkClassSync';
 import { useNotification } from './context/NotificationContext.jsx';
+import { PaletteContext } from './context/PaletteContext.jsx';
 import {
   escapeXml,
   getContrastRatio,
   getWCAGBadge,
+  hexToRgb,
   hexWithAlpha,
   normalizeHex,
   pickReadableText,
 } from './lib/colorUtils';
-import { addPrintMode, buildOrderedStack, generateTokens } from './lib/tokens';
+import { addPrintMode, buildOrderedStack, generateTokens, orderedSwatchSpec } from './lib/tokens';
 import { buildGenericPayload, buildPenpotPayload, buildWitchcraftPayload, buildFigmaTokensPayload, buildStyleDictionaryPayload } from './lib/payloads';
 
 const encoder = new TextEncoder();
@@ -85,6 +88,98 @@ const buildCssVariables = (stack, prefix = '') => {
   const safePrefix = prefix ? `${prefix}-` : '';
   const lines = stack.map(({ path, value }) => `  --${safePrefix}${path.replace(/\./g, '-')}: ${value};`);
   return `:root {\n${lines.join('\n')}\n}\n`;
+};
+
+const TOKEN_VAR_MAP = new Map(
+  orderedSwatchSpec.reduce((acc, { path, fallbackPath }) => {
+    const key = path.replace(/\./g, '-');
+    if (!acc.has(key)) acc.set(key, path);
+    if (fallbackPath) {
+      const fallbackKey = fallbackPath.replace(/\./g, '-');
+      if (!acc.has(fallbackKey)) acc.set(fallbackKey, fallbackPath);
+    }
+    return acc;
+  }, new Map())
+);
+
+const parseCssVariables = (cssText) => {
+  const vars = new Map();
+  if (typeof cssText !== 'string') return vars;
+  const pattern = /--([a-zA-Z0-9-_]+)\s*:\s*([^;]+);/g;
+  let match = null;
+  while ((match = pattern.exec(cssText)) !== null) {
+    vars.set(match[1].trim(), match[2].trim());
+  }
+  return vars;
+};
+
+const resolveCssVar = (varName) => {
+  let bestKey = null;
+  let bestPath = null;
+  TOKEN_VAR_MAP.forEach((path, key) => {
+    if (varName === key || varName.endsWith(`-${key}`)) {
+      if (!bestKey || key.length > bestKey.length) {
+        bestKey = key;
+        bestPath = path;
+      }
+    }
+  });
+  if (!bestKey) return null;
+  const rawPrefix = varName.slice(0, varName.length - bestKey.length);
+  const prefix = rawPrefix.endsWith('-') ? rawPrefix.slice(0, -1) : rawPrefix;
+  return { path: bestPath, prefix: prefix || '' };
+};
+
+const buildOverridesFromCss = (cssText) => {
+  const vars = parseCssVariables(cssText);
+  const overrides = {};
+  const prefixCounts = new Map();
+  vars.forEach((value, name) => {
+    const resolved = resolveCssVar(name);
+    if (!resolved) return;
+    overrides[resolved.path] = value;
+    if (resolved.prefix) {
+      prefixCounts.set(resolved.prefix, (prefixCounts.get(resolved.prefix) ?? 0) + 1);
+    }
+  });
+  let detectedPrefix = '';
+  let highest = 0;
+  prefixCounts.forEach((count, prefix) => {
+    if (count > highest) {
+      highest = count;
+      detectedPrefix = prefix;
+    }
+  });
+  return { overrides, prefix: detectedPrefix };
+};
+
+const applyTokenOverrides = (baseTokens, overrides) => {
+  if (!overrides || Object.keys(overrides).length === 0) return baseTokens;
+  const next = typeof structuredClone === 'function'
+    ? structuredClone(baseTokens)
+    : JSON.parse(JSON.stringify(baseTokens));
+  Object.entries(overrides).forEach(([path, value]) => {
+    const parts = path.split('.');
+    let current = next;
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      const key = parts[i];
+      if (!current[key] || typeof current[key] !== 'object') {
+        current[key] = {};
+      }
+      current = current[key];
+    }
+    current[parts[parts.length - 1]] = value;
+  });
+  return next;
+};
+
+const inferThemeMode = (value) => {
+  if (typeof value !== 'string') return null;
+  const clean = normalizeHex(value, '');
+  if (!clean) return null;
+  const { r, g, b } = hexToRgb(clean);
+  const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return luma < 0.45 ? 'dark' : 'light';
 };
 
 const SectionFallback = ({ reset, message, label }) => (
@@ -371,7 +466,7 @@ const getPrintTimestamps = () => {
 };
 
 const PaletteRow = ({ title, colors }) => (
-  <div className="p-4 rounded-lg border shadow-sm bg-white/70 dark:bg-slate-900/40 backdrop-blur-sm border-slate-200/70 dark:border-slate-800/70">
+  <div className="p-4 rounded-lg border shadow-sm panel-surface-soft backdrop-blur-sm">
     <div className="flex items-center justify-between mb-3">
       <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{title}</span>
       <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{colors.length} swatches</span>
@@ -414,6 +509,7 @@ const presets = [
 export default function App() {
   const { notify } = useNotification();
   const isInternal = import.meta.env.VITE_INTERNAL === 'true';
+  const [view, setView] = useState('palette');
   const [baseColor, setBaseColor] = useState('#7b241c');
   const [baseInput, setBaseInput] = useState('#7b241c');
   const [baseError, setBaseError] = useState('');
@@ -422,6 +518,7 @@ export default function App() {
   const [printMode, setPrintMode] = useState(false);
   const [customThemeName, setCustomThemeName] = useState('');
   const [showContrast, setShowContrast] = useState(true);
+  const [importedOverrides, setImportedOverrides] = useState(null);
   const [harmonyIntensity, setHarmonyIntensity] = useState(100);
   const [apocalypseIntensity, setApocalypseIntensity] = useState(100);
   const [neutralCurve, setNeutralCurve] = useState(100);
@@ -469,7 +566,8 @@ export default function App() {
   }, [notify]);
 
   const isDark = themeMode === 'dark';
-  useDarkClassSync(isDark);
+  const uiIsDark = themeMode !== 'light';
+  useDarkClassSync(uiIsDark);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(min-width: 768px)');
@@ -524,6 +622,12 @@ export default function App() {
     setAccentInput(nextAccent);
     setPopInput(nextPop);
     setTokenPrefix(sanitizePrefix(payload.tokenPrefix || ''));
+    const savedOverrides = payload.importedOverrides;
+    if (savedOverrides && typeof savedOverrides === 'object') {
+      setImportedOverrides(savedOverrides);
+    } else {
+      setImportedOverrides(null);
+    }
   }, []);
 
   const handleBaseColorChange = useCallback((value) => {
@@ -561,8 +665,6 @@ export default function App() {
           if (Array.isArray(parsed)) {
             const safe = parsed.filter((item) => item && typeof item === 'object');
             setSavedPalettes(safe);
-          } else {
-            setStorageCorrupt(true);
           }
         } catch (parseErr) {
           console.warn('Saved palettes corrupted', parseErr);
@@ -618,6 +720,7 @@ export default function App() {
         accentStrength,
         popIntensity,
         tokenPrefix: sanitizePrefix(tokenPrefix),
+        importedOverrides: importedOverrides && Object.keys(importedOverrides).length ? importedOverrides : null,
       };
       localStorage.setItem(STORAGE_KEYS.current, JSON.stringify(payload));
     } catch (err) {
@@ -630,7 +733,7 @@ export default function App() {
         notify('Saving is unavailable; storage is blocked', 'warn');
       }
     }
-  }, [baseColor, mode, themeMode, printMode, customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix, notify, storageAvailable, setStatusMessage]);
+  }, [baseColor, mode, themeMode, printMode, customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix, importedOverrides, notify, storageAvailable, setStatusMessage]);
 
   useEffect(() => {
     setHarmonyInput(harmonyIntensity);
@@ -652,15 +755,20 @@ export default function App() {
   const autoThemeName = useMemo(() => `${mode} ${themeMode === 'dark' ? 'Dark' : themeMode === 'pop' ? 'Pop' : 'Light'}`, [mode, themeMode]);
   const safeCustomThemeName = useMemo(() => sanitizeThemeName(customThemeName, ''), [customThemeName]);
   const displayThemeName = safeCustomThemeName || autoThemeName;
-  const tokens = useMemo(
-    () => generateTokens(baseColor, mode, themeMode, apocalypseIntensity, {
+  const tokens = useMemo(() => {
+    const generated = generateTokens(baseColor, mode, themeMode, apocalypseIntensity, {
       harmonyIntensity,
       neutralCurve,
       accentStrength,
       popIntensity,
-    }),
-    [baseColor, mode, themeMode, apocalypseIntensity, harmonyIntensity, neutralCurve, accentStrength, popIntensity]
-  );
+    });
+    return applyTokenOverrides(generated, importedOverrides);
+  }, [baseColor, mode, themeMode, apocalypseIntensity, harmonyIntensity, neutralCurve, accentStrength, popIntensity, importedOverrides]);
+  const paletteSnapshot = useMemo(() => ({
+    baseColor,
+    mode,
+    tokens,
+  }), [baseColor, mode, tokens]);
   const serializePalette = useCallback(() => ({
     id: Date.now(),
     name: displayThemeName,
@@ -676,7 +784,8 @@ export default function App() {
     accentStrength,
     popIntensity,
     tokenPrefix: sanitizePrefix(tokenPrefix),
-  }), [displayThemeName, baseColor, mode, themeMode, isDark, printMode, safeCustomThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix]);
+    importedOverrides: importedOverrides && Object.keys(importedOverrides).length ? importedOverrides : null,
+  }), [displayThemeName, baseColor, mode, themeMode, isDark, printMode, safeCustomThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix, importedOverrides]);
   const shareState = useMemo(() => ({
     baseColor,
     mode,
@@ -717,16 +826,12 @@ export default function App() {
   }), []);
   const getTabId = useCallback((tab) => tabIds[tab] || `tab-${tab.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`, [tabIds]);
   const handleJumpToExports = useCallback(() => {
-    setActiveTab('Exports');
     requestAnimationFrame(() => {
       if (exportsSectionRef.current) {
         exportsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        const tabEl = document.getElementById(getTabId('Exports'));
-        if (tabEl) tabEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
-  }, [getTabId]);
+  }, []);
 
   const saveCurrentPalette = useCallback(() => {
     if (storageAvailable !== true || storageCorrupt) {
@@ -779,6 +884,42 @@ export default function App() {
     applySavedPalette(target);
     setStatusMessage(`Loaded "${target.name}"`, 'success');
   }, [savedPalettes, applySavedPalette, setStatusMessage]);
+
+  const handleCssImport = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = String(e.target.result || '');
+      const { overrides, prefix } = buildOverridesFromCss(text);
+      if (!Object.keys(overrides).length) {
+        notify('No matching tokens found in that CSS file', 'warn');
+        return;
+      }
+      setImportedOverrides(overrides);
+      if (prefix) {
+        setTokenPrefix(prefix);
+      }
+      const importedName = file.name.replace(/\.css$/i, '').trim();
+      if (importedName) {
+        setCustomThemeName(sanitizeThemeName(importedName, ''));
+      }
+      const primary = overrides['brand.primary'];
+      const primaryHex = sanitizeHexInput(primary, null);
+      if (primaryHex) {
+        setBaseColor(primaryHex);
+        setBaseInput(primaryHex);
+        setBaseError('');
+      }
+      const inferred = inferThemeMode(overrides['surfaces.background'] || overrides['surfaces.page-background']);
+      if (inferred) {
+        setThemeMode(inferred);
+      }
+      notify('CSS theme imported', 'success');
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }, [notify, setBaseColor, setBaseInput, setBaseError, setCustomThemeName, setThemeMode, setTokenPrefix, setImportedOverrides]);
   const finalTokens = useMemo(
     () => (printMode ? addPrintMode(tokens, baseColor, mode, isDark) : tokens),
     [tokens, printMode, baseColor, mode, isDark]
@@ -1179,18 +1320,58 @@ export default function App() {
   const backgroundSize = printMode ? '40px 40px, 40px 40px' : '140% 140%, 120% 120%, auto';
   const backgroundPosition = printMode ? '0 0, 0 0' : '0 0, 100% 0, 0 0';
   const quickBarBottom = 'max(12px, env(safe-area-inset-bottom, 12px))';
+  const panelBase = tokens.cards['card-panel-surface'];
+  const panelStrong = tokens.cards['card-panel-surface-strong'] || panelBase;
+  const panelSoft = hexWithAlpha(panelBase, isDark ? 0.72 : 0.86);
+  const panelGhost = hexWithAlpha(tokens.surfaces['background'], isDark ? 0.82 : 0.94);
+  const panelBorder = tokens.cards['card-panel-border'];
+  const panelChip = tokens.cards['card-tag-bg'] || panelBase;
+  const panelChipBorder = tokens.cards['card-tag-border'] || panelBorder;
+  const panelChipText = tokens.cards['card-tag-text'] || tokens.typography['text-strong'];
+  const uiTheme = useMemo(() => ({
+    '--panel-bg': panelBase,
+    '--panel-bg-soft': panelSoft,
+    '--panel-bg-strong': panelStrong,
+    '--panel-bg-ghost': panelGhost,
+    '--panel-border': panelBorder,
+    '--panel-text': tokens.typography['text-strong'],
+    '--panel-muted': tokens.typography['text-muted'],
+    '--panel-accent': tokens.brand.primary,
+    '--panel-accent-strong': tokens.brand.cta || tokens.brand.primary,
+    '--panel-accent-text': ctaTextColor,
+    '--panel-chip-bg': panelChip,
+    '--panel-chip-border': panelChipBorder,
+    '--panel-chip-text': panelChipText,
+    '--panel-shadow': `0 22px 60px -48px ${hexWithAlpha(tokens.brand.primary, 0.45)}`,
+  }), [panelBase, panelSoft, panelStrong, panelGhost, panelBorder, panelChip, panelChipBorder, panelChipText, ctaTextColor, tokens]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.style.backgroundColor = pageBackground;
+    document.body.style.backgroundColor = pageBackground;
+    document.body.style.color = tokens.typography['text-strong'];
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.setAttribute('content', pageBackground);
+  }, [pageBackground, tokens]);
 
   return (
       <div 
-        className={`min-h-screen transition-colors duration-500 ${isDark ? 'dark' : ''}`}
+        className={`min-h-screen transition-colors duration-500 app-theme ${uiIsDark ? 'dark' : ''}`}
         style={{
+          ...uiTheme,
           backgroundColor: pageBackground,
           backgroundImage,
           backgroundSize,
           backgroundPosition,
         }}
       >
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 bg-indigo-600 text-white px-3 py-2 rounded">Skip to content</a>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 px-3 py-2 rounded"
+          style={{ backgroundColor: tokens.brand.primary, color: ctaTextColor }}
+        >
+          Skip to content
+        </a>
         <div 
           className="hidden print:flex items-start justify-between gap-6 max-w-7xl mx-auto px-6 py-4 mb-4 rounded-xl border print-header"
           style={{ 
@@ -1250,99 +1431,46 @@ export default function App() {
                       boxShadow: `0 10px 30px -10px ${tokens.brand.primary}99`
                     }}
                   >
-                    <Palette className="text-white drop-shadow-sm" size={24} />
+                    <Palette className="drop-shadow-sm" size={24} style={{ color: ctaTextColor }} />
                   </div>
                   <div className="space-y-1">
                     <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">Welcome to</p>
-                    <h1 className="text-2xl font-black text-slate-800 dark:text-white">Apocapalette</h1>
+                    <h1 className="text-2xl font-black" style={{ color: tokens.typography['heading'] }}>Apocapalette</h1>
                     <p className="text-xs text-slate-500 font-medium">Spin the chaos wheel, keep the pretty bits.</p>
                   </div>
                   <div className="relative flex flex-wrap items-center gap-2 lg:ml-4">
                     <button
                       type="button"
-                      onClick={() => setChaosMenuOpen((v) => !v)}
-                      className="px-3 py-2 rounded-full text-[11px] font-bold shadow-md hover:-translate-y-[1px] active:scale-95 transition border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100"
+                      onClick={() => setView(v => v === 'palette' ? 'project' : 'palette')}
+                      className="px-3 py-2 rounded-full text-[11px] font-bold shadow-md hover:-translate-y-[1px] active:scale-95 transition border panel-surface-strong"
                       style={{
                         borderColor: tokens.cards["card-panel-border"],
                       }}
-                      aria-expanded={chaosMenuOpen}
-                      aria-haspopup="true"
                     >
-                      Chaos menu
+                      {view === 'palette' ? 'Project View' : 'Palette Creator'}
                     </button>
-                    {chaosMenuOpen && (
-                      <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border bg-white dark:bg-slate-900 shadow-xl z-30"
-                        style={{ borderColor: tokens.cards["card-panel-border"] }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => { setChaosMenuOpen(false); randomRitual(); }}
-                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
-                        >
-                          <span>Random ritual</span>
-                          <Shuffle size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setChaosMenuOpen(false); crankApocalypse(); }}
-                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
-                        >
-                          <span>Crank Apocalypse</span>
-                          <Flame size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setChaosMenuOpen(false); copyEssentialsList(); }}
-                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
-                        >
-                          <span>Copy quick kit</span>
-                          <Copy size={14} />
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col items-start gap-2 w-full lg:w-auto">
+              <div className="flex flex-col items-start gap-3 w-full lg:w-auto">
                 <div className="w-full">
                   <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mx-2 px-2 lg:flex-wrap lg:overflow-visible lg:pb-0 lg:px-0 lg:mx-0">
                     <button
                       type="button"
-                      onClick={() => setHeaderOpen((v) => !v)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 hover:-translate-y-[1px] active:scale-95 transition shrink-0 whitespace-nowrap"
-                      style={{ borderColor: tokens.cards["card-panel-border"] }}
-                      aria-expanded={headerOpen}
-                      aria-label={headerOpen ? 'Hide controls' : 'Show controls'}
-                    >
-                      {headerOpen ? <EyeOff size={14} /> : <Eye size={14} />}
-                      Controls
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleJumpToExports}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:-translate-y-[1px] active:scale-95 transition border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
-                      style={{
-                        backgroundImage: `linear-gradient(120deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary} 100%)`,
-                        color: ctaTextColor,
-                        borderColor: tokens.brand['cta-hover'] || tokens.brand.primary,
-                        boxShadow: `0 18px 35px -22px ${tokens.brand.primary}`,
-                      }}
-                      aria-label="Jump to exports"
-                    >
-                      <Download size={14} />
-                      Exports
-                    </button>
-                    <button
-                      type="button"
                       onClick={saveCurrentPalette}
-                      className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
+                      className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold hover:opacity-90 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
+                      style={{
+                        backgroundColor: tokens.brand.primary,
+                        color: ctaTextColor,
+                        boxShadow: `0 12px 30px -20px ${tokens.brand.primary}`,
+                      }}
                       aria-label="Save current palette to browser"
                       disabled={storageAvailable !== true || storageCorrupt || storageQuotaExceeded}
                     >
                       <Save size={14} />
                       Save
                     </button>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white dark:bg-slate-900 text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shrink-0 min-w-[180px]">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border shrink-0 min-w-[180px]">
                       <FolderOpen size={14} className="text-slate-500" aria-hidden />
                       <select
                         onChange={(e) => { loadSavedPalette(e.target.value); e.target.value = ''; }}
@@ -1359,48 +1487,36 @@ export default function App() {
                         ))}
                       </select>
                     </div>
-                    <button
-                      type="button"
-                      onClick={copyShareLink}
-                      className="flex items-center gap-2 px-3 py-2 rounded-full bg-white dark:bg-slate-900 text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
-                      title="Copy a shareable link to this palette"
-                    >
-                      <LinkIcon size={14} />
-                      Copy share link
-                    </button>
-                    <div className="relative shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setOverflowOpen((v) => !v)}
-                        className="px-3 py-2 rounded-full text-xs font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 hover:-translate-y-[1px] active:scale-95 transition"
-                        style={{ borderColor: tokens.cards["card-panel-border"] }}
-                        aria-expanded={overflowOpen}
-                        aria-haspopup="true"
-                        title="More actions"
-                      >
-                        ⋮
-                      </button>
-                      {overflowOpen && (
-                        <div
-                          className="absolute right-0 mt-2 w-40 rounded-xl border bg-white dark:bg-slate-900 shadow-xl z-30"
-                          style={{ borderColor: tokens.cards["card-panel-border"] }}
-                        >
-                          <a
-                            href="docs/README.md"
-                            className="block px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-t-xl"
-                          >
-                            Docs
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => { setOverflowOpen(false); copyShareLink(); }}
-                            className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-b-xl"
-                          >
-                            Copy share link
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                  </div>
+                </div>
+                <div className="w-full">
+                  <div
+                    className="flex flex-wrap gap-3 p-3 rounded-xl border panel-surface-soft backdrop-blur-sm"
+                  >
+                    <label className="flex-1 min-w-[180px] flex flex-col text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <span className="sr-only">Theme name</span>
+                      <input
+                        type="text"
+                        value={customThemeName}
+                        onChange={(e) => setCustomThemeName(sanitizeThemeName(e.target.value, ''))}
+                        placeholder={autoThemeName}
+                      className="px-3 py-2 rounded-lg panel-surface-strong text-sm border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                        aria-label="Theme name"
+                        maxLength={60}
+                      />
+                    </label>
+                    <label className="flex-1 min-w-[160px] flex flex-col text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <span className="sr-only">Token prefix</span>
+                      <input
+                        type="text"
+                        value={tokenPrefix}
+                        onChange={(e) => setTokenPrefix(sanitizePrefix(e.target.value))}
+                        placeholder="Prefix"
+                      className="px-3 py-2 rounded-lg panel-surface-strong text-sm border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                        aria-label="Token prefix"
+                        maxLength={32}
+                      />
+                    </label>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-300">
@@ -1420,15 +1536,143 @@ export default function App() {
                 </div>
               </div>
             </div>
+          </div>
+          </ErrorBoundary>
+        </div>
+      </header>
+
+      {/* Quick controls bar (sticky when header collapsed) */}
+      {!headerOpen && (
+        <div
+          className="fixed left-3 z-30"
+          style={{ width: 'calc(100% - 24px)', maxWidth: '420px', bottom: quickBarBottom }}
+        >
+          <div
+            className="rounded-2xl border panel-surface-soft backdrop-blur p-3 shadow-2xl flex flex-col gap-2"
+            style={{ borderColor: tokens.cards["card-panel-border"] }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 panel-surface-strong p-1.5 rounded-lg border flex-1">
+                <input
+                  type="color"
+                  value={pickerColor}
+                  onChange={(e) => handleBaseColorChange(e.target.value)}
+                  className="w-9 h-9 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  aria-label="Choose base color"
+                />
+                <input
+                  type="text"
+                  value={baseInput}
+                  onChange={(e) => handleBaseColorChange(e.target.value)}
+                  className={`w-full bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 outline-none uppercase ${baseError ? 'border-b border-rose-500' : ''}`}
+                  aria-label="Base color hex value"
+                  aria-invalid={Boolean(baseError)}
+                />
+              </div>
+            </div>
+            {baseError && <p className="text-xs text-rose-600 font-semibold" role="alert">{baseError}</p>}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-lg panel-surface-strong text-sm border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                aria-label="Select style mode"
+              >
+                {['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'].map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <div className="flex panel-surface-strong p-1 rounded-lg border" role="group" aria-label="Theme mode">
+                {[
+                  { key: 'light', label: 'L' },
+                  { key: 'dark', label: 'D' },
+                  { key: 'pop', label: 'P' },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setThemeMode(item.key)}
+                    className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                      themeMode === item.key
+                        ? 'panel-surface shadow-sm'
+                        : ''
+                    } focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
+                    style={themeMode === item.key
+                      ? { color: tokens.brand.primary }
+                      : { color: tokens.typography['text-muted'] }}
+                    aria-pressed={themeMode === item.key}
+                    aria-label={`Set theme mode to ${item.label}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+        {/* Main Content */}
+        <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 sm:pt-12 pb-28 md:pb-12 space-y-10">
+          {view === 'project' ? (
+            <Suspense fallback={<div className="p-4 rounded-lg border panel-surface-soft text-sm">Loading Project...</div>}>
+              <PaletteContext.Provider value={paletteSnapshot}>
+                <ProjectView onImportCss={handleCssImport} />
+              </PaletteContext.Provider>
+            </Suspense>
+          ) : (
+            <>
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setHeaderOpen((v) => !v)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition shrink-0 whitespace-nowrap"
+                      aria-expanded={headerOpen}
+                      aria-label={headerOpen ? 'Hide controls' : 'Show controls'}
+                    >
+                {headerOpen ? <EyeOff size={14} /> : <Eye size={14} />}
+                Controls
+              </button>
+              <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setChaosMenuOpen((v) => !v)}
+                      className="px-3 py-2 rounded-full text-[11px] font-bold shadow-md hover:-translate-y-[1px] active:scale-95 transition border panel-surface-strong"
+                      aria-expanded={chaosMenuOpen}
+                      aria-haspopup="true"
+                    >
+                      Chaos menu
+                    </button>
+                {chaosMenuOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border panel-surface-soft shadow-xl z-30">
+                    <button
+                      type="button"
+                      onClick={() => { setChaosMenuOpen(false); randomRitual(); }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:opacity-80"
+                    >
+                      <span>Random ritual</span>
+                      <Shuffle size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setChaosMenuOpen(false); crankApocalypse(); }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:opacity-80"
+                    >
+                      <span>Crank Apocalypse</span>
+                      <Flame size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {headerOpen && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               <div
-                className="flex flex-col gap-3 p-3 rounded-xl border bg-white/70 dark:bg-slate-900/50 backdrop-blur-sm"
-                style={{ borderColor: tokens.cards["card-panel-border"] }}
+                className="flex flex-col gap-3 p-3 rounded-xl border panel-surface-soft backdrop-blur-sm"
               >
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2 panel-surface-strong p-1.5 rounded-lg border">
                     <input 
                       type="color" 
                       value={pickerColor} 
@@ -1447,7 +1691,7 @@ export default function App() {
                   </div>
                   <select
                     onChange={(e) => applyPreset(e.target.value)}
-                    className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                    className="px-3 py-2 rounded-lg panel-surface-strong text-sm border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                     defaultValue=""
                     aria-label="Choose a preset palette"
                   >
@@ -1458,48 +1702,20 @@ export default function App() {
                   </select>
                 </div>
                 {baseError && <p className="text-xs text-rose-600 font-semibold" role="alert">{baseError}</p>}
-                <div className="flex flex-wrap gap-3">
-                  <label className="flex-1 min-w-[180px] flex flex-col text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    <span className="sr-only">Theme name</span>
-                    <input
-                      type="text"
-                      value={customThemeName}
-                      onChange={(e) => setCustomThemeName(sanitizeThemeName(e.target.value, ''))}
-                      placeholder={autoThemeName}
-                      className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                      aria-label="Theme name"
-                      maxLength={60}
-                    />
-                  </label>
-                  <label className="flex-1 min-w-[160px] flex flex-col text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    <span className="sr-only">Token prefix</span>
-                    <input
-                      type="text"
-                      value={tokenPrefix}
-                      onChange={(e) => setTokenPrefix(sanitizePrefix(e.target.value))}
-                      placeholder="Prefix"
-                      className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                      aria-label="Token prefix"
-                      maxLength={32}
-                    />
-                  </label>
-                </div>
               </div>
 
               <div
-                className="flex flex-col gap-3 p-3 rounded-xl border bg-white/70 dark:bg-slate-900/50 backdrop-blur-sm"
-                style={{ borderColor: tokens.cards["card-panel-border"] }}
+                className="flex flex-col gap-3 p-3 rounded-xl border panel-surface-soft backdrop-blur-sm"
               >
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 flex-wrap" role="group" aria-label="Harmony mode">
+                <div className="flex panel-surface-strong p-1 rounded-lg border flex-wrap" role="group" aria-label="Harmony mode">
                   {['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'].map((m) => (
                     <button
                       key={m}
                       onClick={() => setMode(m)}
-                      className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                        mode === m 
-                          ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                      } focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
+                      className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${mode === m ? 'panel-surface shadow-sm' : ''} focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
+                      style={mode === m
+                        ? { color: tokens.brand.primary }
+                        : { color: tokens.typography['text-muted'] }}
                       aria-pressed={mode === m}
                       aria-label={`Set harmony mode to ${m}`}
                     >
@@ -1511,14 +1727,14 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setShowFineTune((v) => !v)}
-                    className="w-full flex items-center justify-between gap-2 text-xs font-bold px-3 py-2 rounded-lg border bg-slate-50 dark:bg-slate-800/70 text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                    className="w-full flex items-center justify-between gap-2 text-xs font-bold px-3 py-2 rounded-lg border panel-surface-soft hover:opacity-90 transition"
                   >
                     Fine-tune sliders
                     <span className="text-[10px]">{showFineTune ? '▲' : '▼'}</span>
                   </button>
                   {showFineTune && (
-                    <div className="mt-3 grid grid-cols-1 gap-3 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/80 p-3 shadow-xl">
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <div className="mt-3 grid grid-cols-1 gap-3 text-xs rounded-lg border panel-surface-soft p-3 shadow-xl">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
                         <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Harmony spread</span>
                         <input
                           type="range"
@@ -1535,7 +1751,7 @@ export default function App() {
                         <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{harmonyInput}%</span>
                       </div>
 
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
                         <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Neutral depth</span>
                         <input
                           type="range"
@@ -1552,7 +1768,7 @@ export default function App() {
                         <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{neutralInput}%</span>
                       </div>
 
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
                         <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Accent punch</span>
                         <input
                           type="range"
@@ -1612,10 +1828,9 @@ export default function App() {
               </div>
 
               <div
-                className="flex flex-col gap-3 p-3 rounded-xl border bg-white/70 dark:bg-slate-900/50 backdrop-blur-sm"
-                style={{ borderColor: tokens.cards["card-panel-border"] }}
+                className="flex flex-col gap-3 p-3 rounded-xl border panel-surface-soft backdrop-blur-sm"
               >
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 flex-wrap" role="group" aria-label="Theme mode">
+                <div className="flex panel-surface-strong p-1 rounded-lg border flex-wrap" role="group" aria-label="Theme mode">
                   {[
                     { key: 'light', label: 'Light', icon: <Sun size={14} /> },
                     { key: 'dark', label: 'Dark', icon: <Moon size={14} /> },
@@ -1624,11 +1839,10 @@ export default function App() {
                     <button
                       key={item.key}
                       onClick={() => setThemeMode(item.key)}
-                      className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1 ${
-                        themeMode === item.key 
-                          ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                      } focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
+                      className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1 ${themeMode === item.key ? 'panel-surface shadow-sm' : ''} focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
+                      style={themeMode === item.key
+                        ? { color: tokens.brand.primary }
+                        : { color: tokens.typography['text-muted'] }}
                       aria-pressed={themeMode === item.key}
                       aria-label={`Set theme mode to ${item.label}`}
                     >
@@ -1637,115 +1851,11 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    <input 
-                      type="checkbox" 
-                      checked={printMode} 
-                      onChange={(e) => setPrintMode(e.target.checked)} 
-                      className="accent-indigo-500 h-4 w-4"
-                      aria-label="Toggle print mode"
-                    />
-                    Print
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowContrast((v) => !v)}
-                    className="p-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-                    title="Toggle contrast diagnostics"
-                    aria-pressed={showContrast}
-                    aria-label="Toggle contrast diagnostics panel"
-                  >
-                    {showContrast ? <Eye size={16} /> : <EyeOff size={16} />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={copyEssentialsList}
-                    className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border bg-white/90 dark:bg-slate-900 text-slate-700 dark:text-slate-100 hover:-translate-y-[1px] active:scale-95 transition"
-                    style={{ borderColor: tokens.cards["card-panel-border"] }}
-                  >
-                    <FileText size={14} />
-                    Copy quick kit
-                  </button>
-                </div>
               </div>
             </div>
             )}
-          </div>
-          </ErrorBoundary>
-        </div>
-      </header>
+          </section>
 
-      {/* Quick controls bar (sticky when header collapsed) */}
-      {!headerOpen && (
-        <div
-          className="fixed left-3 z-30"
-          style={{ width: 'calc(100% - 24px)', maxWidth: '420px', bottom: quickBarBottom }}
-        >
-          <div
-            className="rounded-2xl border bg-white/90 dark:bg-slate-900/90 backdrop-blur p-3 shadow-2xl flex flex-col gap-2"
-            style={{ borderColor: tokens.cards["card-panel-border"] }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 flex-1">
-                <input
-                  type="color"
-                  value={pickerColor}
-                  onChange={(e) => handleBaseColorChange(e.target.value)}
-                  className="w-9 h-9 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                  aria-label="Choose base color"
-                />
-                <input
-                  type="text"
-                  value={baseInput}
-                  onChange={(e) => handleBaseColorChange(e.target.value)}
-                  className={`w-full bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 outline-none uppercase ${baseError ? 'border-b border-rose-500' : ''}`}
-                  aria-label="Base color hex value"
-                  aria-invalid={Boolean(baseError)}
-                />
-              </div>
-            </div>
-            {baseError && <p className="text-xs text-rose-600 font-semibold" role="alert">{baseError}</p>}
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={mode}
-                onChange={(e) => setMode(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                aria-label="Select style mode"
-              >
-                {['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'].map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700" role="group" aria-label="Theme mode">
-                {[
-                  { key: 'light', label: 'L' },
-                  { key: 'dark', label: 'D' },
-                  { key: 'pop', label: 'P' },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    onClick={() => setThemeMode(item.key)}
-                    className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                      themeMode === item.key
-                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                    } focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
-                    aria-pressed={themeMode === item.key}
-                    aria-label={`Set theme mode to ${item.label}`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-        {/* Main Content */}
-        <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 sm:pt-12 pb-28 md:pb-12 space-y-10">
           <section 
             className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-500"
             style={{ 
@@ -1759,11 +1869,11 @@ export default function App() {
             <div className="relative p-6 md:p-10 space-y-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Apocapalette live</p>
-                  <h2 className="text-3xl md:text-4xl font-black text-white">{displayThemeName}</h2>
-                  <p className="text-sm text-slate-300">Base {baseColor.toUpperCase()} • {mode} • {themeMode === 'pop' ? 'Pop' : (isDark ? 'Dark' : 'Light')}</p>
+                  <p className="text-[11px] uppercase tracking-[0.2em] panel-muted">Apocapalette live</p>
+                  <h2 className="text-3xl md:text-4xl font-black" style={{ color: tokens.typography['heading'] }}>{displayThemeName}</h2>
+                  <p className="text-sm" style={{ color: tokens.typography['text-muted'] }}>Base {baseColor.toUpperCase()} • {mode} • {themeMode === 'pop' ? 'Pop' : (isDark ? 'Dark' : 'Light')}</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-100">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold" style={{ color: tokens.typography['text-strong'] }}>
                   <span className="px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Live preview</span>
                   <span className="px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Chaos tuned</span>
                 </div>
@@ -1783,7 +1893,7 @@ export default function App() {
                   <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
                   <div className="w-3 h-3 rounded-full bg-yellow-400/80"></div>
                   <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
-                  <span className="text-xs font-semibold text-slate-200">Preview • Instant harmony</span>
+                  <span className="text-xs font-semibold" style={{ color: tokens.typography['text-muted'] }}>Preview • Instant harmony</span>
                 </div>
 
                 <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -1852,13 +1962,29 @@ export default function App() {
                 <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Quick essentials</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Tap to copy. Instant gratification before the deep dive.</p>
               </div>
-              <button
-                type="button"
-                onClick={copyAllEssentials}
-                className="text-xs font-bold px-4 py-2 rounded-full bg-slate-900 text-white hover:-translate-y-[2px] transition shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-              >
-                Copy all as hex list
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={copyAllEssentials}
+                  className="text-xs font-bold px-4 py-2 rounded-full hover:-translate-y-[2px] transition shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  style={{
+                    backgroundColor: tokens.brand.primary,
+                    color: ctaTextColor,
+                    boxShadow: `0 14px 32px -22px ${tokens.brand.primary}`,
+                  }}
+                >
+                  Copy all as hex list
+                </button>
+                <button
+                  type="button"
+                  onClick={copyEssentialsList}
+                  className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+                  style={{ borderColor: tokens.cards["card-panel-border"] }}
+                >
+                  <FileText size={14} />
+                  Copy quick kit
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3">
               {quickEssentials.slice(0, 10).map(({ key, color }) => (
@@ -1866,7 +1992,7 @@ export default function App() {
                   key={key}
                   type="button"
                   onClick={() => copyHexValue(color, `${key} hex`)}
-                  className="group relative p-3 rounded-xl border shadow-sm flex flex-col gap-2 hover:-translate-y-1 transition-all duration-300 hover:shadow-xl bg-white/80 dark:bg-slate-900/70"
+                  className="group relative p-3 rounded-xl border shadow-sm flex flex-col gap-2 hover:-translate-y-1 transition-all duration-300 hover:shadow-xl panel-surface-soft"
                   style={{ borderColor: tokens.cards["card-panel-border"] }}
                   aria-label={`Copy ${key} ${color}`}
                 >
@@ -1882,7 +2008,7 @@ export default function App() {
           {/* Pinned swatch strip */}
           <div className="sticky top-3 md:top-16 z-10">
             <div
-              className="rounded-2xl border bg-white/80 dark:bg-slate-900/70 shadow-sm px-4 py-3 flex items-center gap-3 overflow-x-auto snap-x snap-mandatory"
+              className="rounded-2xl border panel-surface-soft shadow-sm px-4 py-3 flex items-center gap-3 overflow-x-auto snap-x snap-mandatory"
               aria-label="Pinned swatch strip — quick palette preview"
             >
               {quickEssentials.slice(0, 8).map(({ key, color }) => (
@@ -1894,7 +2020,7 @@ export default function App() {
                   style={{ backgroundColor: color, borderColor: hexWithAlpha(color, 0.25) }}
                   aria-label={`Copy ${key} ${color}`}
                 >
-                  <div className="text-[10px] font-bold uppercase tracking-tight bg-white/80 text-slate-800 px-2 py-1 rounded-full inline-block shadow-sm">
+                  <div className="text-[10px] font-bold uppercase tracking-tight panel-chip px-2 py-1 rounded-full inline-block shadow-sm">
                     {color}
                   </div>
                 </button>
@@ -1907,7 +2033,7 @@ export default function App() {
             <div
               role="tablist"
               aria-label="Palette views"
-              className="inline-flex gap-2 p-1 rounded-full border bg-white/80 dark:bg-slate-900/60 shadow-sm"
+              className="inline-flex gap-2 p-1 rounded-full border panel-surface-soft shadow-sm"
             >
               {tabOptions.map((tab, index) => (
                 <button
@@ -1926,11 +2052,10 @@ export default function App() {
                       setActiveTab(tabOptions[next]);
                     }
                   }}
-                  className={`px-4 py-2 text-xs font-bold rounded-full transition-all ${
-                    activeTab === tab
-                      ? 'bg-slate-900 text-white shadow-md dark:bg-slate-100 dark:text-slate-900'
-                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white'
-                  }`}
+                  className={`px-4 py-2 text-xs font-bold rounded-full transition-all hover:opacity-90 ${activeTab === tab ? 'shadow-md' : ''}`}
+                  style={activeTab === tab
+                    ? { backgroundColor: tokens.brand.primary, color: ctaTextColor }
+                    : { color: tokens.typography['text-muted'] }}
                 >
                   {tab}
                 </button>
@@ -1944,7 +2069,7 @@ export default function App() {
               <>
                 <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Ordered stack" reset={reset} message={message} />}>
                   <div 
-                    className="p-6 rounded-2xl border shadow-sm bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm"
+                    className="p-6 rounded-2xl border shadow-sm panel-surface-soft backdrop-blur-sm"
                     style={{ 
                       borderColor: tokens.cards["card-panel-border"]
                     }}
@@ -1964,9 +2089,22 @@ export default function App() {
                   </div>
                 </ErrorBoundary>
 
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowContrast((v) => !v)}
+                    className="p-2 rounded-md panel-surface-strong border hover:opacity-90 transition"
+                    title="Toggle contrast diagnostics"
+                    aria-pressed={showContrast}
+                    aria-label="Toggle contrast diagnostics panel"
+                  >
+                    {showContrast ? <Eye size={16} /> : <EyeOff size={16} />}
+                  </button>
+                </div>
+
                 {showContrast && (
                   <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Contrast checks" reset={reset} message={message} />}>
-                    <Suspense fallback={<div className="p-4 rounded-lg border bg-white/70 dark:bg-slate-900/60 text-sm">Loading contrast…</div>}>
+                    <Suspense fallback={<div className="p-4 rounded-lg border panel-surface-soft text-sm">Loading contrast…</div>}>
                       <ContrastPanel contrastChecks={contrastChecks} finalTokens={finalTokens} />
                     </Suspense>
                   </ErrorBoundary>
@@ -2089,114 +2227,203 @@ export default function App() {
 
             </div>
 
-            <div id="tab-panel-2" role="tabpanel" aria-labelledby={getTabId('Print assets')} hidden={activeTab !== 'Print assets'}>
-              {activeTab === 'Print assets' && (
-              <div className="space-y-4">
-                {printMode ? (
-                  <div 
-                    className="print:hidden p-6 rounded-2xl border shadow-sm bg-amber-50/80 dark:bg-slate-900/60 backdrop-blur-sm"
-                    style={{ 
-                      borderColor: tokens.cards["card-panel-border"],
-                      boxShadow: `0 12px 40px -24px ${tokens.brand.primary}`
-                    }}
-                  >
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                          <Printer size={16} />
-                          <span>Print asset pack preview</span>
-                        </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-300">
-                          With Print Mode enabled, exports stay CMYK-safe and add foil + ink tokens. The tarball will include:
-                        </p>
-                        <div className="space-y-2">
-                          {printAssetPack.map((item) => (
-                            <div 
-                              key={item.name}
-                              className="flex items-start gap-3 p-3 rounded-lg border bg-white/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 shadow-sm"
-                            >
-                              <div className="mt-0.5 text-indigo-500 dark:text-indigo-300">
-                                {item.icon}
+          </div>
+
+          <section
+            id="tab-panel-2"
+            role="tabpanel"
+            aria-labelledby={getTabId('Print assets')}
+            hidden={activeTab !== 'Print assets'}
+            className="space-y-4"
+          >
+            {activeTab === 'Print assets' && (
+              <>
+                <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={printMode}
+                      onChange={(e) => setPrintMode(e.target.checked)}
+                      className="accent-indigo-500 h-4 w-4"
+                      aria-label="Toggle print mode"
+                    />
+                    Print
+                  </label>
+                </div>
+                <div className="space-y-4">
+                  {printMode ? (
+                    <div
+                      className="print:hidden p-6 rounded-2xl border shadow-sm panel-surface-soft backdrop-blur-sm"
+                      style={{
+                        borderColor: tokens.cards["card-panel-border"],
+                        boxShadow: `0 12px 40px -24px ${tokens.brand.primary}`
+                      }}
+                    >
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            <Printer size={16} />
+                            <span>Print asset pack preview</span>
+                          </div>
+                          <p className="text-sm text-slate-600 dark:text-slate-300">
+                            With Print Mode enabled, exports stay CMYK-safe and add foil + ink tokens. The tarball will include:
+                          </p>
+                          <div className="space-y-2">
+                            {printAssetPack.map((item) => (
+                              <div
+                                key={item.name}
+                                className="flex items-start gap-3 p-3 rounded-lg border panel-surface-soft shadow-sm"
+                              >
+                                <div className="mt-0.5 text-indigo-500 dark:text-indigo-300">
+                                  {item.icon}
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.name}</div>
+                                  <div className="text-xs font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider">{item.files}</div>
+                                  <div className="text-xs text-slate-500 dark:text-slate-400">{item.note}</div>
+                                </div>
                               </div>
-                              <div className="space-y-1">
-                                <div className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.name}</div>
-                                <div className="text-xs font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider">{item.files}</div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400">{item.note}</div>
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                          <Palette size={16} />
-                          <span>Brand hex set for Canva</span>
-                        </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-300">
-                          Click any swatch to copy the print-tuned hex values for quick brand kits in Canva.
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list" aria-label="Print hex swatches">
-                          {canvaPrintHexes.map(({ name, color }) => (
-                            <ColorSwatch key={name} name={name} color={color} />
-                          ))}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            <Palette size={16} />
+                            <span>Brand hex set for Canva</span>
+                          </div>
+                          <p className="text-sm text-slate-600 dark:text-slate-300">
+                            Click any swatch to copy the print-tuned hex values for quick brand kits in Canva.
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list" aria-label="Print hex swatches">
+                            {canvaPrintHexes.map(({ name, color }) => (
+                              <ColorSwatch key={name} name={name} color={color} />
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="p-6 rounded-2xl border shadow-sm bg-white/80 dark:bg-slate-900/60 text-sm text-slate-700 dark:text-slate-200">
-                    <p className="font-semibold mb-2">Enable Print Mode to unlock the asset pack preview.</p>
-                    <p className="text-slate-500 dark:text-slate-400 mb-4">We’ll tune tokens for CMYK-safe values and add foil + ink layers before exporting.</p>
+                  ) : (
+                    <div className="p-6 rounded-2xl border shadow-sm panel-surface-soft text-sm">
+                      <p className="font-semibold mb-2">Enable Print Mode to unlock the asset pack preview.</p>
+                      <p className="text-slate-500 dark:text-slate-400 mb-4">We’ll tune tokens for CMYK-safe values and add foil + ink layers before exporting.</p>
+                      <button
+                        type="button"
+                        onClick={() => setPrintMode(true)}
+                        className="px-4 py-2 rounded-lg text-xs font-bold hover:-translate-y-[1px] transition shadow"
+                        style={{
+                          backgroundColor: tokens.brand.primary,
+                          color: ctaTextColor,
+                          boxShadow: `0 12px 30px -20px ${tokens.brand.primary}`,
+                        }}
+                      >
+                        Turn on Print Mode
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </section>
+
+          <section
+            ref={exportsSectionRef}
+            id="tab-panel-3"
+            role="tabpanel"
+            aria-labelledby={getTabId('Exports')}
+            hidden={activeTab !== 'Exports'}
+            className="space-y-4"
+          >
+            {activeTab === 'Exports' && (
+              <>
+                <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mx-2 px-2 lg:flex-wrap lg:overflow-visible lg:pb-0 lg:px-0 lg:mx-0">
+                  <button
+                    type="button"
+                    onClick={handleJumpToExports}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:-translate-y-[1px] active:scale-95 transition border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
+                    style={{
+                      backgroundImage: `linear-gradient(120deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary} 100%)`,
+                      color: ctaTextColor,
+                      borderColor: tokens.brand['cta-hover'] || tokens.brand.primary,
+                      boxShadow: `0 18px 35px -22px ${tokens.brand.primary}`,
+                    }}
+                    aria-label="Jump to exports"
+                  >
+                    <Download size={14} />
+                    Exports
+                  </button>
+                  <button
+                    type="button"
+                    onClick={copyShareLink}
+                    className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border hover:opacity-90 active:scale-95 transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
+                    title="Copy a shareable link to this palette"
+                  >
+                    <LinkIcon size={14} />
+                    Copy share link
+                  </button>
+                  <div className="relative shrink-0">
                     <button
                       type="button"
-                      onClick={() => setPrintMode(true)}
-                      className="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:-translate-y-[1px] transition shadow"
+                      onClick={() => setOverflowOpen((v) => !v)}
+                      className="px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+                      style={{ borderColor: tokens.cards["card-panel-border"] }}
+                      aria-expanded={overflowOpen}
+                      aria-haspopup="true"
+                      title="More actions"
                     >
-                      Turn on Print Mode
+                      ⋮
                     </button>
+                    {overflowOpen && (
+                      <div
+                        className="absolute right-0 mt-2 w-40 rounded-xl border panel-surface-soft shadow-xl z-30"
+                      >
+                        <a
+                          href="docs/README.md"
+                          className="block px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:opacity-80 rounded-t-xl"
+                        >
+                          Docs
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => { setOverflowOpen(false); copyShareLink(); }}
+                          className="w-full text-left px-3 py-2 text-xs font-bold hover:opacity-80 rounded-b-xl"
+                        >
+                          Copy share link
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+                <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Exports" reset={reset} message={message} />}>
+                  <Suspense fallback={<div className="p-4 rounded-lg border panel-surface-soft text-sm">Loading exports…</div>}>
+                    <ExportsPanel
+                      tokens={finalTokens}
+                      printMode={printMode}
+                      isExporting={isExportingAssets}
+                      exportError={exportError}
+                      exportBlocked={exportBlocked}
+                      canPrint={printSupported}
+                      ctaTextColor={ctaTextColor}
+                      neutralButtonTextColor={neutralButtonText}
+                      onExportAssets={exportAllAssets}
+                      onRetryAssets={exportAllAssets}
+                      onExportPdf={handleExportPdf}
+                      onExportPenpot={() => exportJson(`${displayThemeName}${printMode ? '-PRINT' : ''}.json`)}
+                      onExportGeneric={() => exportGenericJson('generic-tokens.json')}
+                      onExportFigmaTokens={() => exportFigmaTokensJson('figma-tokens.json')}
+                      onExportStyleDictionary={() => exportStyleDictionaryJson('style-dictionary.json')}
+                      onExportCssVars={exportCssVars}
+                      onExportWitchcraft={() => exportWitchcraftJson('witchcraft-theme.json')}
+                      isInternal={isInternal}
+                    />
+                  </Suspense>
+                </ErrorBoundary>
+              </>
             )}
-
-            </div>
-
-            <div
-              id="tab-panel-3"
-              ref={exportsSectionRef}
-              role="tabpanel"
-              aria-labelledby={getTabId('Exports')}
-              hidden={activeTab !== 'Exports'}
-            >
-              {activeTab === 'Exports' && (
-              <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Exports" reset={reset} message={message} />}>
-                <Suspense fallback={<div className="p-4 rounded-lg border bg-white/70 dark:bg-slate-900/60 text-sm">Loading exports…</div>}>
-                  <ExportsPanel
-                    tokens={finalTokens}
-                    printMode={printMode}
-                    isExporting={isExportingAssets}
-                    exportError={exportError}
-                    exportBlocked={exportBlocked}
-                    canPrint={printSupported}
-                    ctaTextColor={ctaTextColor}
-                    neutralButtonTextColor={neutralButtonText}
-                    onExportAssets={exportAllAssets}
-                    onRetryAssets={exportAllAssets}
-                    onExportPdf={handleExportPdf}
-                    onExportPenpot={() => exportJson(`${displayThemeName}${printMode ? '-PRINT' : ''}.json`)}
-                    onExportGeneric={() => exportGenericJson('generic-tokens.json')}
-                    onExportFigmaTokens={() => exportFigmaTokensJson('figma-tokens.json')}
-                    onExportStyleDictionary={() => exportStyleDictionaryJson('style-dictionary.json')}
-                    onExportCssVars={exportCssVars}
-                    onExportWitchcraft={() => exportWitchcraftJson('witchcraft-theme.json')}
-                    isInternal={isInternal}
-                  />
-                </Suspense>
-              </ErrorBoundary>
-            )}
-            </div>
-          </div>
+          </section>
+            </>
+          )}
         </main>
+        {/* Main Content */}
       </div>
   );
 }
