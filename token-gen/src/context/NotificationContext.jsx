@@ -4,10 +4,10 @@ import React, { createContext, useContext, useMemo, useState, useCallback } from
 const NotificationContext = createContext({ notify: () => {} });
 
 const toneStyles = {
-  info: 'bg-slate-900 text-white border-slate-800',
-  success: 'bg-emerald-600 text-white border-emerald-500',
-  warn: 'bg-amber-500 text-white border-amber-400',
-  error: 'bg-rose-600 text-white border-rose-500',
+  info: 'toast-info',
+  success: 'toast-success',
+  warn: 'toast-warn',
+  error: 'toast-error',
 };
 
 export function NotificationProvider({ children }) {
@@ -37,7 +37,7 @@ export function NotificationProvider({ children }) {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`rounded-lg border px-3 py-2 shadow-lg text-sm font-semibold ${toneStyles[toast.tone] ?? toneStyles.info}`}
+            className={`toast rounded-lg border px-3 py-2 shadow-lg text-sm font-semibold ${toneStyles[toast.tone] ?? toneStyles.info}`}
           >
             {toast.message}
           </div>

@@ -133,7 +133,7 @@ function ProjectView({ onImportCss }) {
             id="projectName"
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
-            className="mt-2 block w-full rounded-md border panel-surface-strong shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            className="mt-2 block w-full rounded-md border panel-surface-strong shadow-sm focus:border-[var(--panel-accent)] focus:ring-[var(--panel-accent)] sm:text-sm"
           />
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="panel-surface border rounded-md p-2">

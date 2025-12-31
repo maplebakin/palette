@@ -1,7 +1,7 @@
 import React from 'react';
 import { Download, FileText, Printer, Wand2 } from 'lucide-react';
 import ColorSwatch from './ColorSwatch';
-import { pickReadableText } from '../lib/colorUtils';
+import { hexWithAlpha, pickReadableText } from '../lib/colorUtils';
 
 export default function ExportsPanel({
   tokens,
@@ -10,6 +10,7 @@ export default function ExportsPanel({
   exportError,
   exportBlocked = false,
   ctaTextColor,
+  primaryTextColor,
   neutralButtonTextColor,
   canPrint = true,
   onExportAssets,
@@ -20,24 +21,26 @@ export default function ExportsPanel({
   onExportFigmaTokens,
   onExportStyleDictionary,
   onExportCssVars,
+  onExportUiThemeCss,
+  onDownloadThemePack,
+  onDownloadThemePackWithPrint,
   onRetryAssets,
   isInternal,
 }) {
   return (
     <div className="panel-surface print:hidden mb-10 p-4 rounded-2xl border shadow-sm backdrop-blur flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
-      style={{ borderColor: tokens.cards['card-panel-border'] }}
       aria-busy={isExporting}
     >
       <div>
-        <p className="text-xs uppercase font-semibold text-slate-500 dark:text-slate-300 tracking-wider">Exports</p>
-        <p className="text-sm text-slate-600 dark:text-slate-200">Asset pack, PDF, and JSON exports.</p>
+        <p className="text-xs uppercase font-semibold panel-muted tracking-wider">Exports</p>
+        <p className="text-sm panel-muted">Asset pack, PDF, and JSON exports.</p>
         {exportError && (
-          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1" role="alert">
+          <p className="text-xs mt-1" role="alert" style={{ color: tokens.status.warning }}>
             {exportError}
           </p>
         )}
         {!canPrint && (
-          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1" role="alert">
+          <p className="text-xs mt-1" role="alert" style={{ color: tokens.status.warning }}>
             Print/PDF is unavailable in this browser.
           </p>
         )}
@@ -50,7 +53,7 @@ export default function ExportsPanel({
             className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2 disabled:opacity-60"
             style={{
               backgroundColor: tokens.brand.primary,
-              color: ctaTextColor || pickReadableText(tokens.brand.primary),
+              color: primaryTextColor || pickReadableText(tokens.brand.primary),
               borderColor: tokens.brand['cta-hover'],
             }}
           >
@@ -61,7 +64,11 @@ export default function ExportsPanel({
             <button
               type="button"
               onClick={onRetryAssets}
-              className="px-3 py-2 rounded-md panel-surface-strong border border-amber-400 text-amber-800 text-xs font-bold hover:opacity-90"
+              className="px-3 py-2 rounded-md panel-surface-strong border text-xs font-bold hover:opacity-90"
+              style={{
+                borderColor: hexWithAlpha(tokens.status.warning, 0.5),
+                color: tokens.status.warning,
+              }}
             >
               Retry
             </button>
@@ -84,7 +91,7 @@ export default function ExportsPanel({
         </button>
         <button
           onClick={onExportPenpot}
-          className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+          className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
           style={{
             backgroundColor: tokens.brand.cta,
             color: ctaTextColor || pickReadableText(tokens.brand.cta),
@@ -142,6 +149,48 @@ export default function ExportsPanel({
           <FileText size={14} />
           CSS Variables
         </button>
+        <button
+          onClick={onExportUiThemeCss}
+          className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
+          style={{
+            backgroundColor: tokens.cards['card-panel-surface'],
+            color: neutralButtonTextColor || pickReadableText(tokens.cards['card-panel-surface']),
+            borderColor: tokens.cards['card-panel-border'],
+          }}
+        >
+          <FileText size={14} />
+          UI Theme CSS
+        </button>
+        {import.meta.env.DEV && (
+          <>
+            <button
+              type="button"
+              onClick={onDownloadThemePack}
+              className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
+              style={{
+                backgroundColor: tokens.cards['card-panel-surface'],
+                color: neutralButtonTextColor || pickReadableText(tokens.cards['card-panel-surface']),
+                borderColor: tokens.cards['card-panel-border'],
+              }}
+            >
+              <Download size={14} />
+              Download Theme Pack
+            </button>
+            <button
+              type="button"
+              onClick={onDownloadThemePackWithPrint}
+              className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
+              style={{
+                backgroundColor: tokens.cards['card-panel-surface'],
+                color: neutralButtonTextColor || pickReadableText(tokens.cards['card-panel-surface']),
+                borderColor: tokens.cards['card-panel-border'],
+              }}
+            >
+              <Download size={14} />
+              Theme Pack + Print Assets
+            </button>
+          </>
+        )}
         {isInternal && (
           <button
             onClick={onExportWitchcraft}

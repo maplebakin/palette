@@ -6,6 +6,7 @@ const MODE_OPTIONS = [
   { value: 'mono', label: 'Monochromatic' },
   { value: 'analogous', label: 'Analogous' },
   { value: 'complementary', label: 'Complementary' },
+  { value: 'tertiary', label: 'Tertiary' },
   { value: 'apocalypse', label: 'Apocalypse' },
 ];
 
@@ -42,7 +43,7 @@ export default function PaletteCard({ section, onCapture }) {
         {/* TERTIARY: Destructive action is quiet unless hovered. */}
         <button
           onClick={() => removeSection(section.id)}
-          className="px-2 py-1 text-xs rounded panel-muted hover:bg-rose-500 hover:text-white"
+          className="px-2 py-1 text-xs rounded panel-muted hover:opacity-80"
         >
           Remove
         </button>
@@ -54,7 +55,7 @@ export default function PaletteCard({ section, onCapture }) {
             name="kind"
             value={section.kind}
             onChange={handleChange}
-            className="bg-transparent border-b panel-outline rounded-none px-2 py-1 focus:outline-none focus:border-indigo-500 panel-text"
+            className="bg-transparent border-b panel-outline rounded-none px-2 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] panel-text"
           >
             {KIND_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -67,7 +68,7 @@ export default function PaletteCard({ section, onCapture }) {
             name="mode"
             value={section.mode}
             onChange={handleChange}
-            className="bg-transparent border-b panel-outline rounded-none px-2 py-1 focus:outline-none focus:border-indigo-500 panel-text"
+            className="bg-transparent border-b panel-outline rounded-none px-2 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] panel-text"
           >
             {MODE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -81,7 +82,7 @@ export default function PaletteCard({ section, onCapture }) {
             name="baseHex"
             value={section.baseHex}
             onChange={handleChange}
-            className="bg-transparent border-b panel-outline rounded-none px-2 py-1 focus:outline-none focus:border-indigo-500 panel-text"
+            className="bg-transparent border-b panel-outline rounded-none px-2 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] panel-text"
           />
         </label>
         <label className="flex flex-col gap-1">

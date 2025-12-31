@@ -20,7 +20,7 @@
  * @property {string} label
  * @property {'season' | 'people' | 'state'} kind
  * @property {string} baseHex
- * @property {'mono' | 'analogous' | 'complementary' | 'apocalypse'} mode
+ * @property {'mono' | 'analogous' | 'complementary' | 'tertiary' | 'apocalypse'} mode
  * @property {boolean} locked
  * @property {Object.<string, string>} [tokens]
  * @property {Array<{name: string, hex: string}>} [colors]

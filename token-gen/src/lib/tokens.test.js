@@ -52,6 +52,14 @@ describe('generateTokens', () => {
     expect(tokens.typography['text-strong']).not.toBe('#ffffff'); // no pure white
     expect(accentHue).not.toBeCloseTo(bg.h);
   });
+
+  it('produces darker backgrounds for dark mode', () => {
+    const lightTokens = generateTokens('#3366ff', 'Monochromatic', 'light', 100);
+    const darkTokens = generateTokens('#3366ff', 'Monochromatic', 'dark', 100);
+    const lightBg = hexToHsl(lightTokens.surfaces.background).l;
+    const darkBg = hexToHsl(darkTokens.surfaces.background).l;
+    expect(darkBg).toBeLessThan(lightBg);
+  });
 });
 
 describe('addPrintMode', () => {

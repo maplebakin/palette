@@ -77,7 +77,7 @@ export default function ColorSwatch({ name, color }) {
       type="button"
       onClick={handleCopy}
       disabled={!canCopy}
-      className="group panel-surface cursor-pointer flex items-center justify-between p-2 rounded-md transition-all hover:scale-[1.02] active:scale-95 border shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+      className="group panel-surface cursor-pointer flex items-center justify-between p-2 rounded-md transition-all hover:scale-[1.02] active:scale-95 border shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
       aria-label={`Copy ${name} ${displayColor}`}
       aria-live="polite"
     >

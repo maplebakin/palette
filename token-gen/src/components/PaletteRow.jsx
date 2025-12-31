@@ -3,8 +3,8 @@ import React from 'react';
 const PaletteRow = ({ title, colors }) => (
   <div className="p-4 rounded-lg border shadow-sm panel-surface-soft backdrop-blur-sm">
     <div className="flex items-center justify-between mb-3">
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{title}</span>
-      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{colors.length} swatches</span>
+      <span className="text-xs font-bold uppercase tracking-wider panel-text">{title}</span>
+      <span className="text-[10px] font-semibold panel-muted">{colors.length} swatches</span>
     </div>
     <div className="flex gap-1 mb-3">
       {colors.map(({ name, color }, index) => (

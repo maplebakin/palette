@@ -16,6 +16,7 @@ const ExportStage = ({
   setOverflowOpen,
   tokens,
   ctaTextColor,
+  primaryTextColor,
   finalTokens,
   printMode,
   isExportingAssets,
@@ -30,7 +31,10 @@ const ExportStage = ({
   exportFigmaTokensJson,
   exportStyleDictionaryJson,
   exportCssVars,
+  exportUiThemeCss,
   exportWitchcraftJson,
+  onDownloadThemePack,
+  onDownloadThemePackWithPrint,
   displayThemeName,
   isInternal,
 }) => (
@@ -49,10 +53,10 @@ const ExportStage = ({
             <button
               type="button"
               onClick={activeTab === 'Exports' ? undefined : handleJumpToExports}
-              className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:-translate-y-[1px] active:scale-95 transition border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:-translate-y-[1px] active:scale-95 transition border focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2 shrink-0 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
               style={{
                 backgroundImage: `linear-gradient(120deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary} 100%)`,
-                color: ctaTextColor,
+                color: primaryTextColor,
                 borderColor: tokens.brand['cta-hover'] || tokens.brand.primary,
                 boxShadow: `0 18px 35px -22px ${tokens.brand.primary}`,
               }}
@@ -65,7 +69,7 @@ const ExportStage = ({
             <button
               type="button"
               onClick={copyShareLink}
-              className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border hover:opacity-90 active:scale-95 transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
+            className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border hover:opacity-90 active:scale-95 transition focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
               title="Copy a shareable link to this palette"
             >
               <LinkIcon size={14} />
@@ -89,7 +93,7 @@ const ExportStage = ({
                 >
                   <a
                     href="docs/README.md"
-                    className="block px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:opacity-80 rounded-t-xl"
+                    className="block px-3 py-2 text-xs font-bold panel-text hover:opacity-80 rounded-t-xl"
                   >
                     Docs
                   </a>
@@ -114,6 +118,7 @@ const ExportStage = ({
                 exportBlocked={exportBlocked}
                 canPrint={printSupported}
                 ctaTextColor={ctaTextColor}
+                primaryTextColor={primaryTextColor}
                 neutralButtonTextColor={neutralButtonText}
                 onExportAssets={exportAllAssets}
                 onRetryAssets={exportAllAssets}
@@ -123,7 +128,10 @@ const ExportStage = ({
                 onExportFigmaTokens={() => exportFigmaTokensJson('figma-tokens.json')}
                 onExportStyleDictionary={() => exportStyleDictionaryJson('style-dictionary.json')}
                 onExportCssVars={exportCssVars}
+                onExportUiThemeCss={exportUiThemeCss}
                 onExportWitchcraft={() => exportWitchcraftJson('witchcraft-theme.json')}
+                onDownloadThemePack={onDownloadThemePack}
+                onDownloadThemePackWithPrint={onDownloadThemePackWithPrint}
                 isInternal={isInternal}
               />
             </Suspense>

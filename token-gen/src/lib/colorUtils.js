@@ -201,10 +201,16 @@ export const getContrastRatio = (fg, bg) => {
 };
 
 export const getWCAGBadge = (ratio) => {
-  if (ratio >= 7) return { text: 'AAA', color: 'text-green-600 bg-green-100' };
-  if (ratio >= 4.5) return { text: 'AA', color: 'text-amber-600 bg-amber-100' };
-  if (ratio >= 3) return { text: 'AA18', color: 'text-orange-600 bg-orange-100' };
-  return { text: 'FAIL', color: 'text-red-600 bg-red-100' };
+  if (ratio >= 7) {
+    return { text: 'AAA', color: 'text-[var(--status-success-text)] bg-[var(--status-success)]' };
+  }
+  if (ratio >= 4.5) {
+    return { text: 'AA', color: 'text-[var(--status-warning-text)] bg-[var(--status-warning)]' };
+  }
+  if (ratio >= 3) {
+    return { text: 'AA18', color: 'text-[var(--status-info-text)] bg-[var(--status-info)]' };
+  }
+  return { text: 'FAIL', color: 'text-[var(--status-error-text)] bg-[var(--status-error)]' };
 };
 
 export const escapeXml = (str = '') => String(str)

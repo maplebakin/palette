@@ -128,11 +128,23 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const isPop = themeMode === 'pop';
   const isApocalypse = mode === 'Apocalypse';
   const intensity = isApocalypse ? (Math.max(20, Math.min(150, apocalypseIntensity)) / 100) : 1;
-  const { harmonyIntensity = 100, neutralCurve = 100, accentStrength = 100, popIntensity = 100 } = options;
+  const {
+    harmonyIntensity = 100,
+    neutralCurve = 100,
+    accentStrength = 100,
+    popIntensity = 100,
+    printMode: printModeOverride = false,
+  } = options;
   const harmonyScale = clamp(harmonyIntensity, 40, 160) / 100;
   const accentScale = clamp(accentStrength, 50, 150) / 100;
   const neutralCurveScale = clamp(neutralCurve, 50, 150) / 100;
   const popScale = clamp(popIntensity, 60, 140) / 100;
+  const isPrintMode = Boolean(printModeOverride);
+  const POP_INTENSITY = 0.28;
+  const LIGHT_TEMP_SHIFT = 8;
+  const popBoost = isPop
+    ? POP_INTENSITY * clamp(popScale, 0.85, 1.15) * (isPrintMode ? 0.85 : 1)
+    : 0;
   
   const harmonySpec = {
     Monochromatic: { secH: 8, accH: -8, secSat: 0.9, accSat: 0.95, surfaceMix: 0.08, backgroundMix: 0.06 },
@@ -144,18 +156,31 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const { secH, accH, secSat, accSat, surfaceMix: surfaceMixBase, backgroundMix: backgroundMixBase } = harmonySpec;
   const surfaceMix = clamp(surfaceMixBase * harmonyScale, 0, isApocalypse ? 0.6 : 0.5);
   const backgroundMix = clamp(backgroundMixBase * harmonyScale, 0, isApocalypse ? 0.55 : 0.45);
-  const resolvedSurfaceMix = isPop
-    ? clamp(surfaceMix * 1.2, 0, isApocalypse ? 0.6 : 0.55)
-    : surfaceMix;
-  const resolvedBackgroundMix = isPop
-    ? clamp(backgroundMix * 1.25, 0, isApocalypse ? 0.6 : 0.5)
-    : backgroundMix;
+  const resolvedSurfaceMix = surfaceMix;
+  const resolvedBackgroundMix = backgroundMix;
 
   let bgL = isApocalypse ? (isDark ? 2 : 99) : (isDark ? 10 : 98);
   let surfaceL = isApocalypse ? (isDark ? 6 : 98) : (isDark ? 16 : 93);
   let textMainL = isApocalypse ? (isDark ? 98 : 8) : (isDark ? 95 : 10);
   let textMutedL = isApocalypse ? (isDark ? 70 : 35) : (isDark ? 65 : 40);
   let borderL = isApocalypse ? (isDark ? 10 : 88) : (isDark ? 25 : 90);
+  if (!isDark) {
+    if (isApocalypse) {
+      bgL = 98;
+      surfaceL = 94;
+      borderL = 88;
+    } else {
+      bgL = 96;
+      surfaceL = 92;
+      borderL = 88;
+    }
+  }
+  if (isPop && !isDark) {
+    const basePop = clamp(56 + ((popScale - 1) * 6) - (isApocalypse ? 2 : 0), 42, 62);
+    bgL = basePop;
+    surfaceL = clamp(basePop - (isApocalypse ? 2 : 4), 38, 58);
+    borderL = clamp(basePop - (isApocalypse ? 4 : 8), 32, 52);
+  }
   
   let baseSurfaceSat = isApocalypse
     ? Math.max(32, Math.min(82, hsl.s * 0.8))
@@ -163,7 +188,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const gammaLightSat = Math.pow(baseSurfaceSat / 100, 1.02) * 100;
   let surfaceSat = isDark
     ? baseSurfaceSat
-    : Math.min(isApocalypse ? 88 : 72, Math.max(24, gammaLightSat * (isApocalypse ? 1.8 : 1.45)));
+    : Math.min(isApocalypse ? 32 : 24, Math.max(8, gammaLightSat * (isApocalypse ? 0.85 : 0.65)));
 
   let brandLightness = isApocalypse ? (isDark ? 75 : 52) : (isDark ? 60 : 50); 
   let accentLightness = isApocalypse ? (isDark ? 78 : 56) : (isDark ? 67 : 55);
@@ -176,22 +201,15 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   let accentSat = accSat * satNormalizer * harmonyScale * accentScale;
 
   if (isPop) {
-    const popBg = clamp(hsl.l + ((popScale - 1) * 12) - 6, 42, 58);
-    bgL = popBg;
-    surfaceL = clamp(popBg + (isApocalypse ? 8 : 4), 40, 66);
-    textMainL = 94;
-    textMutedL = 72;
-    borderL = clamp(popBg + 8, 32, 86);
-    baseSurfaceSat = clamp(hsl.s * (1.35 * popScale) + 24, 40, 98);
-    surfaceSat = clamp(baseSurfaceSat * (isApocalypse ? 1.35 : 1.15), 40, 100);
-    satNormalizer = isApocalypse ? 2.0 : 1.4;
-    primarySat *= popScale * 1.25;
-    secondarySat *= popScale * 1.3;
-    accentSat *= popScale * 1.45;
-    brandLightness = clamp(popBg + 10, 52, 74);
-    accentLightness = clamp(popBg + 8, 50, 72);
-    ctaLightness = clamp(popBg + 6, 48, 70);
-    ctaHoverLightness = clamp(popBg + 4, 46, 68);
+    const satBoost = 1 + (popBoost * 1.3);
+    primarySat *= satBoost;
+    secondarySat *= satBoost * 1.1;
+    accentSat *= satBoost * 1.25;
+    satNormalizer *= 1 + (popBoost * 0.55);
+    brandLightness = clamp(brandLightness + (popBoost * 6) - 2, 46, 70);
+    accentLightness = clamp(accentLightness + (popBoost * 6) - 2, 48, 72);
+    ctaLightness = clamp(ctaLightness + (popBoost * 5) - 2, 46, 68);
+    ctaHoverLightness = clamp(ctaHoverLightness + (popBoost * 4) - 2, 44, 66);
   }
 
   const primary = getColor(hsl, 0, primarySat, brandLightness); 
@@ -213,15 +231,28 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const backgroundHue = resolvedBackgroundMix > 0.2
     ? hexToHsl(blendColorsPerceptual(normalizedBase, accentTarget, resolvedBackgroundMix)).h
     : blendHue(hsl.h, accH, resolvedBackgroundMix);
-  const backgroundBase = { h: backgroundHue, s: surfaceSat * (isDark ? 0.85 : 1.2), l: bgL };
-  const surfaceBase = { h: surfaceHue, s: surfaceSat, l: bgL };
+  const neutralShift = isDark ? 0 : LIGHT_TEMP_SHIFT;
+  const neutralSurfaceHue = (surfaceHue + neutralShift) % 360;
+  const neutralBackgroundHue = (backgroundHue + neutralShift) % 360;
+  const backgroundSatScale = isDark ? 0.85 : 1.05;
+  const backgroundBase = { h: neutralBackgroundHue, s: surfaceSat * backgroundSatScale, l: bgL };
+  const surfaceBase = { h: neutralSurfaceHue, s: surfaceSat, l: bgL };
+  const popSurfaceInfluenceLarge = isPop && !isDark ? 0.02 + (popBoost * 0.05) : 0;
+  const popSurfaceInfluenceMedium = isPop && !isDark ? 0.08 + (popBoost * 0.1) : 0;
+  const popLargeHue = blendHue(neutralBackgroundHue, hsl.h - neutralBackgroundHue, popSurfaceInfluenceLarge);
+  const popMediumHue = blendHue(neutralSurfaceHue, hsl.h - neutralSurfaceHue, popSurfaceInfluenceMedium);
+  const popLargeSat = isPop && !isDark ? clamp(surfaceSat * 0.9, 4, 14) : surfaceSat;
+  const popMediumSat = isPop && !isDark ? clamp(surfaceSat * (1 + (popBoost * 0.7)), 6, 26) : surfaceSat;
+  const largeSurfaceBase = isPop && !isDark ? { h: popLargeHue, s: popLargeSat, l: bgL } : backgroundBase;
+  const mediumSurfaceBase = isPop && !isDark ? { h: popMediumHue, s: popMediumSat, l: bgL } : surfaceBase;
   const neutralColor = (lightness, satMult = 0.3) =>
-    getColor({ h: backgroundHue, s: surfaceSat * satMult, l: lightness }, 0, 1, lightness);
-  const baseNeutralSteps = isPop
-    ? [92, 84, 76, 68, 58, 50, 42, 36, 30, 24]
-    : isDark
+    getColor({ h: neutralBackgroundHue, s: surfaceSat * satMult, l: lightness }, 0, 1, lightness);
+  const lightNeutralSteps = isApocalypse
+    ? [98, 96, 92, 84, 70, 56, 40, 28, 18, 10]
+    : [98, 95, 90, 78, 66, 52, 38, 26, 16, 10];
+  const baseNeutralSteps = isDark
     ? (isApocalypse ? [94, 80, 64, 50, 40, 30, 18, 10, 6, 3] : [96, 88, 78, 68, 55, 45, 32, 22, 14, 8])
-    : (isApocalypse ? [100, 98, 94, 84, 70, 56, 40, 28, 16, 8] : [100, 96, 90, 78, 66, 52, 38, 26, 16, 10]);
+    : lightNeutralSteps;
   const neutralPivot = isDark ? 55 : 50;
   const neutralSteps = baseNeutralSteps.map((val) => clamp(neutralPivot + ((val - neutralPivot) * neutralCurveScale), 1, 99));
 
@@ -251,6 +282,22 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const accentLightSteps = isDark ? [68, 60, 52, 36] : [58, 52, 46, 32];
   const accentBaseSat = clamp(Math.max(20, hsl.s) * accentScale, 10, 100);
   const accentColor = (h, satMult, l) => getColor({ h, s: accentBaseSat, l }, 0, satMult, l);
+  const linkBrandSat = isDark ? 0.9 : 0.9 + (popBoost * 0.6);
+  const linkTextSat = isDark ? 1 : 1 + (popBoost * 0.6);
+  const focusRingSat = isDark ? 1 : 0.8 + (popBoost * 0.7);
+  const focusRingLight = isDark ? 50 : 62 + (popBoost * 6);
+  const accentTextSat = isDark ? 1 : 1 + (popBoost * 0.55);
+  const accentTextStrongSat = isDark ? 1 : 1 + (popBoost * 0.7);
+  const borderAccentSubtleSat = isDark ? 0.15 : 0.12 + (popBoost * 0.12);
+  const borderAccentMediumSat = isDark ? 0.25 : 0.18 + (popBoost * 0.16);
+  const borderAccentStrongSat = isDark ? 0.35 : 0.26 + (popBoost * 0.2);
+  const borderAccentHoverSat = isDark ? 0.4 : 0.3 + (popBoost * 0.24);
+  const aliasBorderSubtleSat = isDark ? 0.2 : 0.16 + (popBoost * 0.14);
+  const aliasBorderMediumSat = isDark ? 0.35 : 0.26 + (popBoost * 0.18);
+  const aliasBorderStrongSat = isDark ? 0.5 : 0.38 + (popBoost * 0.24);
+  const aliasBorderHoverSat = isDark ? 0.6 : 0.46 + (popBoost * 0.28);
+  const purpleBorderSubtleSat = isDark ? 0.25 : 0.18 + (popBoost * 0.16);
+  const purpleBorderMediumSat = isDark ? 0.35 : 0.26 + (popBoost * 0.2);
 
   const ensureContrast = (fg, bg, target, preferLighten) => {
     let color = fg;
@@ -287,6 +334,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     return blackRatio >= whiteRatio ? black : white;
   };
 
+  const headerL = isDark ? bgL + 2 : clamp(bgL + (isPop ? 1 : 2), isPop ? 90 : 94, 98);
   const tokens = {
     foundation: {
       hue: hsl.h,
@@ -336,20 +384,20 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       "cta-hover": ctaHover,
       "gradient-start": gradientStart,
       "gradient-end": gradientEnd,
-      "link-color": getColor(hsl, accH, 0.9, isDark ? 70 : 45),
-      "focus-ring": getColor(hsl, accH, 1, isDark ? 50 : 65),
+      "link-color": getColor(hsl, accH, linkBrandSat, isDark ? 70 : 45),
+      "focus-ring": getColor(hsl, accH, focusRingSat, focusRingLight),
     },
 
     typography: {
-      "heading": getColor(isPop ? { h: (hsl.h + 180) % 360, s: Math.min(90, surfaceSat * 1.2), l: textMainL } : hsl, 0, isPop ? 0.35 : 0.1, textMainL),
-      "text-strong": getColor(isPop ? { h: (hsl.h + 180) % 360, s: Math.min(90, surfaceSat * 1.2), l: textMainL } : hsl, 0, isPop ? 0.35 : 0.1, isDark ? 90 : (isPop ? 18 : 15)),
-      "text-body": getColor(isPop ? { h: (hsl.h + 180) % 360, s: Math.min(90, surfaceSat * 1.1), l: textMainL } : hsl, 0, isPop ? 0.3 : 0.1, isDark ? 80 : (isPop ? 26 : 25)),
-      "text-muted": getColor(isPop ? { h: (hsl.h + 180) % 360, s: Math.min(85, surfaceSat), l: textMutedL } : hsl, 0, isPop ? 0.25 : 0.1, textMutedL),
+      "heading": getColor(hsl, 0, 0.1, textMainL),
+      "text-strong": getColor(hsl, 0, 0.1, isDark ? 90 : 15),
+      "text-body": getColor(hsl, 0, 0.1, isDark ? 80 : 25),
+      "text-muted": getColor(hsl, 0, 0.1, textMutedL),
       "text-hint": getColor(hsl, 0, 0.2, isDark ? 50 : 60),
       "text-disabled": getColor(hsl, 0, 0.1, isDark ? 30 : 80),
-      "text-accent": getColor(hsl, accH, isPop ? 1.2 : 1, isDark ? 75 : 40),
-      "text-accent-strong": getColor(hsl, accH, isPop ? 1.3 : 1, isDark ? 85 : 30),
-      "footer-text": getColor(isPop ? { h: (hsl.h + 180) % 360, s: Math.min(90, surfaceSat * 1.1), l: textMainL } : hsl, 0, isPop ? 0.28 : 0.1, isDark ? 60 : 85),
+      "text-accent": getColor(hsl, accH, accentTextSat, isDark ? 75 : 40),
+      "text-accent-strong": getColor(hsl, accH, accentTextStrongSat, isDark ? 85 : 30),
+      "footer-text": getColor(hsl, 0, 0.1, isDark ? 60 : 85),
       "footer-text-muted": getColor(hsl, 0, 0.1, isDark ? 40 : 60),
     },
     textPalette: {
@@ -358,37 +406,41 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       "text-tertiary": getColor(hsl, 0, 0.1, isDark ? 78 : 32),
       "text-hint": getColor(hsl, 0, 0.2, isDark ? 60 : 50),
       "text-disabled": getColor(hsl, 0, 0.1, isDark ? 38 : 80),
-      "text-accent": getColor(hsl, accH, 1, isDark ? 75 : 40),
-      "text-accent-strong": getColor(hsl, accH, 1, isDark ? 85 : 30),
-      "link-color": getColor(hsl, accH, 1, isDark ? 70 : 45),
+      "text-accent": getColor(hsl, accH, accentTextSat, isDark ? 75 : 40),
+      "text-accent-strong": getColor(hsl, accH, accentTextStrongSat, isDark ? 85 : 30),
+      "link-color": getColor(hsl, accH, linkTextSat, isDark ? 70 : 45),
     },
 
     borders: {
       "border-subtle": getColor(surfaceBase, 0, 0.9, borderL),
       "border-strong": getColor(surfaceBase, 0, 0.9, isDark ? borderL + 12 : borderL - 12),
-      "border-accent-subtle": getColor(hsl, accH, 0.15, isDark ? borderL + 5 : borderL - 5),
-      "border-accent-medium": getColor(hsl, accH, 0.25, isDark ? borderL + 10 : borderL - 10),
-      "border-accent-strong": getColor(hsl, accH, 0.35, isDark ? borderL + 18 : borderL - 18),
-      "border-accent-hover": getColor(hsl, accH, 0.4, isDark ? borderL + 22 : borderL - 22),
+      "border-accent-subtle": getColor(hsl, accH, borderAccentSubtleSat, isDark ? borderL + 5 : borderL - 5),
+      "border-accent-medium": getColor(hsl, accH, borderAccentMediumSat, isDark ? borderL + 10 : borderL - 10),
+      "border-accent-strong": getColor(hsl, accH, borderAccentStrongSat, isDark ? borderL + 18 : borderL - 18),
+      "border-accent-hover": getColor(hsl, accH, borderAccentHoverSat, isDark ? borderL + 22 : borderL - 22),
     },
 
     surfaces: {
       "background": getColor(backgroundBase, 0, 1, bgL),
       "page-background": getColor(backgroundBase, 0, 1, isDark ? bgL - 2 : bgL - 2),
-      "header-background": getColor(backgroundBase, 0, 1, isDark ? bgL + 2 : 99),
-      "surface-plain": getColor(surfaceBase, 0, 1, surfaceL),
-      "surface-plain-border": getColor(surfaceBase, 0, 1, borderL),
+      "header-background": getColor(largeSurfaceBase, 0, 1, headerL),
+      "surface-plain": getColor(mediumSurfaceBase, 0, 1, surfaceL),
+      "surface-plain-border": getColor(mediumSurfaceBase, 0, 1, borderL),
     },
 
     cards: {
-      "card-panel-surface": getColor(surfaceBase, 0, 1, surfaceL),
-      "card-panel-surface-strong": getColor(surfaceBase, 0, 1, isDark ? surfaceL + 5 : 97),
-      "card-panel-border": getColor(surfaceBase, 0, 1, borderL),
-      "card-panel-border-soft": getColor(surfaceBase, 0, 1, isDark ? borderL - 5 : 95),
+      "card-panel-surface": getColor(mediumSurfaceBase, 0, 1, surfaceL),
+      "card-panel-surface-strong": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 5 : Math.min(97, surfaceL + (isPop ? 2 : 4))),
+      "card-panel-border": getColor(mediumSurfaceBase, 0, 1, borderL),
+      "card-panel-border-soft": getColor(mediumSurfaceBase, 0, 1, isDark ? borderL - 5 : Math.min(96, borderL + 6)),
       "card-panel-border-strong": getColor(surfaceBase, 0, 1, isDark ? borderL + 15 : 85),
-      "card-tag-bg": getColor(hsl, 0, 0.2, isDark ? 20 : 94),
+      "card-tag-bg": isDark
+        ? getColor(hsl, 0, 0.2, 20)
+        : getColor(hsl, accH, 0.12 + (popBoost * 0.2), 94),
       "card-tag-text": getColor(hsl, 0, 0.4, isDark ? 80 : 30),
-      "card-tag-border": getColor(hsl, 0, 0.2, isDark ? 30 : 85),
+      "card-tag-border": isDark
+        ? getColor(hsl, 0, 0.2, 30)
+        : getColor(hsl, accH, 0.18 + (popBoost * 0.2), 85),
     },
 
     glass: {
@@ -437,40 +489,44 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     },
 
     admin: {
-      "admin-surface-base": getColor(backgroundBase, 0, 1, isDark ? bgL + 6 : 99),
-      "admin-accent": getColor(hsl, accH, 0.95, isDark ? 64 : 54),
+      "admin-surface-base": getColor(isPop && !isDark ? mediumSurfaceBase : backgroundBase, 0, 1, isDark ? bgL + 6 : Math.min(98, bgL + 3)),
+      "admin-accent": getColor(hsl, accH, isDark ? 0.95 : 0.85 + (popBoost * 0.35), isDark ? 64 : 54),
     },
 
     aliases: {
-      "surface-panel-primary": getColor(surfaceBase, 0, 1, surfaceL),
-      "surface-panel-secondary": getColor(surfaceBase, 0, 1, isDark ? surfaceL + 4 : surfaceL - 2),
-      "surface-card-hover": getColor(surfaceBase, 0, 1, isDark ? surfaceL + 6 : surfaceL - 4),
-      "surface-muted": getColor(surfaceBase, 0, 1, isDark ? surfaceL - 2 : surfaceL + 2),
-      "border-purple-subtle": getColor(hsl, accH, 0.25, borderL),
-      "border-purple-medium": getColor(hsl, accH, 0.35, isDark ? borderL + 8 : borderL - 8),
-      "border-accent-subtle": getColor(hsl, accH, 0.2, isDark ? borderL + 5 : borderL - 5),
-      "border-accent-medium": getColor(hsl, accH, 0.35, isDark ? borderL + 10 : borderL - 10),
-      "border-accent-strong": getColor(hsl, accH, 0.5, isDark ? borderL + 18 : borderL - 18),
-      "border-accent-hover": getColor(hsl, accH, 0.6, isDark ? borderL + 22 : borderL - 22),
+      "surface-panel-primary": getColor(mediumSurfaceBase, 0, 1, surfaceL),
+      "surface-panel-secondary": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 4 : surfaceL - 2),
+      "surface-card-hover": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 6 : surfaceL - 4),
+      "surface-muted": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL - 2 : surfaceL + 2),
+      "border-purple-subtle": getColor(hsl, accH, purpleBorderSubtleSat, borderL),
+      "border-purple-medium": getColor(hsl, accH, purpleBorderMediumSat, isDark ? borderL + 8 : borderL - 8),
+      "border-accent-subtle": getColor(hsl, accH, aliasBorderSubtleSat, isDark ? borderL + 5 : borderL - 5),
+      "border-accent-medium": getColor(hsl, accH, aliasBorderMediumSat, isDark ? borderL + 10 : borderL - 10),
+      "border-accent-strong": getColor(hsl, accH, aliasBorderStrongSat, isDark ? borderL + 18 : borderL - 18),
+      "border-accent-hover": getColor(hsl, accH, aliasBorderHoverSat, isDark ? borderL + 22 : borderL - 22),
       "text-subtle": getColor(hsl, 0, 0.1, textMutedL),
-      "text-accent-strong": getColor(hsl, accH, 1.05, isDark ? 88 : 34),
+      "text-accent-strong": getColor(hsl, accH, accentTextStrongSat, isDark ? 88 : 34),
       "accent-purple-strong": accentStrong,
       "accent-purple-soft": getColor(hsl, accH, 0.7, isDark ? 75 : 70),
-      "overlay-panel": getColor(surfaceBase, 0, 1, isDark ? surfaceL + 2 : surfaceL),
-      "overlay-panel-strong": getColor(surfaceBase, 0, 1, isDark ? surfaceL + 6 : surfaceL - 2),
-      "focus-ring": getColor(hsl, accH, 1, isDark ? 40 : 70),
+      "overlay-panel": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 2 : surfaceL),
+      "overlay-panel-strong": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 6 : surfaceL - 2),
+      "focus-ring": getColor(hsl, accH, focusRingSat, isDark ? 40 : 68 + (popBoost * 4)),
       "shadow-card": isDark ? '0 20px 50px -20px rgba(0,0,0,0.55)' : '0 12px 30px -18px rgba(0,0,0,0.15)',
       "shadow-card-hover": isDark ? '0 24px 60px -22px rgba(0,0,0,0.6)' : '0 14px 40px -20px rgba(0,0,0,0.2)',
-      "chip-background": getColor(surfaceBase, 0, 1, isDark ? surfaceL - 2 : surfaceL + 2),
-      "chip-border": getColor(surfaceBase, 0, 1, isDark ? borderL + 6 : borderL - 6),
+      "chip-background": isDark
+        ? getColor(surfaceBase, 0, 1, surfaceL - 2)
+        : getColor(hsl, accH, 0.08 + (popBoost * 0.14), surfaceL + 2),
+      "chip-border": isDark
+        ? getColor(surfaceBase, 0, 1, borderL + 6)
+        : getColor(hsl, accH, 0.12 + (popBoost * 0.16), borderL - 6),
     },
 
     dawn: {
-      "surface-base": getColor({ h: backgroundHue, s: Math.max(surfaceSat * 0.55, 10), l: 98 }, 0, 1, 98),
-      "surface-panel": getColor({ h: backgroundHue, s: Math.max(surfaceSat * 0.55, 10), l: 98 }, 0, 1, 98),
-      "surface-card": getColor({ h: backgroundHue, s: Math.max(surfaceSat * 0.6, 12), l: 97 }, 0, 1, 97),
-      "surface-elevated": getColor({ h: backgroundHue, s: Math.max(surfaceSat * 0.6, 12), l: 96 }, 0, 1, 96),
-      "surface-hover": getColor({ h: backgroundHue, s: Math.max(surfaceSat * 0.5, 10), l: 94 }, 0, 1, 94),
+      "surface-base": getColor({ h: neutralBackgroundHue, s: Math.max(surfaceSat * 0.55, 10), l: 98 }, 0, 1, 98),
+      "surface-panel": getColor({ h: neutralBackgroundHue, s: Math.max(surfaceSat * 0.55, 10), l: 98 }, 0, 1, 98),
+      "surface-card": getColor({ h: neutralBackgroundHue, s: Math.max(surfaceSat * 0.6, 12), l: 97 }, 0, 1, 97),
+      "surface-elevated": getColor({ h: neutralBackgroundHue, s: Math.max(surfaceSat * 0.6, 12), l: 96 }, 0, 1, 96),
+      "surface-hover": getColor({ h: neutralBackgroundHue, s: Math.max(surfaceSat * 0.5, 10), l: 94 }, 0, 1, 94),
       "text-strong": getColor(hsl, 0, 0.1, 18),
       "text-body": getColor(hsl, 0, 0.1, 26),
       "text-muted": getColor(hsl, 0, 0.1, 36),
@@ -486,8 +542,8 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const bg = tokens.surfaces.background;
   const card = tokens.cards['card-panel-surface'];
 
-  const mutedBg = isPop ? bg : card;
-  const mutedTarget = isPop ? 4.5 : 3.2;
+  const mutedBg = card;
+  const mutedTarget = 3.2;
 
   tokens.typography.heading = ensureContrast(tokens.typography.heading, bg, 7, isDark);
   tokens.typography['text-strong'] = ensureContrast(tokens.typography['text-strong'], bg, 7, isDark);
@@ -507,6 +563,8 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     const borderBg = tokens.surfaces['surface-plain'];
     const accentTarget = 4.5;
     const borderTarget = 3.2;
+    const bodyText = tokens.typography['text-body'];
+    const preferLightenAccent = hexToHsl(bodyText).l < 50;
 
     tokens.brand.primary = ensureContrast(tokens.brand.primary, accentBg, accentTarget, false);
     tokens.brand.secondary = ensureContrast(tokens.brand.secondary, accentBg, accentTarget, false);
@@ -518,6 +576,13 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     tokens.borders['border-accent-medium'] = ensureContrast(tokens.borders['border-accent-medium'], borderBg, borderTarget, false);
     tokens.borders['border-accent-strong'] = ensureContrast(tokens.borders['border-accent-strong'], borderBg, borderTarget, false);
     tokens.borders['border-accent-hover'] = ensureContrast(tokens.borders['border-accent-hover'], borderBg, borderTarget, false);
+
+    tokens.brand.primary = ensureContrast(tokens.brand.primary, bodyText, accentTarget, preferLightenAccent);
+    tokens.brand.secondary = ensureContrast(tokens.brand.secondary, bodyText, accentTarget, preferLightenAccent);
+    tokens.brand.accent = ensureContrast(tokens.brand.accent, bodyText, accentTarget, preferLightenAccent);
+    tokens.brand['accent-strong'] = ensureContrast(tokens.brand['accent-strong'], bodyText, accentTarget, preferLightenAccent);
+    tokens.brand.cta = ensureContrast(tokens.brand.cta, bodyText, accentTarget, preferLightenAccent);
+    tokens.brand['cta-hover'] = ensureContrast(tokens.brand['cta-hover'], bodyText, accentTarget, preferLightenAccent);
   }
 
   return tokens;

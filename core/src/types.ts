@@ -79,3 +79,31 @@ export interface Outputs {
   vscodeTheme: VsCodeTheme;
   figmaTokens: FigmaTokensFile;
 }
+
+export interface ColorRecord {
+  name: string;
+  hex: string;
+}
+
+export interface ProjectSettings {
+  neutralCap: number;
+  maxColors: number;
+  nearDupThreshold: number;
+  anchorsAlwaysKeep: boolean;
+}
+
+export interface Palette {
+  id: string;
+  label: string;
+  role: 'Season' | 'Characters' | 'State' | 'Other';
+  anchorHex: string;
+  generatorMode: 'mono' | 'anal' | 'comp' | 'apoc';
+  locked: boolean;
+  colors?: ColorRecord[];
+}
+
+export interface Project {
+  projectName: string;
+  settings: ProjectSettings;
+  palettes: Palette[];
+}

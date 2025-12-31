@@ -10,15 +10,27 @@
   color-scheme: dark;
 }
 
-body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+html {
+  background-color: var(--page-background, #f8fafc);
 }
 
-.dark body {
-  @apply bg-slate-950 text-slate-50;
+body {
+  @apply antialiased;
+  background-color: var(--page-background, #f8fafc);
+  background-image: var(--page-background-image, none);
+  background-size: var(--page-background-size, auto);
+  background-position: var(--page-background-position, 0 0);
+  background-repeat: no-repeat;
+  color: var(--panel-text, #0f172a);
+  transition: background-color 500ms ease, color 500ms ease;
 }
 
 .app-theme {
+  background-color: var(--page-background, #f8fafc);
+  background-image: var(--page-background-image, none);
+  background-size: var(--page-background-size, auto);
+  background-position: var(--page-background-position, 0 0);
+  background-repeat: no-repeat;
   color: var(--panel-text);
 }
 
@@ -83,19 +95,69 @@ body {
 .panel-surface-soft {
   background-color: var(--panel-bg-soft) !important;
   border-color: var(--panel-border) !important;
-  color: var(--panel-text);
+  color: var(--panel-text-soft, var(--panel-text));
 }
 
 .panel-surface-strong {
   background-color: var(--panel-bg-strong) !important;
   border-color: var(--panel-border) !important;
+  color: var(--panel-text-strong, var(--panel-text));
+}
+
+.panel-surface-soft .panel-text {
+  color: var(--panel-text-soft, var(--panel-text)) !important;
+}
+
+.panel-surface-soft .panel-muted {
+  color: var(--panel-muted-soft, var(--panel-muted)) !important;
+}
+
+.panel-surface-strong .panel-text {
+  color: var(--panel-text-strong, var(--panel-text)) !important;
+}
+
+.panel-surface-strong .panel-muted {
+  color: var(--panel-muted-strong, var(--panel-muted)) !important;
+}
+
+.toast {
+  background-color: var(--panel-bg-strong);
+  border-color: var(--panel-border);
   color: var(--panel-text);
+}
+
+.toast-success {
+  background-color: var(--status-success);
+  border-color: var(--status-success-border);
+  color: var(--status-success-text);
+}
+
+.toast-warn {
+  background-color: var(--status-warning);
+  border-color: var(--status-warning-border);
+  color: var(--status-warning-text);
+}
+
+.toast-error {
+  background-color: var(--status-error);
+  border-color: var(--status-error-border);
+  color: var(--status-error-text);
+}
+
+.toast-info {
+  background-color: var(--status-info);
+  border-color: var(--status-info-border);
+  color: var(--status-info-text);
 }
 
 @media print {
   @page {
     size: A4;
     margin: 12mm;
+  }
+
+  :root, body, #root {
+    background-color: #fdfdf9 !important;
   }
 
   :root, body, #root {

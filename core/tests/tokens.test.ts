@@ -28,6 +28,16 @@ describe('tokens', () => {
         const primary500 = (tokens.primary as TokenGroup)['500'] as Token;
         expect(primary500.value).toMatch(/^#[0-9a-f]{6}$/i);
     });
+
+    it('locks contrast when enabled', () => {
+        const tokens = generateTokens({ ...DEFAULT_CONFIG, lockContrast: true, contrastTarget: 4.5 });
+        const primary500 = (tokens.primary as TokenGroup)['500'] as Token;
+        const neutral50 = (tokens.neutral as TokenGroup)['50'] as Token;
+        const lum1 = wcagLuminance(primary500.color);
+        const lum2 = wcagLuminance(neutral50.color);
+        const ratio = (Math.max(lum1, lum2) + 0.05) / (Math.min(lum1, lum2) + 0.05);
+        expect(ratio).toBeGreaterThanOrEqual(4.5);
+    });
   });
 
   describe('autoTuneContrast', () => {

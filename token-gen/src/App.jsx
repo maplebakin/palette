@@ -8,19 +8,23 @@ import ValidateStage from './components/stages/ValidateStage';
 import PackageStage from './components/stages/PackageStage';
 import ExportStage from './components/stages/ExportStage';
 import useDarkClassSync from './hooks/useDarkClassSync';
+import useShareLink from './hooks/useShareLink';
 import { useNotification } from './context/NotificationContext.jsx';
 import { PaletteContext } from './context/PaletteContext.jsx';
 import {
   escapeXml,
   getContrastRatio,
   getWCAGBadge,
+  hexToHsl,
   hexToRgb,
   hexWithAlpha,
+  hslToHex,
   normalizeHex,
   pickReadableText,
 } from './lib/colorUtils';
 import { addPrintMode, buildOrderedStack, generateTokens, orderedSwatchSpec } from './lib/tokens';
 import { buildGenericPayload, buildPenpotPayload, buildWitchcraftPayload, buildFigmaTokensPayload, buildStyleDictionaryPayload } from './lib/payloads';
+import { buildThemeCss, getThemeClassName, THEME_CLASSNAMES } from './lib/themeStyles';
 
 const encoder = new TextEncoder();
 const encodeText = (str) => encoder.encode(str);
@@ -56,6 +60,10 @@ const STORAGE_KEYS = {
 };
 
 const clampValue = (val, min, max) => Math.min(max, Math.max(min, Number(val)));
+const adjustHexLuminance = (hex, delta) => {
+  const { h, s, l } = hexToHsl(hex);
+  return hslToHex(h, s, clampValue(l + delta, 2, 98));
+};
 const sanitizeHexInput = (value, fallback = null) => {
   if (typeof value !== 'string') return fallback;
   const trimmed = value.trim();
@@ -74,6 +82,11 @@ const sanitizePrefix = (value) => {
   if (typeof value !== 'string') return '';
   return value.replace(/[^a-z0-9_.-]/gi, '').slice(0, 32);
 };
+const slugifyThemeName = (value, fallback = 'theme') => {
+  const clean = sanitizeThemeName(value, fallback);
+  const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug || fallback;
+};
 const downloadFile = (filename, content, mime = 'text/plain') => {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -90,6 +103,35 @@ const buildCssVariables = (stack, prefix = '') => {
   const lines = stack.map(({ path, value }) => `  --${safePrefix}${path.replace(/\./g, '-')}: ${value};`);
   return `:root {\n${lines.join('\n')}\n}\n`;
 };
+
+const THEME_PACK_GUIDANCE = {
+  Monochromatic: {
+    best: 'Calm product UI, editorial systems',
+    not: 'High-energy multi-brand palettes',
+  },
+  Analogous: {
+    best: 'Warm storytelling, immersive UI',
+    not: 'Strictly neutral enterprise systems',
+  },
+  Complementary: {
+    best: 'Bold CTA contrast, marketing',
+    not: 'Subtle, low-contrast brands',
+  },
+  Tertiary: {
+    best: 'Playful multi-accent products',
+    not: 'Minimal single-accent systems',
+  },
+  Apocalypse: {
+    best: 'Experimental visuals, game UI',
+    not: 'Conservative enterprise apps',
+  },
+};
+const getThemePackGuidance = (modeValue) => (
+  THEME_PACK_GUIDANCE[modeValue] ?? {
+    best: 'Product UI and brand systems',
+    not: 'Single-use experiments',
+  }
+);
 
 const TOKEN_VAR_MAP = new Map(
   orderedSwatchSpec.reduce((acc, { path, fallbackPath }) => {
@@ -475,6 +517,7 @@ const presets = [
 
 export default function App() {
   const { notify } = useNotification();
+  const isDev = import.meta.env.DEV;
   const isInternal = import.meta.env.VITE_INTERNAL === 'true';
   const [view, setView] = useState('palette');
   const [baseColor, setBaseColor] = useState('#7b241c');
@@ -511,6 +554,7 @@ export default function App() {
   const [printMeta, setPrintMeta] = useState(() => getPrintTimestamps());
   const savedTitleRef = useRef('');
   const exportsSectionRef = useRef(null);
+  const savedPaletteInputRef = useRef(null);
   const [showFineTune, setShowFineTune] = useState(false);
   const [headerOpen, setHeaderOpen] = useState(true);
   const [chaosMenuOpen, setChaosMenuOpen] = useState(false);
@@ -534,8 +578,7 @@ export default function App() {
   }, [notify]);
 
   const isDark = themeMode === 'dark';
-  const uiIsDark = themeMode === 'dark';
-  useDarkClassSync(uiIsDark);
+  useDarkClassSync(isDark);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(min-width: 768px)');
@@ -564,6 +607,12 @@ export default function App() {
   }, [headerOpen]);
 
   useEffect(() => {
+    if (!isDev && activeTab === 'Exports') {
+      setActiveTab('Quick view');
+    }
+  }, [activeTab, isDev]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     const updateStage = () => {
       const hash = window.location.hash.replace('#', '');
@@ -580,7 +629,7 @@ export default function App() {
         setCurrentStage('Package');
         return;
       }
-      if (activeTab === 'Exports') {
+      if (activeTab === 'Exports' && isDev) {
         setCurrentStage('Export');
         return;
       }
@@ -589,7 +638,7 @@ export default function App() {
     updateStage();
     window.addEventListener('hashchange', updateStage);
     return () => window.removeEventListener('hashchange', updateStage);
-  }, [activeTab, view]);
+  }, [activeTab, isDev, view]);
 
   const applySavedPalette = useCallback((payload) => {
     if (!payload || typeof payload !== 'object') return;
@@ -757,9 +806,10 @@ export default function App() {
       neutralCurve,
       accentStrength,
       popIntensity,
+      printMode,
     });
     return applyTokenOverrides(generated, importedOverrides);
-  }, [baseColor, mode, themeMode, apocalypseIntensity, harmonyIntensity, neutralCurve, accentStrength, popIntensity, importedOverrides]);
+  }, [baseColor, mode, themeMode, apocalypseIntensity, harmonyIntensity, neutralCurve, accentStrength, popIntensity, printMode, importedOverrides]);
   const paletteSnapshot = useMemo(() => ({
     baseColor,
     mode,
@@ -796,11 +846,7 @@ export default function App() {
     popIntensity,
     tokenPrefix: sanitizePrefix(tokenPrefix),
   }), [baseColor, mode, themeMode, isDark, printMode, safeCustomThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix]);
-  const buildShareHash = useCallback(() => {
-    const json = JSON.stringify(shareState);
-    const encoded = typeof btoa === 'function' ? btoa(unescape(encodeURIComponent(json))) : '';
-    return encoded ? `#palette=${encoded}` : '';
-  }, [shareState]);
+  const { shareUrl } = useShareLink(shareState);
   const quickEssentials = useMemo(() => ([
     { key: 'Primary', color: tokens.brand.primary },
     { key: 'Secondary', color: tokens.brand.secondary },
@@ -813,13 +859,20 @@ export default function App() {
     { key: 'Text strong', color: tokens.typography['text-strong'] },
     { key: 'Text muted', color: tokens.typography['text-muted'] },
   ]).filter(({ color }) => Boolean(color)), [tokens, baseColor]);
-  const tabOptions = useMemo(() => (['Quick view', 'Full system', 'Print assets', 'Exports']), []);
+  const tabOptions = useMemo(() => (
+    isDev
+      ? ['Quick view', 'Full system', 'Print assets', 'Exports']
+      : ['Quick view', 'Full system', 'Print assets']
+  ), [isDev]);
   const tabIds = useMemo(() => ({
     'Quick view': 'tab-quick',
     'Full system': 'tab-full',
     'Print assets': 'tab-print',
     'Exports': 'tab-exports',
   }), []);
+  const stageDefs = useMemo(() => (
+    isDev ? STAGE_DEFS : STAGE_DEFS.filter((stage) => stage.id !== 'export')
+  ), [isDev]);
   const getTabId = useCallback((tab) => tabIds[tab] || `tab-${tab.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`, [tabIds]);
   const handleStageNavigate = useCallback((event, stage) => {
     if (stage.tab) {
@@ -830,11 +883,106 @@ export default function App() {
     setCurrentStage(stage.label);
   }, [activeTab, setActiveTab, setCurrentStage]);
   const handleJumpToExports = useCallback(() => {
+    if (!import.meta.env.DEV) return;
     requestAnimationFrame(() => {
       if (exportsSectionRef.current) {
         exportsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     });
+  }, []);
+
+  const exportSavedPalettes = useCallback(() => {
+    if (!savedPalettes.length) {
+      setStatusMessage('No saved palettes to export', 'warn');
+      return;
+    }
+    const payload = {
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      palettes: savedPalettes,
+    };
+    downloadFile('apocapalette-saved-palettes.json', JSON.stringify(payload, null, 2), 'application/json');
+    setStatusMessage('Saved palettes exported', 'success');
+  }, [savedPalettes, setStatusMessage]);
+
+  const normalizeImportedPalette = useCallback((palette, index) => {
+    if (!palette || typeof palette !== 'object') return null;
+    const base = sanitizeHexInput(palette.baseColor, null);
+    const modeName = typeof palette.mode === 'string' ? palette.mode : '';
+    if (!base || !modeName) return null;
+    const theme = ['light', 'dark', 'pop'].includes(palette.themeMode)
+      ? palette.themeMode
+      : (palette.isDark ? 'dark' : 'light');
+    return {
+      id: Number.isFinite(palette.id) ? palette.id : Date.now() + index,
+      name: sanitizeThemeName(palette.name || `Imported ${index + 1}`, `Imported ${index + 1}`),
+      baseColor: base,
+      mode: modeName,
+      themeMode: theme,
+      isDark: theme === 'dark',
+      printMode: Boolean(palette.printMode),
+      customThemeName: sanitizeThemeName(palette.customThemeName || '', ''),
+      harmonyIntensity: clampValue(palette.harmonyIntensity ?? 100, 50, 160),
+      apocalypseIntensity: clampValue(palette.apocalypseIntensity ?? 100, 0, 200),
+      neutralCurve: clampValue(palette.neutralCurve ?? 100, 60, 140),
+      accentStrength: clampValue(palette.accentStrength ?? 100, 60, 140),
+      popIntensity: clampValue(palette.popIntensity ?? 100, 60, 140),
+      tokenPrefix: sanitizePrefix(palette.tokenPrefix || ''),
+      importedOverrides: palette.importedOverrides ?? null,
+    };
+  }, []);
+
+  const importSavedPalettes = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = String(e.target.result || '');
+        const parsed = JSON.parse(text);
+        const list = Array.isArray(parsed) ? parsed : parsed?.palettes;
+        if (!Array.isArray(list)) {
+          setStatusMessage('Invalid palette file format', 'warn');
+          return;
+        }
+        const normalized = list
+          .map((palette, index) => normalizeImportedPalette(palette, index))
+          .filter(Boolean);
+        if (!normalized.length) {
+          setStatusMessage('No valid palettes found to import', 'warn');
+          return;
+        }
+        setSavedPalettes((prev) => {
+          const combined = [...normalized, ...prev];
+          const byName = new Map();
+          combined.forEach((palette) => {
+            if (!palette?.name) return;
+            if (!byName.has(palette.name)) byName.set(palette.name, palette);
+          });
+          const merged = Array.from(byName.values())
+            .sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
+            .slice(0, 20);
+          if (storageAvailable && !storageCorrupt) {
+            localStorage.setItem(STORAGE_KEYS.saved, JSON.stringify(merged));
+          }
+          return merged;
+        });
+        if (storageAvailable && !storageCorrupt) {
+          setStatusMessage(`Imported ${normalized.length} palette${normalized.length === 1 ? '' : 's'}`, 'success');
+        } else {
+          setStatusMessage('Imported palettes (storage blocked; save disabled)', 'warn');
+        }
+      } catch (err) {
+        console.warn('Failed to import palettes', err);
+        setStatusMessage('Failed to import palettes', 'error');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }, [normalizeImportedPalette, setStatusMessage, storageAvailable, storageCorrupt]);
+
+  const triggerSavedPalettesImport = useCallback(() => {
+    savedPaletteInputRef.current?.click();
   }, []);
 
   const saveCurrentPalette = useCallback(() => {
@@ -965,7 +1113,9 @@ export default function App() {
     return baseList.map((entry) => ({ name: entry.name, color: readColor(entry.path, entry.fallback) }))
       .filter(({ color }) => Boolean(color));
   }, [finalTokens, tokens]);
-  const ctaTextColor = useMemo(() => pickReadableText(tokens.brand.primary), [tokens.brand.primary]);
+  const ctaBase = tokens.brand.cta || tokens.brand.primary;
+  const ctaTextColor = useMemo(() => pickReadableText(ctaBase), [ctaBase]);
+  const primaryTextColor = useMemo(() => pickReadableText(tokens.brand.primary), [tokens.brand.primary]);
   const neutralButtonText = useMemo(() => pickReadableText(tokens.cards['card-panel-surface'], '#0f172a', '#ffffff'), [tokens.cards]);
   const paletteRows = useMemo(() => ([
     { 
@@ -1168,11 +1318,13 @@ export default function App() {
   ), [finalTokens, orderedStack, displayThemeName, mode, baseColor, isDark, printMode, tokenPrefix]);
 
   const exportJson = (filename) => {
+    if (!import.meta.env.DEV) return;
     const penpotPayload = buildExportPayload();
     downloadFile(filename, JSON.stringify(penpotPayload, null, 2), 'application/json');
   };
 
   const exportGenericJson = (filename) => {
+    if (!import.meta.env.DEV) return;
     const payload = buildGenericPayload(finalTokens, {
       themeName: displayThemeName,
       mode,
@@ -1186,41 +1338,169 @@ export default function App() {
   };
 
   const exportWitchcraftJson = (filename) => {
+    if (!import.meta.env.DEV) return;
     const witchcraftPayload = buildWitchcraftPayload(finalTokens, displayThemeName, mode, isDark);
     downloadFile(filename, JSON.stringify(witchcraftPayload, null, 2), 'application/json');
   };
 
   const exportFigmaTokensJson = (filename) => {
+    if (!import.meta.env.DEV) return;
     const payload = buildFigmaTokensPayload(finalTokens, { namingPrefix: tokenPrefix || undefined });
     downloadFile(filename, JSON.stringify(payload, null, 2), 'application/json');
   };
 
   const exportStyleDictionaryJson = (filename) => {
+    if (!import.meta.env.DEV) return;
     const payload = buildStyleDictionaryPayload(finalTokens, { namingPrefix: tokenPrefix || undefined });
     downloadFile(filename, JSON.stringify(payload, null, 2), 'application/json');
   };
   const exportCssVars = () => {
+    if (!import.meta.env.DEV) return;
     const css = buildCssVariables(orderedStack, sanitizePrefix(tokenPrefix));
     const slugBase = sanitizeThemeName(displayThemeName || 'theme', 'theme');
     const slug = slugBase.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'theme';
     downloadFile(`${slug}-tokens.css`, css, 'text/css');
     setStatusMessage('CSS variables exported', 'success');
   };
+  const exportUiThemeCss = () => {
+    if (!import.meta.env.DEV) return;
+    const slugBase = sanitizeThemeName(displayThemeName || 'theme', 'theme');
+    const slug = slugBase.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'theme';
+    const css = buildThemeCss(uiTheme, `:root.${themeClass}`);
+    downloadFile(`${slug}-ui-theme.css`, css, 'text/css');
+    setStatusMessage('UI theme CSS exported', 'success');
+  };
+  const handleDownloadThemePack = useCallback(async () => {
+    if (!import.meta.env.DEV) return;
+    if (typeof Blob === 'undefined') {
+      notify('File export is not supported in this browser', 'error');
+      return;
+    }
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const themeLabel = sanitizeThemeName(displayThemeName || 'Theme', 'Theme');
+      const themeSlug = slugifyThemeName(themeLabel, 'theme');
+      const root = zip.folder(themeSlug);
+      if (!root) throw new Error('Failed to create zip root folder');
+      const { date } = getPrintTimestamps();
+      const baseHex = normalizeHex(baseColor || '#000000', '#000000').replace('#', '');
+      const modeSlug = mode.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'mode';
+      const zipName = `${themeSlug}__${modeSlug}__${date}__${baseHex}.zip`;
+      const { best, not: notFor } = getThemePackGuidance(mode);
+      const themeModeLabel = themeMode || (isDark ? 'dark' : 'light');
+      const readme = [
+        `Theme name: ${themeLabel}`,
+        `Base hex: ${normalizeHex(baseColor || '#000000', '#000000').toUpperCase()}`,
+        `Harmony mode: ${mode}`,
+        `Theme mode: ${themeModeLabel}`,
+        `Best for: ${best}`,
+        `Not for: ${notFor}`,
+        'Usage:',
+        '- Use css/variables.css in your project',
+        '- tokens.json is the canonical source',
+        '- Import figma/tokens.json into Figma Tokens (if included)',
+      ];
+      if (printMode) {
+        readme.splice(4, 0, 'Print mode: on');
+      }
+      root.file('README.txt', readme.join('\n'));
 
+      const canonicalTokens = buildGenericPayload(finalTokens, {
+        themeName: displayThemeName,
+        mode,
+        baseColor,
+        isDark,
+        printMode,
+        generatedAt: new Date().toISOString(),
+        tokenPrefix: tokenPrefix || undefined,
+      });
+      root.file('tokens.json', JSON.stringify(canonicalTokens, null, 2));
+
+      root.folder('css')?.file(
+        'variables.css',
+        buildCssVariables(orderedStack, sanitizePrefix(tokenPrefix))
+      );
+
+      const figmaPayload = buildFigmaTokensPayload(finalTokens, {
+        namingPrefix: tokenPrefix || undefined,
+      });
+      if (figmaPayload && Object.keys(figmaPayload).length > 0) {
+        root.folder('figma')?.file('tokens.json', JSON.stringify(figmaPayload, null, 2));
+      }
+
+      let previewFolder = null;
+      const addPreviewFile = (name, content) => {
+        if (!content) return;
+        if (!previewFolder) {
+          previewFolder = root.folder('preview');
+        }
+        previewFolder?.file(name, content);
+      };
+      try {
+        const paletteSvg = buildPaletteCardSvg(currentTheme);
+        addPreviewFile('palette-card.svg', paletteSvg);
+      } catch (err) {
+        console.warn('Theme pack palette SVG failed', err);
+      }
+      try {
+        const stripSvg = buildStripSvg(currentTheme);
+        addPreviewFile('swatch-strip.svg', stripSvg);
+      } catch (err) {
+        console.warn('Theme pack strip SVG failed', err);
+      }
+
+      const [palettePng, stripPng] = await Promise.allSettled([
+        renderPaletteCardPng(currentTheme),
+        renderStripPng(currentTheme),
+      ]);
+      if (palettePng.status === 'fulfilled') {
+        addPreviewFile('palette-card.png', palettePng.value);
+      }
+      if (stripPng.status === 'fulfilled') {
+        addPreviewFile('swatch-strip.png', stripPng.value);
+      }
+
+      const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = zipName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setStatusMessage('Theme pack downloaded', 'success');
+    } catch (err) {
+      console.error('Theme pack export failed', err);
+      notify('Theme pack export failed. Check console for details.', 'error');
+    }
+  }, [
+    baseColor,
+    currentTheme,
+    displayThemeName,
+    finalTokens,
+    isDark,
+    mode,
+    notify,
+    orderedStack,
+    printMode,
+    setStatusMessage,
+    themeMode,
+    tokenPrefix,
+  ]);
   const copyShareLink = useCallback(async () => {
     try {
-      const hash = buildShareHash();
-      if (!hash) throw new Error('Share link unavailable');
-      const url = `${window.location.origin}${window.location.pathname}${hash}`;
-      if (url.length > 1900) {
+      if (!shareUrl) throw new Error('Share link unavailable');
+      if (shareUrl.length > 1900) {
         notify('Share link too long; try shorter names/prefix', 'warn');
         return;
       }
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
+        await navigator.clipboard.writeText(shareUrl);
       } else {
         const textarea = document.createElement('textarea');
-        textarea.value = url;
+        textarea.value = shareUrl;
         textarea.style.position = 'absolute';
         textarea.style.left = '-9999px';
         document.body.appendChild(textarea);
@@ -1233,9 +1513,10 @@ export default function App() {
       console.warn('Failed to copy share link', err);
       notify('Could not copy share link', 'error');
     }
-  }, [buildShareHash, notify]);
+  }, [notify, shareUrl]);
 
   const exportAllAssets = useCallback(async () => {
+    if (!import.meta.env.DEV) return;
     if (typeof Blob === 'undefined') {
       const msg = 'File export is not supported in this browser';
       notify(msg, 'error');
@@ -1291,7 +1572,14 @@ export default function App() {
     }
   }, [buildExportPayload, currentTheme, notify]);
 
+  const handleDownloadThemePackWithPrint = useCallback(async () => {
+    if (!import.meta.env.DEV) return;
+    await handleDownloadThemePack();
+    await exportAllAssets();
+  }, [exportAllAssets, handleDownloadThemePack]);
+
   const handleExportPdf = () => {
+    if (!import.meta.env.DEV) return;
     if (typeof window.print !== 'function') {
       notify('Print is not supported in this browser', 'error');
       setExportError('Print is not supported in this browser');
@@ -1313,33 +1601,83 @@ export default function App() {
   const headerBackground = hexWithAlpha(tokens.surfaces['header-background'], 0.9);
   const headerGlowA = hexWithAlpha(tokens.brand.primary, 0.08);
   const headerGlowB = hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.06);
-  const pageBackground = printMode ? '#fdfdf9' : tokens.surfaces['page-background'];
-  const backgroundImage = printMode
-    ? 'radial-gradient(circle at 25% 25%, #f0f0f0 1px, transparent 1px), radial-gradient(circle at 75% 75%, #e0e0e0 1px, transparent 1px)'
-    : [
-        `radial-gradient(circle at 16% 14%, ${hexWithAlpha(tokens.brand.primary, 0.12)}, transparent 28%)`,
-        `radial-gradient(circle at 82% 8%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.1)}, transparent 30%)`,
-        `linear-gradient(180deg, ${hexWithAlpha(tokens.surfaces['background'], 0.75)} 0%, ${hexWithAlpha(tokens.surfaces['page-background'], 0.9)} 42%, ${tokens.surfaces['page-background']} 100%)`,
-      ].join(', ');
-  const backgroundSize = printMode ? '40px 40px, 40px 40px' : '140% 140%, 120% 120%, auto';
-  const backgroundPosition = printMode ? '0 0, 0 0' : '0 0, 100% 0, 0 0';
+  const pageBackground = finalTokens.surfaces['page-background']
+    || finalTokens.surfaces.background
+    || tokens.surfaces['page-background'];
+  const backgroundImage = [
+    `radial-gradient(circle at 16% 14%, ${hexWithAlpha(tokens.brand.primary, 0.12)}, transparent 28%)`,
+    `radial-gradient(circle at 82% 8%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.1)}, transparent 30%)`,
+    `linear-gradient(180deg, ${hexWithAlpha(tokens.surfaces['background'], 0.75)} 0%, ${hexWithAlpha(pageBackground, 0.9)} 42%, ${pageBackground} 100%)`,
+  ].join(', ');
+  const backgroundSize = '140% 140%, 120% 120%, auto';
+  const backgroundPosition = '0 0, 100% 0, 0 0';
   const quickBarBottom = 'max(12px, env(safe-area-inset-bottom, 12px))';
   const panelBase = tokens.cards['card-panel-surface'];
   const panelStrong = tokens.cards['card-panel-surface-strong'] || panelBase;
   const panelSoft = hexWithAlpha(panelBase, isDark ? 0.72 : 0.86);
   const panelGhost = hexWithAlpha(tokens.surfaces['background'], isDark ? 0.82 : 0.94);
   const panelBorder = tokens.cards['card-panel-border'];
-  const panelChip = tokens.cards['card-tag-bg'] || panelBase;
-  const panelChipBorder = tokens.cards['card-tag-border'] || panelBorder;
-  const panelChipText = tokens.cards['card-tag-text'] || tokens.typography['text-strong'];
+  const panelText = tokens.textPalette?.['text-secondary'] || tokens.typography['text-strong'];
+  const panelMuted = tokens.textPalette?.['text-tertiary'] || tokens.typography['text-muted'];
+  const panelTextStrong = pickReadableText(panelStrong);
+  const panelMutedStrong = getContrastRatio(panelMuted, panelStrong) >= 3.2
+    ? panelMuted
+    : hexWithAlpha(panelTextStrong, 0.72);
+  const panelTextSoft = pickReadableText(panelSoft);
+  const panelMutedSoft = getContrastRatio(panelMuted, panelSoft) >= 3.2
+    ? panelMuted
+    : hexWithAlpha(panelTextSoft, 0.72);
+  const chipMinContrast = themeMode === 'pop' ? 1.6 : 1.25;
+  const panelChipBase = tokens.cards['card-tag-bg'] || panelBase;
+  const panelChipReference = getContrastRatio(panelChipBase, panelStrong) < getContrastRatio(panelChipBase, panelBase)
+    ? panelStrong
+    : panelBase;
+  let panelChip = panelChipBase;
+  if (getContrastRatio(panelChip, panelChipReference) < chipMinContrast) {
+    const referenceL = hexToHsl(panelChipReference).l;
+    const delta = referenceL > 50 ? -12 : 12;
+    const adjusted = adjustHexLuminance(panelChipBase, delta);
+    const boosted = adjustHexLuminance(panelChipBase, delta * 2);
+    if (getContrastRatio(adjusted, panelChipReference) >= chipMinContrast) {
+      panelChip = adjusted;
+    } else if (getContrastRatio(boosted, panelChipReference) >= chipMinContrast) {
+      panelChip = boosted;
+    } else {
+      panelChip = pickReadableText(panelChipReference, '#111827', '#f8fafc');
+    }
+  }
+  const panelChipTextBase = tokens.cards['card-tag-text'] || panelText;
+  const panelChipText = getContrastRatio(panelChipTextBase, panelChip) >= 4.5
+    ? panelChipTextBase
+    : pickReadableText(panelChip);
+  const panelChipBorderBase = tokens.cards['card-tag-border'] || panelBorder;
+  const panelChipBorder = getContrastRatio(panelChipBorderBase, panelChip) >= chipMinContrast
+    ? panelChipBorderBase
+    : hexWithAlpha(panelChipText, 0.35);
+  const statusSuccess = tokens.status.success;
+  const statusWarning = tokens.status.warning;
+  const statusError = tokens.status.error;
+  const statusInfo = tokens.status.info;
+  const statusSuccessText = pickReadableText(statusSuccess);
+  const statusWarningText = pickReadableText(statusWarning);
+  const statusErrorText = pickReadableText(statusError);
+  const statusInfoText = pickReadableText(statusInfo);
   const uiTheme = useMemo(() => ({
+    '--page-background': pageBackground,
+    '--page-background-image': backgroundImage,
+    '--page-background-size': backgroundSize,
+    '--page-background-position': backgroundPosition,
     '--panel-bg': panelBase,
     '--panel-bg-soft': panelSoft,
     '--panel-bg-strong': panelStrong,
     '--panel-bg-ghost': panelGhost,
     '--panel-border': panelBorder,
-    '--panel-text': tokens.typography['text-strong'],
-    '--panel-muted': tokens.typography['text-muted'],
+    '--panel-text': panelText,
+    '--panel-muted': panelMuted,
+    '--panel-text-strong': panelTextStrong,
+    '--panel-muted-strong': panelMutedStrong,
+    '--panel-text-soft': panelTextSoft,
+    '--panel-muted-soft': panelMutedSoft,
     '--panel-accent': tokens.brand.primary,
     '--panel-accent-strong': tokens.brand.cta || tokens.brand.primary,
     '--panel-accent-text': ctaTextColor,
@@ -1347,32 +1685,78 @@ export default function App() {
     '--panel-chip-border': panelChipBorder,
     '--panel-chip-text': panelChipText,
     '--panel-shadow': `0 22px 60px -48px ${hexWithAlpha(tokens.brand.primary, 0.45)}`,
-  }), [panelBase, panelSoft, panelStrong, panelGhost, panelBorder, panelChip, panelChipBorder, panelChipText, ctaTextColor, tokens]);
+    '--status-success': statusSuccess,
+    '--status-success-text': statusSuccessText,
+    '--status-success-border': hexWithAlpha(statusSuccess, 0.45),
+    '--status-warning': statusWarning,
+    '--status-warning-text': statusWarningText,
+    '--status-warning-border': hexWithAlpha(statusWarning, 0.45),
+    '--status-error': statusError,
+    '--status-error-text': statusErrorText,
+    '--status-error-border': hexWithAlpha(statusError, 0.45),
+    '--status-info': statusInfo,
+    '--status-info-text': statusInfoText,
+    '--status-info-border': hexWithAlpha(statusInfo, 0.45),
+  }), [
+    pageBackground,
+    backgroundImage,
+    backgroundSize,
+    backgroundPosition,
+    panelBase,
+    panelSoft,
+    panelStrong,
+    panelGhost,
+    panelBorder,
+    panelChip,
+    panelChipBorder,
+    panelChipText,
+    panelText,
+    panelMuted,
+    panelTextStrong,
+    panelMutedStrong,
+    panelTextSoft,
+    panelMutedSoft,
+    ctaTextColor,
+    statusSuccess,
+    statusWarning,
+    statusError,
+    statusInfo,
+    statusSuccessText,
+    statusWarningText,
+    statusErrorText,
+    statusInfoText,
+    tokens,
+  ]);
+
+  const themeClass = useMemo(() => getThemeClassName(themeMode), [themeMode]);
+  const themeCssText = useMemo(() => buildThemeCss(uiTheme, `:root.${themeClass}`), [uiTheme, themeClass]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    document.documentElement.style.backgroundColor = pageBackground;
-    document.body.style.backgroundColor = pageBackground;
-    document.body.style.color = tokens.typography['text-strong'];
+    const root = document.documentElement;
+    THEME_CLASSNAMES.forEach((name) => root.classList.remove(name));
+    root.classList.add(themeClass);
+    let styleTag = document.getElementById('theme-vars');
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'theme-vars';
+      document.head.appendChild(styleTag);
+    }
+    if (styleTag.textContent !== themeCssText) {
+      styleTag.textContent = themeCssText;
+    }
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) themeMeta.setAttribute('content', pageBackground);
-  }, [pageBackground, tokens]);
+  }, [pageBackground, themeClass, themeCssText]);
 
   return (
       <div 
-        className={`min-h-screen transition-colors duration-500 app-theme ${uiIsDark ? 'dark' : ''}`}
-        style={{
-          ...uiTheme,
-          backgroundColor: pageBackground,
-          backgroundImage,
-          backgroundSize,
-          backgroundPosition,
-        }}
+        className="min-h-screen transition-colors duration-500 app-theme"
       >
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 px-3 py-2 rounded"
-          style={{ backgroundColor: tokens.brand.primary, color: ctaTextColor }}
+          style={{ backgroundColor: tokens.brand.primary, color: primaryTextColor }}
         >
           Skip to content
         </a>
@@ -1387,18 +1771,18 @@ export default function App() {
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Theme</p>
             <p className="text-lg font-bold leading-tight">{displayThemeName}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-300 opacity-80">Base color: {baseColor.toUpperCase()}</p>
+            <p className="text-xs panel-muted opacity-80">Base color: {baseColor.toUpperCase()}</p>
           </div>
           <div className="space-y-1 text-right">
             <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Mode</p>
             <p className="text-sm font-bold">{mode}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-300 opacity-80">{printMeta.dateTime}</p>
+            <p className="text-xs panel-muted opacity-80">{printMeta.dateTime}</p>
           </div>
         </div>
 
         <IdentityStage
           tokens={tokens}
-          ctaTextColor={ctaTextColor}
+          primaryTextColor={primaryTextColor}
           headerBackground={headerBackground}
           headerGlowA={headerGlowA}
           headerGlowB={headerGlowB}
@@ -1408,6 +1792,10 @@ export default function App() {
           saveCurrentPalette={saveCurrentPalette}
           savedPalettes={savedPalettes}
           loadSavedPalette={loadSavedPalette}
+          exportSavedPalettes={exportSavedPalettes}
+          importSavedPalettes={importSavedPalettes}
+          triggerSavedPalettesImport={triggerSavedPalettesImport}
+          savedPaletteInputRef={savedPaletteInputRef}
           storageAvailable={storageAvailable}
           storageCorrupt={storageCorrupt}
           storageQuotaExceeded={storageQuotaExceeded}
@@ -1431,7 +1819,6 @@ export default function App() {
         >
           <div
             className="rounded-2xl border panel-surface-soft backdrop-blur p-3 shadow-2xl flex flex-col gap-2"
-            style={{ borderColor: tokens.cards["card-panel-border"] }}
           >
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 panel-surface-strong p-1.5 rounded-lg border flex-1">
@@ -1439,25 +1826,26 @@ export default function App() {
                   type="color"
                   value={pickerColor}
                   onChange={(e) => handleBaseColorChange(e.target.value)}
-                  className="w-9 h-9 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  className="w-9 h-9 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
                   aria-label="Choose base color"
                 />
                 <input
                   type="text"
                   value={baseInput}
                   onChange={(e) => handleBaseColorChange(e.target.value)}
-                  className={`w-full bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 outline-none uppercase ${baseError ? 'border-b border-rose-500' : ''}`}
+                  className="w-full bg-transparent text-sm font-mono panel-text outline-none uppercase border-b border-transparent"
+                  style={{ borderColor: baseError ? tokens.status.error : 'transparent' }}
                   aria-label="Base color hex value"
                   aria-invalid={Boolean(baseError)}
                 />
               </div>
             </div>
-            {baseError && <p className="text-xs text-rose-600 font-semibold" role="alert">{baseError}</p>}
+            {baseError && <p className="text-xs font-semibold" style={{ color: tokens.status.error }} role="alert">{baseError}</p>}
             <div className="flex flex-wrap items-center gap-2">
               <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-lg panel-surface-strong text-sm border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                className="flex-1 px-3 py-2 rounded-lg panel-surface-strong text-sm border focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
                 aria-label="Select style mode"
               >
                 {['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'].map((m) => (
@@ -1477,10 +1865,8 @@ export default function App() {
                       themeMode === item.key
                         ? 'panel-surface shadow-sm'
                         : ''
-                    } focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
-                    style={themeMode === item.key
-                      ? { color: tokens.brand.primary }
-                      : { color: tokens.typography['text-muted'] }}
+                    } panel-text focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2`}
+                    style={themeMode === item.key ? { color: tokens.brand.primary } : undefined}
                     aria-pressed={themeMode === item.key}
                     aria-label={`Set theme mode to ${item.label}`}
                   >
@@ -1504,7 +1890,7 @@ export default function App() {
           ) : (
             <>
           <div className="flex justify-center">
-            <StageNav stages={STAGE_DEFS} currentStage={currentStage} onNavigate={handleStageNavigate} />
+            <StageNav stages={stageDefs} currentStage={currentStage} onNavigate={handleStageNavigate} />
           </div>
 
           <BuildStage
@@ -1546,7 +1932,7 @@ export default function App() {
             mode={mode}
             themeMode={themeMode}
             isDark={isDark}
-            ctaTextColor={ctaTextColor}
+            primaryTextColor={primaryTextColor}
             quickEssentials={quickEssentials}
             copyAllEssentials={copyAllEssentials}
             copyEssentialsList={copyEssentialsList}
@@ -1555,13 +1941,13 @@ export default function App() {
             showContrast={showContrast}
             setShowContrast={setShowContrast}
             contrastChecks={contrastChecks}
-            finalTokens={finalTokens}
             paletteRows={paletteRows}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             getTabId={getTabId}
             tabOptions={tabOptions}
             onJumpToExports={handleJumpToExports}
+            showExports={isDev}
             isInternal={isInternal}
           />
 
@@ -1571,39 +1957,45 @@ export default function App() {
             printMode={printMode}
             setPrintMode={setPrintMode}
             tokens={tokens}
-            ctaTextColor={ctaTextColor}
+            primaryTextColor={primaryTextColor}
             printAssetPack={printAssetPack}
             canvaPrintHexes={canvaPrintHexes}
           />
 
-          <ExportStage
-            activeTab={activeTab}
-            getTabId={getTabId}
-            exportsSectionRef={exportsSectionRef}
-            handleJumpToExports={handleJumpToExports}
-            copyShareLink={copyShareLink}
-            overflowOpen={overflowOpen}
-            setOverflowOpen={setOverflowOpen}
-            tokens={tokens}
-            ctaTextColor={ctaTextColor}
-            finalTokens={finalTokens}
-            printMode={printMode}
-            isExportingAssets={isExportingAssets}
-            exportError={exportError}
-            exportBlocked={exportBlocked}
-            printSupported={printSupported}
-            neutralButtonText={neutralButtonText}
-            exportAllAssets={exportAllAssets}
-            handleExportPdf={handleExportPdf}
-            exportJson={exportJson}
-            exportGenericJson={exportGenericJson}
-            exportFigmaTokensJson={exportFigmaTokensJson}
-            exportStyleDictionaryJson={exportStyleDictionaryJson}
-            exportCssVars={exportCssVars}
-            exportWitchcraftJson={exportWitchcraftJson}
-            displayThemeName={displayThemeName}
-            isInternal={isInternal}
-          />
+          {isDev && (
+            <ExportStage
+              activeTab={activeTab}
+              getTabId={getTabId}
+              exportsSectionRef={exportsSectionRef}
+              handleJumpToExports={handleJumpToExports}
+              copyShareLink={copyShareLink}
+              overflowOpen={overflowOpen}
+              setOverflowOpen={setOverflowOpen}
+              tokens={tokens}
+              ctaTextColor={ctaTextColor}
+              primaryTextColor={primaryTextColor}
+              finalTokens={finalTokens}
+              printMode={printMode}
+              isExportingAssets={isExportingAssets}
+              exportError={exportError}
+              exportBlocked={exportBlocked}
+              printSupported={printSupported}
+              neutralButtonText={neutralButtonText}
+              exportAllAssets={exportAllAssets}
+              handleExportPdf={handleExportPdf}
+              exportJson={exportJson}
+              exportGenericJson={exportGenericJson}
+              exportFigmaTokensJson={exportFigmaTokensJson}
+              exportStyleDictionaryJson={exportStyleDictionaryJson}
+              exportCssVars={exportCssVars}
+              exportUiThemeCss={exportUiThemeCss}
+              exportWitchcraftJson={exportWitchcraftJson}
+              onDownloadThemePack={handleDownloadThemePack}
+              onDownloadThemePackWithPrint={handleDownloadThemePackWithPrint}
+              displayThemeName={displayThemeName}
+              isInternal={isInternal}
+            />
+          )}
             </>
           )}
         </main>

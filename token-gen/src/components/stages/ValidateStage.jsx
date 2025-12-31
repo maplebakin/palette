@@ -5,6 +5,7 @@ import Section from '../Section';
 import ErrorBoundary from '../ErrorBoundary.jsx';
 import SectionFallback from '../SectionFallback.jsx';
 import PaletteRow from '../PaletteRow';
+import ColorVisionPanel from '../ColorVisionPanel';
 import { StageSection } from './StageLayout';
 import { hexWithAlpha } from '../../lib/colorUtils';
 
@@ -17,7 +18,7 @@ const ValidateStage = ({
   mode,
   themeMode,
   isDark,
-  ctaTextColor,
+  primaryTextColor,
   quickEssentials,
   copyAllEssentials,
   copyEssentialsList,
@@ -26,13 +27,13 @@ const ValidateStage = ({
   showContrast,
   setShowContrast,
   contrastChecks,
-  finalTokens,
   paletteRows,
   activeTab,
   setActiveTab,
   getTabId,
   tabOptions,
   onJumpToExports,
+  showExports = false,
   isInternal,
 }) => (
   <StageSection id="validate" title="Validate" subtitle="Preview, review, and copy essentials before you package or export.">
@@ -158,7 +159,7 @@ const ValidateStage = ({
               }}
               className={`px-4 py-2 text-xs font-bold rounded-full transition-all hover:opacity-90 ${activeTab === tab ? 'shadow-md' : ''}`}
               style={activeTab === tab
-                ? { backgroundColor: tokens.brand.primary, color: ctaTextColor }
+                ? { backgroundColor: tokens.brand.primary, color: primaryTextColor }
                 : { color: tokens.typography['text-muted'] }}
             >
               {tab}
@@ -166,29 +167,31 @@ const ValidateStage = ({
           ))}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => { setActiveTab('Exports'); onJumpToExports?.(); }}
-        className="px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
-      >
-        Jump to Exports
-      </button>
+      {showExports && (
+        <button
+          type="button"
+          onClick={() => { setActiveTab('Exports'); onJumpToExports?.(); }}
+          className="px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+        >
+          Jump to Exports
+        </button>
+      )}
     </div>
 
     <section className="space-y-3 motion-safe:animate-in motion-safe:fade-in duration-500">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Quick essentials</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Tap to copy. Instant gratification before the deep dive.</p>
+          <h2 className="text-lg font-semibold panel-text">Quick essentials</h2>
+          <p className="text-xs panel-muted">Tap to copy. Instant gratification before the deep dive.</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={copyAllEssentials}
-            className="text-xs font-bold px-4 py-2 rounded-full hover:-translate-y-[2px] transition shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+          className="text-xs font-bold px-4 py-2 rounded-full hover:-translate-y-[2px] transition shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
             style={{
               backgroundColor: tokens.brand.primary,
-              color: ctaTextColor,
+              color: primaryTextColor,
               boxShadow: `0 14px 32px -22px ${tokens.brand.primary}`,
             }}
           >
@@ -197,7 +200,7 @@ const ValidateStage = ({
           <button
             type="button"
             onClick={copyEssentialsList}
-            className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+            className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong panel-text hover:-translate-y-[1px] active:scale-95 transition"
             style={{ borderColor: tokens.cards["card-panel-border"] }}
           >
             <FileText size={14} />
@@ -215,10 +218,10 @@ const ValidateStage = ({
             style={{ borderColor: tokens.cards["card-panel-border"] }}
             aria-label={`Copy ${key} ${color}`}
           >
-            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-300">{key}</span>
+            <span className="text-[11px] font-semibold panel-muted">{key}</span>
             <div className="h-12 rounded-lg border" style={{ backgroundColor: color, borderColor: hexWithAlpha(color, 0.18) }} />
-            <span className="text-[11px] font-mono text-slate-700 dark:text-slate-100 uppercase tracking-wide">{color}</span>
-            <span className="absolute right-3 top-3 text-[10px] opacity-0 group-hover:opacity-80 text-slate-500">Copy</span>
+            <span className="text-[11px] font-mono panel-text uppercase tracking-wide">{color}</span>
+            <span className="absolute right-3 top-3 text-[10px] opacity-0 group-hover:opacity-80 panel-muted">Copy</span>
           </button>
         ))}
       </div>
@@ -253,16 +256,13 @@ const ValidateStage = ({
             <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Ordered stack" reset={reset} message={message} />}>
               <div
                 className="p-6 rounded-2xl border shadow-sm panel-surface-soft backdrop-blur-sm"
-                style={{
-                  borderColor: tokens.cards["card-panel-border"],
-                }}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Ordered token stack</h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Aligned to the handoff order for quick scanning.</p>
-                  </div>
-                  <div className="text-[11px] px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">Click swatches to copy</div>
+                <h2 className="text-lg font-semibold panel-text">Ordered token stack</h2>
+                <p className="text-xs panel-muted">Aligned to the handoff order for quick scanning.</p>
+              </div>
+              <div className="text-[11px] px-3 py-1 rounded-full border panel-outline panel-muted">Click swatches to copy</div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" role="list" aria-label="Ordered tokens">
                   {orderedSwatches.map(({ name, color }, index) => (
@@ -288,15 +288,19 @@ const ValidateStage = ({
             {showContrast && (
               <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Contrast checks" reset={reset} message={message} />}>
                 <Suspense fallback={<div className="p-4 rounded-lg border panel-surface-soft text-sm">Loading contrast…</div>}>
-                  <ContrastPanel contrastChecks={contrastChecks} finalTokens={finalTokens} />
+                  <ContrastPanel contrastChecks={contrastChecks} />
                 </Suspense>
               </ErrorBoundary>
             )}
 
+            <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Accessibility" reset={reset} message={message} />}>
+              <ColorVisionPanel swatches={quickEssentials} />
+            </ErrorBoundary>
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Cohesive palette</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Main families at a glance</p>
+              <h3 className="text-lg font-semibold panel-text">Cohesive palette</h3>
+              <p className="text-xs panel-muted">Main families at a glance</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {paletteRows.map((row) => (
@@ -311,67 +315,67 @@ const ValidateStage = ({
       <div id="tab-panel-1" role="tabpanel" aria-labelledby={getTabId('Full system')} hidden={activeTab !== 'Full system'}>
         {activeTab === 'Full system' && (
           <div className="space-y-2">
-            <Section title="Foundation: Neutral Ladder" icon={<Layers size={18} className="text-slate-400" />}>
+            <Section title="Foundation: Neutral Ladder" icon={<Layers size={18} className="panel-muted" />}>
               {Object.entries(tokens.foundation.neutrals).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
             </Section>
 
-            <Section title="Foundation: Accents" icon={<Droplet size={18} className="text-slate-400" />}>
+            <Section title="Foundation: Accents" icon={<Droplet size={18} className="panel-muted" />}>
               {Object.entries(tokens.foundation.accents).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
             </Section>
 
-            <Section title="Brand & Core" icon={<Droplet size={18} className="text-slate-400" />}>
+            <Section title="Brand & Core" icon={<Droplet size={18} className="panel-muted" />}>
               {Object.entries(tokens.brand).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
             </Section>
 
-            <Section title="Text Palette" icon={<Type size={18} className="text-slate-400" />}>
+            <Section title="Text Palette" icon={<Type size={18} className="panel-muted" />}>
               {Object.entries(tokens.textPalette).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
             </Section>
 
-            <Section title="Typography" icon={<Type size={18} className="text-slate-400" />}>
+            <Section title="Typography" icon={<Type size={18} className="panel-muted" />}>
               {Object.entries(tokens.typography).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
             </Section>
 
-            <Section title="Borders" icon={<Grid size={18} className="text-slate-400" />}>
+            <Section title="Borders" icon={<Grid size={18} className="panel-muted" />}>
               {Object.entries(tokens.borders).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
             </Section>
 
-            <Section title="Surfaces & Backgrounds" icon={<Layers size={18} className="text-slate-400" />}>
+            <Section title="Surfaces & Backgrounds" icon={<Layers size={18} className="panel-muted" />}>
               {Object.entries(tokens.surfaces).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
             </Section>
 
-            <Section title="Components: Cards & Tags" icon={<Grid size={18} className="text-slate-400" />}>
+            <Section title="Components: Cards & Tags" icon={<Grid size={18} className="panel-muted" />}>
               {Object.entries(tokens.cards).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
             </Section>
 
-            <Section title="Components: Glass" icon={<Box size={18} className="text-slate-400" />}>
+            <Section title="Components: Glass" icon={<Box size={18} className="panel-muted" />}>
               {Object.entries(tokens.glass).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
             </Section>
 
-            <Section title="Components: Entity" icon={<Box size={18} className="text-slate-400" />}>
+            <Section title="Components: Entity" icon={<Box size={18} className="panel-muted" />}>
               {Object.entries(tokens.entity).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
             </Section>
 
-            <Section title="Status & Feedback" icon={<Check size={18} className="text-slate-400" />}>
+            <Section title="Status & Feedback" icon={<Check size={18} className="panel-muted" />}>
               {Object.entries(tokens.status).map(([key, val]) => (
                 <ColorSwatch key={key} name={key} color={val} />
               ))}
@@ -379,25 +383,25 @@ const ValidateStage = ({
 
             {isInternal && (
               <>
-                <Section title="Admin Palette" icon={<Box size={18} className="text-slate-400" />}>
+                <Section title="Admin Palette" icon={<Box size={18} className="panel-muted" />}>
                   {Object.entries(tokens.admin).map(([key, val]) => (
                     <ColorSwatch key={key} name={key} color={val} />
                   ))}
                 </Section>
 
-                <Section title="Back-Compat Aliases" icon={<Box size={18} className="text-slate-400" />}>
+                <Section title="Back-Compat Aliases" icon={<Box size={18} className="panel-muted" />}>
                   {Object.entries(tokens.aliases).map(([key, val]) => (
                     <ColorSwatch key={key} name={key} color={val} />
                   ))}
                 </Section>
 
-                <Section title="Dawn Overrides" icon={<Sun size={18} className="text-slate-400" />}>
+                <Section title="Dawn Overrides" icon={<Sun size={18} className="panel-muted" />}>
                   {Object.entries(tokens.dawn).map(([key, val]) => (
                     <ColorSwatch key={key} name={key} color={val} />
                   ))}
                 </Section>
 
-                <Section title="Legacy Palette" icon={<Box size={18} className="text-slate-400" />}>
+                <Section title="Legacy Palette" icon={<Box size={18} className="panel-muted" />}>
                   {Object.entries(tokens.named).map(([key, val]) => (
                     <ColorSwatch key={key} name={key} color={val} />
                   ))}

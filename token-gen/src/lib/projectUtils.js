@@ -24,7 +24,7 @@ const normalizeModeValue = (mode) => {
   if (value.startsWith('anal')) return 'analogous';
   if (value.startsWith('comp')) return 'complementary';
   if (value.startsWith('apo')) return 'apocalypse';
-  if (value.startsWith('ter')) return 'analogous';
+  if (value.startsWith('ter')) return 'tertiary';
   return 'mono';
 };
 
@@ -32,6 +32,7 @@ export const toGeneratorMode = (projectMode) => {
   const value = normalizeModeValue(projectMode);
   if (value === 'analogous') return 'Analogous';
   if (value === 'complementary') return 'Complementary';
+  if (value === 'tertiary') return 'Tertiary';
   if (value === 'apocalypse') return 'Apocalypse';
   return 'Monochromatic';
 };

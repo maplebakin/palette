@@ -58,21 +58,22 @@ const BuildStage = ({
                 type="color"
                 value={pickerColor}
                 onChange={(e) => handleBaseColorChange(e.target.value)}
-                className="w-8 h-8 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                className="w-8 h-8 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
                 aria-label="Choose base color"
               />
               <input
                 type="text"
                 value={baseInput}
                 onChange={(e) => handleBaseColorChange(e.target.value)}
-                className={`w-28 bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 outline-none uppercase ${baseError ? 'border-b border-rose-500' : ''}`}
+                className="w-28 bg-transparent text-sm font-mono panel-text outline-none uppercase border-b border-transparent"
+                style={{ borderColor: baseError ? tokens.status.error : 'transparent' }}
                 aria-label="Base color hex value"
                 aria-invalid={Boolean(baseError)}
               />
             </div>
             <select
               onChange={(e) => applyPreset(e.target.value)}
-              className="px-3 py-2 rounded-lg panel-surface-strong text-sm border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              className="px-3 py-2 rounded-lg panel-surface-strong panel-text text-sm border focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
               defaultValue=""
               aria-label="Choose a preset palette"
             >
@@ -82,7 +83,7 @@ const BuildStage = ({
               ))}
             </select>
           </div>
-          {baseError && <p className="text-xs text-rose-600 font-semibold" role="alert">{baseError}</p>}
+          {baseError && <p className="text-xs font-semibold" style={{ color: tokens.status.error }} role="alert">{baseError}</p>}
         </div>
 
         <div
@@ -93,10 +94,8 @@ const BuildStage = ({
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${mode === m ? 'panel-surface shadow-sm' : ''} focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
-                style={mode === m
-                  ? { color: tokens.brand.primary }
-                  : { color: tokens.typography['text-muted'] }}
+                className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all panel-text ${mode === m ? 'panel-surface shadow-sm' : ''} focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2`}
+                style={mode === m ? { color: tokens.brand.primary } : undefined}
                 aria-pressed={mode === m}
                 aria-label={`Set harmony mode to ${m}`}
               >
@@ -116,91 +115,93 @@ const BuildStage = ({
             {showFineTune && (
               <div className="mt-3 grid grid-cols-1 gap-3 text-xs rounded-lg border panel-surface-soft p-3 shadow-xl">
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Harmony spread</span>
+                  <span className="text-xs font-bold panel-muted">Harmony spread</span>
                   <input
                     type="range"
                     min="50"
                     max="160"
                     value={harmonyInput}
                     onChange={(e) => debouncedHarmonyChange(e.target.value)}
-                    className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                    className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
                     aria-label="Adjust harmony spread"
                     aria-valuemin={50}
                     aria-valuemax={160}
                     aria-valuenow={harmonyInput}
                   />
-                  <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{harmonyInput}%</span>
+                  <span className="text-xs w-10 text-right font-mono panel-muted">{harmonyInput}%</span>
                 </div>
 
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Neutral depth</span>
+                  <span className="text-xs font-bold panel-muted">Neutral depth</span>
                   <input
                     type="range"
                     min="60"
                     max="140"
                     value={neutralInput}
                     onChange={(e) => debouncedNeutralChange(e.target.value)}
-                    className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                    className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
                     aria-label="Adjust neutral depth"
                     aria-valuemin={60}
                     aria-valuemax={140}
                     aria-valuenow={neutralInput}
                   />
-                  <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{neutralInput}%</span>
+                  <span className="text-xs w-10 text-right font-mono panel-muted">{neutralInput}%</span>
                 </div>
 
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Accent punch</span>
+                  <span className="text-xs font-bold panel-muted">Accent punch</span>
                   <input
                     type="range"
                     min="60"
                     max="140"
                     value={accentInput}
                     onChange={(e) => debouncedAccentChange(e.target.value)}
-                    className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
+                    className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
                     aria-label="Adjust accent punch"
                     aria-valuemin={60}
                     aria-valuemax={140}
                     aria-valuenow={accentInput}
                   />
-                  <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{accentInput}%</span>
+                  <span className="text-xs w-10 text-right font-mono panel-muted">{accentInput}%</span>
                 </div>
 
                 {mode === 'Apocalypse' && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-slate-800 border border-rose-200 dark:border-rose-800">
-                    <span className="text-xs font-bold text-rose-700 dark:text-rose-300">Apocalypse drive</span>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
+                    <span className="text-xs font-bold" style={{ color: tokens.status.error }}>Apocalypse drive</span>
                     <input
                       type="range"
                       min="20"
                       max="150"
                       value={apocalypseInput}
                       onChange={(e) => debouncedApocalypseChange(e.target.value)}
-                      className="w-32 accent-rose-500 focus-visible:ring-2 focus-visible:ring-rose-500"
+                      className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
+                      style={{ accentColor: tokens.status.error }}
                       aria-label="Adjust apocalypse intensity"
                       aria-valuemin={20}
                       aria-valuemax={150}
                       aria-valuenow={apocalypseInput}
                     />
-                    <span className="text-xs w-10 text-right font-mono text-rose-700 dark:text-rose-200">{apocalypseInput}%</span>
+                    <span className="text-xs w-10 text-right font-mono panel-muted">{apocalypseInput}%</span>
                   </div>
                 )}
 
                 {themeMode === 'pop' && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-fuchsia-50 dark:bg-slate-800 border border-fuchsia-200 dark:border-fuchsia-700">
-                    <span className="text-xs font-bold text-fuchsia-700 dark:text-fuchsia-300">Pop intensity</span>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
+                    <span className="text-xs font-bold" style={{ color: tokens.brand.accent }}>Pop intensity</span>
                     <input
                       type="range"
                       min="60"
                       max="140"
                       value={popInput}
                       onChange={(e) => debouncedPopChange(e.target.value)}
-                      className="w-32 accent-fuchsia-500 focus-visible:ring-2 focus-visible:ring-fuchsia-500"
+                      className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
+                      style={{ accentColor: tokens.brand.accent }}
                       aria-label="Adjust pop intensity"
                       aria-valuemin={60}
                       aria-valuemax={140}
                       aria-valuenow={popInput}
                     />
-                    <span className="text-xs w-10 text-right font-mono text-fuchsia-700 dark:text-fuchsia-200">{popInput}%</span>
+                    <span className="text-xs w-10 text-right font-mono panel-muted">{popInput}%</span>
                   </div>
                 )}
                 <div className="relative">
@@ -251,10 +252,8 @@ const BuildStage = ({
               <button
                 key={item.key}
                 onClick={() => setThemeMode(item.key)}
-                className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1 ${themeMode === item.key ? 'panel-surface shadow-sm' : ''} focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
-                style={themeMode === item.key
-                  ? { color: tokens.brand.primary }
-                  : { color: tokens.typography['text-muted'] }}
+                className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1 panel-text ${themeMode === item.key ? 'panel-surface shadow-sm' : ''} focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2`}
+                style={themeMode === item.key ? { color: tokens.brand.primary } : undefined}
                 aria-pressed={themeMode === item.key}
                 aria-label={`Set theme mode to ${item.label}`}
               >
