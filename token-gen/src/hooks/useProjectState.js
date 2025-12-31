@@ -1,12 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useProjectStorage } from './useProjectStorage';
 import { useNotification } from '../context/NotificationContext';
-import newThemeTemplate from '../../new-theme-template.json';
-
-const DEFAULT_PROJECT = {
-  ...newThemeTemplate,
-  projectName: 'New Project',
-};
+import { createEmptyProject, normalizeProject } from '../lib/projectUtils';
 
 export function useProjectState() {
   const { notify } = useNotification();
@@ -14,7 +9,10 @@ export function useProjectState() {
 
   const initialLoad = useMemo(() => {
     const { current } = storage.loadInitialState();
-    return current && typeof current === 'object' ? current : DEFAULT_PROJECT;
+    if (current && typeof current === 'object') {
+      return normalizeProject(current);
+    }
+    return createEmptyProject();
   }, [storage]);
 
   const [project, setProject] = useState(initialLoad);
@@ -69,21 +67,17 @@ export function useProjectState() {
   }, [updateSection, notify]);
 
   const loadProject = useCallback((projectData) => {
-    // Basic validation
     if (projectData && projectData.schemaVersion === 1) {
-      setProject(projectData);
-      notify(`Project "${projectData.projectName}" loaded`, 'success');
+      const normalized = normalizeProject(projectData);
+      setProject(normalized);
+      notify(`Project "${normalized.projectName}" loaded`, 'success');
     } else {
       notify('Invalid project file format', 'error');
     }
   }, [notify]);
   
   const createNewProject = useCallback(() => {
-    setProject({
-      ...newThemeTemplate,
-      projectName: 'New Project',
-      sections: [],
-    });
+    setProject(createEmptyProject());
     notify('Created a new project', 'success');
   }, [notify]);
 

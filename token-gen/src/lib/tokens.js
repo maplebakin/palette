@@ -486,12 +486,39 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const bg = tokens.surfaces.background;
   const card = tokens.cards['card-panel-surface'];
 
+  const mutedBg = isPop ? bg : card;
+  const mutedTarget = isPop ? 4.5 : 3.2;
+
+  tokens.typography.heading = ensureContrast(tokens.typography.heading, bg, 7, isDark);
   tokens.typography['text-strong'] = ensureContrast(tokens.typography['text-strong'], bg, 7, isDark);
   tokens.typography['text-body'] = ensureContrast(tokens.typography['text-body'], bg, 4.5, isDark);
-  tokens.typography['text-muted'] = ensureContrast(tokens.typography['text-muted'], card, 3.2, isDark);
+  tokens.typography['text-muted'] = ensureContrast(tokens.typography['text-muted'], mutedBg, mutedTarget, isDark);
+  tokens.typography['footer-text'] = ensureContrast(tokens.typography['footer-text'], bg, 4.5, isDark);
+  tokens.typography['footer-text-muted'] = ensureContrast(tokens.typography['footer-text-muted'], bg, 3.2, isDark);
   tokens.textPalette['text-primary'] = ensureContrast(tokens.textPalette['text-primary'], bg, 7, isDark);
   tokens.textPalette['text-secondary'] = ensureContrast(tokens.textPalette['text-secondary'], card, 4.5, isDark);
   tokens.textPalette['text-tertiary'] = ensureContrast(tokens.textPalette['text-tertiary'], card, 3.2, isDark);
+  tokens.typography['text-accent'] = ensureContrast(tokens.typography['text-accent'], bg, 4.5, isDark);
+  tokens.typography['text-accent-strong'] = ensureContrast(tokens.typography['text-accent-strong'], bg, 4.5, isDark);
+
+  if (isPop) {
+    const accentBg = tokens.surfaces.background;
+    const accentSurface = tokens.cards['card-panel-surface'];
+    const borderBg = tokens.surfaces['surface-plain'];
+    const accentTarget = 4.5;
+    const borderTarget = 3.2;
+
+    tokens.brand.primary = ensureContrast(tokens.brand.primary, accentBg, accentTarget, false);
+    tokens.brand.secondary = ensureContrast(tokens.brand.secondary, accentBg, accentTarget, false);
+    tokens.brand.accent = ensureContrast(tokens.brand.accent, accentBg, accentTarget, false);
+    tokens.brand.cta = ensureContrast(tokens.brand.cta, accentBg, accentTarget, false);
+    tokens.brand['cta-hover'] = ensureContrast(tokens.brand['cta-hover'], accentBg, accentTarget, false);
+    tokens.brand['link-color'] = ensureContrast(tokens.brand['link-color'], accentBg, accentTarget, false);
+    tokens.brand['focus-ring'] = ensureContrast(tokens.brand['focus-ring'], accentSurface, 3.5, false);
+    tokens.borders['border-accent-medium'] = ensureContrast(tokens.borders['border-accent-medium'], borderBg, borderTarget, false);
+    tokens.borders['border-accent-strong'] = ensureContrast(tokens.borders['border-accent-strong'], borderBg, borderTarget, false);
+    tokens.borders['border-accent-hover'] = ensureContrast(tokens.borders['border-accent-hover'], borderBg, borderTarget, false);
+  }
 
   return tokens;
 };

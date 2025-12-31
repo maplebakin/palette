@@ -14,6 +14,8 @@ const __dirname = path.dirname(__filename);
 const tempDir = path.join(__dirname, 'temp');
 const inputFile = path.join(tempDir, 'test-palette.json');
 const outputFile = path.join(tempDir, 'test-palette.soc');
+const projectInputFile = path.join(tempDir, 'test-project.apocaproject.json');
+const projectOutDir = path.join(tempDir, 'project-out');
 const lchConverter = converter('lch');
 
 const samplePalette = {
@@ -45,13 +47,11 @@ describe('export-soc script', () => {
   });
 
   afterAll(() => {
-    if (fs.existsSync(inputFile)) fs.unlinkSync(inputFile);
-    if (fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
-    if (fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
+    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('should generate a valid .soc file', async () => {
-    const { stdout, stderr } = await exec(
+    const { stderr } = await exec(
       `node src/lib/export-soc.js --input ${inputFile} --out ${outputFile} --name "Test Palette"`
     );
 
@@ -88,5 +88,52 @@ describe('export-soc script', () => {
     const uniqueNames = new Set(names);
     expect(names.length).toBe(uniqueNames.size);
     expect(names.join(',')).toContain('Primary');
+  });
+
+  it('sanitizes section file names when exporting projects', async () => {
+    const sampleProject = {
+      schemaVersion: 1,
+      projectName: 'Sample Project',
+      settings: {
+        neutralCap: 8,
+        maxColors: 40,
+        nearDupThreshold: 2.0,
+        anchorsAlwaysKeep: true,
+      },
+      sections: [
+        {
+          id: 'section-1',
+          label: '../evil',
+          kind: 'season',
+          baseHex: '#ffffff',
+          mode: 'mono',
+          locked: false,
+          tokens: {
+            primary: '#ff0000',
+          },
+        },
+      ],
+    };
+
+    if (!fs.existsSync(projectOutDir)) {
+      fs.mkdirSync(projectOutDir, { recursive: true });
+    }
+    fs.writeFileSync(projectInputFile, JSON.stringify(sampleProject, null, 2));
+
+    const { stderr } = await exec(
+      `node src/lib/export-soc.js --input ${projectInputFile} --out ${projectOutDir}`
+    );
+
+    expect(stderr).toBe('');
+
+    const indexFile = path.join(projectOutDir, 'index.json');
+    const index = JSON.parse(fs.readFileSync(indexFile, 'utf-8'));
+    const root = path.resolve(projectOutDir);
+
+    index.forEach((entry) => {
+      const resolved = path.resolve(entry.file);
+      expect(resolved.startsWith(root)).toBe(true);
+      expect(fs.existsSync(entry.file)).toBe(true);
+    });
   });
 });

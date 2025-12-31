@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { ProjectContext } from '../context/ProjectContext';
 import { PaletteContext } from '../context/PaletteContext';
+import { useNotification } from '../context/NotificationContext';
 import { mergeProjectColors } from '../lib/projectMerge';
 import { generateSoc } from '../lib/soc-exporter';
 
@@ -25,6 +26,7 @@ const ExportPanel = ({ children, className }) => (
 );
 
 function ProjectView({ onImportCss }) {
+  const { notify } = useNotification();
   const { 
     project, 
     projectName, 
@@ -50,7 +52,8 @@ function ProjectView({ onImportCss }) {
           const json = JSON.parse(e.target.result);
           loadProject(json);
         } catch (error) {
-          console.error("Failed to parse project file", error);
+          console.error('Failed to parse project file', error);
+          notify('Invalid project file — check the JSON and try again', 'error');
         }
       };
       reader.readAsText(file);

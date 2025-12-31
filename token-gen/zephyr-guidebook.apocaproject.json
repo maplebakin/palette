@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "projectName": "Zephyr Guidebook",
+  "settings": {
+    "neutralCap": 8,
+    "maxColors": 40,
+    "nearDupThreshold": 2,
+    "anchorsAlwaysKeep": true
+  },
+  "sections": [
+    {
+      "id": "winter",
+      "label": "Winter",
+      "kind": "season",
+      "baseHex": "#3b82f6",
+      "mode": "mono",
+      "locked": false,
+      "colors": [
+        { "name": "Background", "hex": "#f0f9ff" },
+        { "name": "Text", "hex": "#0c4a6e" }
+      ]
+    },
+    {
+      "id": "bazaar",
+      "label": "Bazaar",
+      "kind": "people",
+      "baseHex": "#f59e0b",
+      "mode": "analogous",
+      "locked": false,
+      "colors": [
+        { "name": "Accent", "hex": "#f59e0b" },
+        { "name": "Surface", "hex": "#fffbeb" }
+      ]
+    }
+  ]
+}

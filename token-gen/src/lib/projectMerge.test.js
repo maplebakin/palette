@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { TinyColor } from '@ctrl/tinycolor';
 import { mergeProjectColors } from './projectMerge';
 
 const mockProject = {
@@ -104,7 +105,7 @@ describe('mergeProjectColors', () => {
       ],
     };
     const merged = mergeProjectColors(project);
-    const neutrals = merged.filter(c => new (require('@ctrl/tinycolor').TinyColor)(c.hex).toHsl().s < 0.12);
+    const neutrals = merged.filter(c => new TinyColor(c.hex).toHsl().s < 0.12);
     expect(neutrals.length).toBe(2);
   });
 

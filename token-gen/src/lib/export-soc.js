@@ -2,9 +2,21 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import fs from 'fs';
 import path from 'path';
+import process from 'node:process';
 import { processColors, generateSoc } from './soc-exporter.js';
 import { mergeProjectColors } from './projectMerge.js';
 import { normalizeProject } from './projectUtils.js';
+
+const sanitizeFileName = (value, fallback = 'export') => {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+  const withoutSeparators = trimmed.replace(/[\\/]+/g, '-');
+  const safe = withoutSeparators.replace(/[^a-z0-9._-]+/gi, '-').replace(/-+/g, '-').replace(/^\.+/, '').replace(/\.+$/, '');
+  const normalized = safe.replace(/\.\.+/g, '.').slice(0, 64);
+  if (!normalized || normalized === '.' || normalized === '..') return fallback;
+  return normalized;
+};
 
 const argv = yargs(hideBin(process.argv))
   .option('input', {
@@ -50,45 +62,60 @@ const argv = yargs(hideBin(process.argv))
     default: 32,
   }).argv;
 
-const inputData = JSON.parse(fs.readFileSync(argv.input, 'utf-8'));
+let inputData = null;
+try {
+  inputData = JSON.parse(fs.readFileSync(argv.input, 'utf-8'));
+} catch (err) {
+  console.error(`Failed to read or parse input file: ${argv.input}`);
+  console.error(err?.message || err);
+  process.exit(1);
+}
+
 const isProject = argv.project || Array.isArray(inputData.sections) || inputData.schemaVersion === 1;
 
-if (isProject) {
-  const project = normalizeProject(inputData);
-  const overrides = {
-    neutralCap: argv.maxNeutrals ?? argv.neutralCap,
-    maxColors: argv.maxColors,
-    nearDupThreshold: argv.deltaE ?? argv.nearDupThreshold,
-  };
+try {
+  if (isProject) {
+    const project = normalizeProject(inputData);
+    const overrides = {
+      neutralCap: argv.maxNeutrals ?? argv.neutralCap,
+      maxColors: argv.maxColors,
+      nearDupThreshold: argv.deltaE ?? argv.nearDupThreshold,
+    };
 
-  if (argv.singleFile) {
-    const merged = mergeProjectColors(project, overrides);
-    const socContent = generateSoc(project.projectName, merged, { sanitizeNames: false });
-    fs.writeFileSync(argv.out, socContent);
-    console.log(`Successfully exported project to ${argv.out}`);
-  } else {
-    const index = [];
-    if (!fs.existsSync(argv.out)) {
-      fs.mkdirSync(argv.out, { recursive: true });
-    }
-    project.sections.forEach((section) => {
-      const sectionProject = { ...project, sections: [section] };
-      const merged = mergeProjectColors(sectionProject, overrides);
-      const socContent = generateSoc(section.label, merged, { sanitizeNames: false });
-      const outFile = path.join(argv.out, `${section.label}.soc`);
-      fs.writeFileSync(outFile, socContent);
-      index.push({
-        name: section.label,
-        file: outFile,
+    if (argv.singleFile) {
+      const merged = mergeProjectColors(project, overrides);
+      const socContent = generateSoc(project.projectName, merged, { sanitizeNames: false });
+      fs.writeFileSync(argv.out, socContent);
+      console.log(`Successfully exported project to ${argv.out}`);
+    } else {
+      const indexEntries = [];
+      if (!fs.existsSync(argv.out)) {
+        fs.mkdirSync(argv.out, { recursive: true });
+      }
+      project.sections.forEach((section, sectionIndex) => {
+        const sectionProject = { ...project, sections: [section] };
+        const merged = mergeProjectColors(sectionProject, overrides);
+        const socContent = generateSoc(section.label, merged, { sanitizeNames: false });
+        const safeLabel = sanitizeFileName(section.label, `section-${sectionIndex + 1}`);
+        const outFile = path.join(argv.out, `${safeLabel}.soc`);
+        fs.writeFileSync(outFile, socContent);
+        indexEntries.push({
+          name: section.label,
+          file: outFile,
+        });
       });
-    });
-    fs.writeFileSync(path.join(argv.out, 'index.json'), JSON.stringify(index, null, 2));
-    console.log(`Successfully exported sections to ${argv.out}`);
+      fs.writeFileSync(path.join(argv.out, 'index.json'), JSON.stringify(indexEntries, null, 2));
+      console.log(`Successfully exported sections to ${argv.out}`);
+    }
+  } else {
+    const rawColors = inputData.settings || {};
+    const processedColors = processColors(rawColors, argv);
+    const socContent = generateSoc(argv.name, processedColors);
+    fs.writeFileSync(argv.out, socContent);
+    console.log(`Successfully exported ${processedColors.length} colors to ${argv.out}`);
   }
-} else {
-  const rawColors = inputData.settings || {};
-  const processedColors = processColors(rawColors, argv);
-  const socContent = generateSoc(argv.name, processedColors);
-  fs.writeFileSync(argv.out, socContent);
-  console.log(`Successfully exported ${processedColors.length} colors to ${argv.out}`);
+} catch (err) {
+  console.error('Export failed.');
+  console.error(err?.message || err);
+  process.exit(1);
 }

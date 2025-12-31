@@ -1,11 +1,12 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Sun, Moon, Palette, Type, Box, Grid, Layers, Droplet, Printer, FileText, Image, EyeOff, Shuffle, Eye, Save, FolderOpen, Link as LinkIcon, Check, Download, Flame } from 'lucide-react';
-import ColorSwatch from './components/ColorSwatch';
-import Section from './components/Section';
+import React, { useState, useMemo, useRef, useEffect, useCallback, Suspense } from 'react';
+import { FileText, Image } from 'lucide-react';
 import ProjectView from './components/ProjectView';
-const ExportsPanel = lazy(() => import('./components/ExportsPanel'));
-const ContrastPanel = lazy(() => import('./components/ContrastPanel'));
-import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { StageNav } from './components/stages/StageLayout';
+import IdentityStage from './components/stages/IdentityStage';
+import BuildStage from './components/stages/BuildStage';
+import ValidateStage from './components/stages/ValidateStage';
+import PackageStage from './components/stages/PackageStage';
+import ExportStage from './components/stages/ExportStage';
 import useDarkClassSync from './hooks/useDarkClassSync';
 import { useNotification } from './context/NotificationContext.jsx';
 import { PaletteContext } from './context/PaletteContext.jsx';
@@ -182,19 +183,15 @@ const inferThemeMode = (value) => {
   return luma < 0.45 ? 'dark' : 'light';
 };
 
-const SectionFallback = ({ reset, message, label }) => (
-  <div className="p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
-    <p className="font-semibold text-sm">{label ? `${label} failed to render.` : 'This section failed to render.'}</p>
-    {message && <p className="text-xs mt-1">{message}</p>}
-    <button
-      type="button"
-      onClick={reset}
-      className="mt-3 inline-flex items-center px-3 py-1 rounded bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700"
-    >
-      Retry
-    </button>
-  </div>
-);
+const STAGE_DEFS = [
+  { id: 'identity', label: 'Identity' },
+  { id: 'build', label: 'Build' },
+  { id: 'validate', label: 'Validate' },
+  { id: 'package', label: 'Package', tab: 'Print assets' },
+  { id: 'export', label: 'Export', tab: 'Exports' },
+];
+
+
 
 const createTarArchive = (files) => {
   const blocks = [];
@@ -465,36 +462,6 @@ const getPrintTimestamps = () => {
   return { date, dateTime: `${date} ${time}` };
 };
 
-const PaletteRow = ({ title, colors }) => (
-  <div className="p-4 rounded-lg border shadow-sm panel-surface-soft backdrop-blur-sm">
-    <div className="flex items-center justify-between mb-3">
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">{title}</span>
-      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{colors.length} swatches</span>
-    </div>
-    <div className="flex gap-1 mb-3">
-      {colors.map(({ name, color }, index) => (
-        <div 
-          key={`${name}-${index}`}
-          className="flex-1 h-8 rounded-sm border shadow-inner"
-          style={{ backgroundColor: color, borderColor: 'rgba(0,0,0,0.08)' }}
-          title={`${name}: ${color}`}
-        />
-      ))}
-    </div>
-    <div className="flex flex-wrap gap-2">
-      {colors.map(({ name, color }, index) => (
-        <span 
-          key={`${name}-${index}`}
-          className="text-[11px] px-2 py-1 rounded-full border"
-          style={{ borderColor: color, color }}
-        >
-          {name}
-        </span>
-      ))}
-    </div>
-  </div>
-);
-
 // --- Presets ---
 const presets = [
   { name: 'Midnight Indigo', base: '#6366f1', mode: 'Monochromatic', dark: true },
@@ -519,6 +486,7 @@ export default function App() {
   const [customThemeName, setCustomThemeName] = useState('');
   const [showContrast, setShowContrast] = useState(true);
   const [importedOverrides, setImportedOverrides] = useState(null);
+  const [currentStage, setCurrentStage] = useState('Identity');
   const [harmonyIntensity, setHarmonyIntensity] = useState(100);
   const [apocalypseIntensity, setApocalypseIntensity] = useState(100);
   const [neutralCurve, setNeutralCurve] = useState(100);
@@ -566,7 +534,7 @@ export default function App() {
   }, [notify]);
 
   const isDark = themeMode === 'dark';
-  const uiIsDark = themeMode !== 'light';
+  const uiIsDark = themeMode === 'dark';
   useDarkClassSync(uiIsDark);
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -594,6 +562,34 @@ export default function App() {
       setOverflowOpen(false);
     }
   }, [headerOpen]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const updateStage = () => {
+      const hash = window.location.hash.replace('#', '');
+      const matched = STAGE_DEFS.find((stage) => stage.id === hash);
+      if (matched) {
+        setCurrentStage(matched.label);
+        return;
+      }
+      if (view === 'project') {
+        setCurrentStage('Identity');
+        return;
+      }
+      if (activeTab === 'Print assets') {
+        setCurrentStage('Package');
+        return;
+      }
+      if (activeTab === 'Exports') {
+        setCurrentStage('Export');
+        return;
+      }
+      setCurrentStage('Validate');
+    };
+    updateStage();
+    window.addEventListener('hashchange', updateStage);
+    return () => window.removeEventListener('hashchange', updateStage);
+  }, [activeTab, view]);
 
   const applySavedPalette = useCallback((payload) => {
     if (!payload || typeof payload !== 'object') return;
@@ -825,6 +821,14 @@ export default function App() {
     'Exports': 'tab-exports',
   }), []);
   const getTabId = useCallback((tab) => tabIds[tab] || `tab-${tab.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`, [tabIds]);
+  const handleStageNavigate = useCallback((event, stage) => {
+    if (stage.tab) {
+      setActiveTab(stage.tab);
+    } else if (stage.id === 'validate' && !['Quick view', 'Full system'].includes(activeTab)) {
+      setActiveTab('Quick view');
+    }
+    setCurrentStage(stage.label);
+  }, [activeTab, setActiveTab, setCurrentStage]);
   const handleJumpToExports = useCallback(() => {
     requestAnimationFrame(() => {
       if (exportsSectionRef.current) {
@@ -1392,154 +1396,32 @@ export default function App() {
           </div>
         </div>
 
-        {(storageAvailable === false || storageCorrupt) && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 mb-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 flex items-center justify-between gap-3" role="status" aria-live="polite">
-            <div className="text-sm font-semibold">
-              {storageCorrupt ? 'Saved palettes look corrupted. Save/load is disabled.' : 'Local storage is blocked; saving is disabled.'}
-              {storageQuotaExceeded && ' Storage quota exceeded; clear saved data to re-enable saving.'}
-            </div>
-            <button
-              type="button"
-              onClick={clearSavedData}
-              className="px-3 py-1.5 rounded-md bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
-            >
-              Clear saved data
-            </button>
-          </div>
-        )}
-
-      {/* Header */}
-      <header 
-        className="md:sticky md:top-0 z-30 backdrop-blur-md border-b"
-        style={{ 
-          backgroundColor: headerBackground,
-          backgroundImage: `linear-gradient(120deg, ${headerGlowA}, transparent 45%), linear-gradient(240deg, ${headerGlowB}, transparent 50%)`,
-          borderColor: tokens.surfaces["surface-plain-border"],
-          boxShadow: isDark ? '0 12px 38px -28px rgba(0,0,0,0.8)' : '0 12px 32px -28px rgba(15,23,42,0.25)',
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
-          <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Header" reset={reset} message={message} />}>
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:gap-3">
-                  <div 
-                    className="p-2 rounded-lg shadow-lg"
-                    style={{ 
-                      background: `linear-gradient(135deg, ${tokens.brand["gradient-start"]} 0%, ${tokens.brand.secondary} 50%, ${tokens.brand["gradient-end"]} 100%)`,
-                      boxShadow: `0 10px 30px -10px ${tokens.brand.primary}99`
-                    }}
-                  >
-                    <Palette className="drop-shadow-sm" size={24} style={{ color: ctaTextColor }} />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">Welcome to</p>
-                    <h1 className="text-2xl font-black" style={{ color: tokens.typography['heading'] }}>Apocapalette</h1>
-                    <p className="text-xs text-slate-500 font-medium">Spin the chaos wheel, keep the pretty bits.</p>
-                  </div>
-                  <div className="relative flex flex-wrap items-center gap-2 lg:ml-4">
-                    <button
-                      type="button"
-                      onClick={() => setView(v => v === 'palette' ? 'project' : 'palette')}
-                      className="px-3 py-2 rounded-full text-[11px] font-bold shadow-md hover:-translate-y-[1px] active:scale-95 transition border panel-surface-strong"
-                      style={{
-                        borderColor: tokens.cards["card-panel-border"],
-                      }}
-                    >
-                      {view === 'palette' ? 'Project View' : 'Palette Creator'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col items-start gap-3 w-full lg:w-auto">
-                <div className="w-full">
-                  <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mx-2 px-2 lg:flex-wrap lg:overflow-visible lg:pb-0 lg:px-0 lg:mx-0">
-                    <button
-                      type="button"
-                      onClick={saveCurrentPalette}
-                      className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold hover:opacity-90 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
-                      style={{
-                        backgroundColor: tokens.brand.primary,
-                        color: ctaTextColor,
-                        boxShadow: `0 12px 30px -20px ${tokens.brand.primary}`,
-                      }}
-                      aria-label="Save current palette to browser"
-                      disabled={storageAvailable !== true || storageCorrupt || storageQuotaExceeded}
-                    >
-                      <Save size={14} />
-                      Save
-                    </button>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border shrink-0 min-w-[180px]">
-                      <FolderOpen size={14} className="text-slate-500" aria-hidden />
-                      <select
-                        onChange={(e) => { loadSavedPalette(e.target.value); e.target.value = ''; }}
-                        className="bg-transparent outline-none text-xs"
-                        defaultValue=""
-                        aria-label="Load a saved palette"
-                        disabled={storageAvailable !== true || storageCorrupt}
-                      >
-                        <option value="" disabled>Load saved…</option>
-                        {savedPalettes.map((palette) => (
-                          <option key={palette.id} value={palette.id}>
-                            {palette.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div className="w-full">
-                  <div
-                    className="flex flex-wrap gap-3 p-3 rounded-xl border panel-surface-soft backdrop-blur-sm"
-                  >
-                    <label className="flex-1 min-w-[180px] flex flex-col text-xs font-semibold text-slate-600 dark:text-slate-300">
-                      <span className="sr-only">Theme name</span>
-                      <input
-                        type="text"
-                        value={customThemeName}
-                        onChange={(e) => setCustomThemeName(sanitizeThemeName(e.target.value, ''))}
-                        placeholder={autoThemeName}
-                      className="px-3 py-2 rounded-lg panel-surface-strong text-sm border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                        aria-label="Theme name"
-                        maxLength={60}
-                      />
-                    </label>
-                    <label className="flex-1 min-w-[160px] flex flex-col text-xs font-semibold text-slate-600 dark:text-slate-300">
-                      <span className="sr-only">Token prefix</span>
-                      <input
-                        type="text"
-                        value={tokenPrefix}
-                        onChange={(e) => setTokenPrefix(sanitizePrefix(e.target.value))}
-                        placeholder="Prefix"
-                      className="px-3 py-2 rounded-lg panel-surface-strong text-sm border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                        aria-label="Token prefix"
-                        maxLength={32}
-                      />
-                    </label>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-300">
-                  {saveStatus && (
-                    <span role="status" aria-live="polite">{saveStatus}</span>
-                  )}
-                  {storageAvailable === false && (
-                    <span role="alert" className="text-amber-700 dark:text-amber-300">
-                      Saving disabled (storage blocked)
-                    </span>
-                  )}
-                  {storageQuotaExceeded && (
-                    <span role="alert" className="text-amber-700 dark:text-amber-300">
-                      Storage quota exceeded — clear saved data to resume saving
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-          </ErrorBoundary>
-        </div>
-      </header>
+        <IdentityStage
+          tokens={tokens}
+          ctaTextColor={ctaTextColor}
+          headerBackground={headerBackground}
+          headerGlowA={headerGlowA}
+          headerGlowB={headerGlowB}
+          isDark={isDark}
+          view={view}
+          setView={setView}
+          saveCurrentPalette={saveCurrentPalette}
+          savedPalettes={savedPalettes}
+          loadSavedPalette={loadSavedPalette}
+          storageAvailable={storageAvailable}
+          storageCorrupt={storageCorrupt}
+          storageQuotaExceeded={storageQuotaExceeded}
+          clearSavedData={clearSavedData}
+          customThemeName={customThemeName}
+          setCustomThemeName={setCustomThemeName}
+          autoThemeName={autoThemeName}
+          tokenPrefix={tokenPrefix}
+          setTokenPrefix={setTokenPrefix}
+          saveStatus={saveStatus}
+          importedOverrides={importedOverrides}
+          sanitizeThemeName={sanitizeThemeName}
+          sanitizePrefix={sanitizePrefix}
+        />
 
       {/* Quick controls bar (sticky when header collapsed) */}
       {!headerOpen && (
@@ -1621,805 +1503,107 @@ export default function App() {
             </Suspense>
           ) : (
             <>
-          <section className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setHeaderOpen((v) => !v)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition shrink-0 whitespace-nowrap"
-                      aria-expanded={headerOpen}
-                      aria-label={headerOpen ? 'Hide controls' : 'Show controls'}
-                    >
-                {headerOpen ? <EyeOff size={14} /> : <Eye size={14} />}
-                Controls
-              </button>
-              <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setChaosMenuOpen((v) => !v)}
-                      className="px-3 py-2 rounded-full text-[11px] font-bold shadow-md hover:-translate-y-[1px] active:scale-95 transition border panel-surface-strong"
-                      aria-expanded={chaosMenuOpen}
-                      aria-haspopup="true"
-                    >
-                      Chaos menu
-                    </button>
-                {chaosMenuOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border panel-surface-soft shadow-xl z-30">
-                    <button
-                      type="button"
-                      onClick={() => { setChaosMenuOpen(false); randomRitual(); }}
-                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:opacity-80"
-                    >
-                      <span>Random ritual</span>
-                      <Shuffle size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setChaosMenuOpen(false); crankApocalypse(); }}
-                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:opacity-80"
-                    >
-                      <span>Crank Apocalypse</span>
-                      <Flame size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {headerOpen && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              <div
-                className="flex flex-col gap-3 p-3 rounded-xl border panel-surface-soft backdrop-blur-sm"
-              >
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2 panel-surface-strong p-1.5 rounded-lg border">
-                    <input 
-                      type="color" 
-                      value={pickerColor} 
-                      onChange={(e) => handleBaseColorChange(e.target.value)}
-                      className="w-8 h-8 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2" 
-                      aria-label="Choose base color"
-                    />
-                    <input 
-                      type="text" 
-                      value={baseInput}
-                      onChange={(e) => handleBaseColorChange(e.target.value)}
-                      className={`w-28 bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 outline-none uppercase ${baseError ? 'border-b border-rose-500' : ''}`}
-                      aria-label="Base color hex value"
-                      aria-invalid={Boolean(baseError)}
-                    />
-                  </div>
-                  <select
-                    onChange={(e) => applyPreset(e.target.value)}
-                    className="px-3 py-2 rounded-lg panel-surface-strong text-sm border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                    defaultValue=""
-                    aria-label="Choose a preset palette"
-                  >
-                    <option value="" disabled>Presets…</option>
-                    {presets.map((p) => (
-                      <option key={p.name} value={p.name}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-                {baseError && <p className="text-xs text-rose-600 font-semibold" role="alert">{baseError}</p>}
-              </div>
-
-              <div
-                className="flex flex-col gap-3 p-3 rounded-xl border panel-surface-soft backdrop-blur-sm"
-              >
-                <div className="flex panel-surface-strong p-1 rounded-lg border flex-wrap" role="group" aria-label="Harmony mode">
-                  {['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'].map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => setMode(m)}
-                      className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${mode === m ? 'panel-surface shadow-sm' : ''} focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
-                      style={mode === m
-                        ? { color: tokens.brand.primary }
-                        : { color: tokens.typography['text-muted'] }}
-                      aria-pressed={mode === m}
-                      aria-label={`Set harmony mode to ${m}`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowFineTune((v) => !v)}
-                    className="w-full flex items-center justify-between gap-2 text-xs font-bold px-3 py-2 rounded-lg border panel-surface-soft hover:opacity-90 transition"
-                  >
-                    Fine-tune sliders
-                    <span className="text-[10px]">{showFineTune ? '▲' : '▼'}</span>
-                  </button>
-                  {showFineTune && (
-                    <div className="mt-3 grid grid-cols-1 gap-3 text-xs rounded-lg border panel-surface-soft p-3 shadow-xl">
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Harmony spread</span>
-                        <input
-                          type="range"
-                          min="50"
-                          max="160"
-                          value={harmonyInput}
-                          onChange={(e) => debouncedHarmonyChange(e.target.value)}
-                          className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
-                          aria-label="Adjust harmony spread"
-                          aria-valuemin={50}
-                          aria-valuemax={160}
-                          aria-valuenow={harmonyInput}
-                        />
-                        <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{harmonyInput}%</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Neutral depth</span>
-                        <input
-                          type="range"
-                          min="60"
-                          max="140"
-                          value={neutralInput}
-                          onChange={(e) => debouncedNeutralChange(e.target.value)}
-                          className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
-                          aria-label="Adjust neutral depth"
-                          aria-valuemin={60}
-                          aria-valuemax={140}
-                          aria-valuenow={neutralInput}
-                        />
-                        <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{neutralInput}%</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Accent punch</span>
-                        <input
-                          type="range"
-                          min="60"
-                          max="140"
-                          value={accentInput}
-                          onChange={(e) => debouncedAccentChange(e.target.value)}
-                          className="w-32 focus-visible:ring-2 focus-visible:ring-indigo-500"
-                          aria-label="Adjust accent punch"
-                          aria-valuemin={60}
-                          aria-valuemax={140}
-                          aria-valuenow={accentInput}
-                        />
-                        <span className="text-xs w-10 text-right font-mono text-slate-600 dark:text-slate-300">{accentInput}%</span>
-                      </div>
-
-                      {mode === 'Apocalypse' && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-slate-800 border border-rose-200 dark:border-rose-800">
-                          <span className="text-xs font-bold text-rose-700 dark:text-rose-300">Apocalypse drive</span>
-                          <input
-                            type="range"
-                            min="20"
-                            max="150"
-                            value={apocalypseInput}
-                            onChange={(e) => debouncedApocalypseChange(e.target.value)}
-                            className="w-32 accent-rose-500 focus-visible:ring-2 focus-visible:ring-rose-500"
-                            aria-label="Adjust apocalypse intensity"
-                            aria-valuemin={20}
-                            aria-valuemax={150}
-                            aria-valuenow={apocalypseInput}
-                          />
-                          <span className="text-xs w-10 text-right font-mono text-rose-700 dark:text-rose-200">{apocalypseInput}%</span>
-                        </div>
-                      )}
-
-                      {themeMode === 'pop' && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-fuchsia-50 dark:bg-slate-800 border border-fuchsia-200 dark:border-fuchsia-700">
-                          <span className="text-xs font-bold text-fuchsia-700 dark:text-fuchsia-300">Pop intensity</span>
-                          <input
-                            type="range"
-                            min="60"
-                            max="140"
-                            value={popInput}
-                            onChange={(e) => debouncedPopChange(e.target.value)}
-                            className="w-32 accent-fuchsia-500 focus-visible:ring-2 focus-visible:ring-fuchsia-500"
-                            aria-label="Adjust pop intensity"
-                            aria-valuemin={60}
-                            aria-valuemax={140}
-                            aria-valuenow={popInput}
-                          />
-                          <span className="text-xs w-10 text-right font-mono text-fuchsia-700 dark:text-fuchsia-200">{popInput}%</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div
-                className="flex flex-col gap-3 p-3 rounded-xl border panel-surface-soft backdrop-blur-sm"
-              >
-                <div className="flex panel-surface-strong p-1 rounded-lg border flex-wrap" role="group" aria-label="Theme mode">
-                  {[
-                    { key: 'light', label: 'Light', icon: <Sun size={14} /> },
-                    { key: 'dark', label: 'Dark', icon: <Moon size={14} /> },
-                    { key: 'pop', label: 'Pop', icon: <Palette size={14} /> },
-                  ].map((item) => (
-                    <button
-                      key={item.key}
-                      onClick={() => setThemeMode(item.key)}
-                      className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1 ${themeMode === item.key ? 'panel-surface shadow-sm' : ''} focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2`}
-                      style={themeMode === item.key
-                        ? { color: tokens.brand.primary }
-                        : { color: tokens.typography['text-muted'] }}
-                      aria-pressed={themeMode === item.key}
-                      aria-label={`Set theme mode to ${item.label}`}
-                    >
-                      {item.icon}
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            )}
-          </section>
-
-          <section 
-            className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-500"
-            style={{ 
-              boxShadow: `0 35px 120px -80px ${tokens.brand.primary}aa`,
-              backgroundImage: `linear-gradient(140deg, ${hexWithAlpha(tokens.surfaces["background"], 1)} 0%, ${hexWithAlpha(tokens.brand.primary, 0.32)} 45%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.32)} 90%)`,
-              borderColor: tokens.cards["card-panel-border"]
-            }}
-          >
-            <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `radial-gradient(circle at 20% 20%, ${hexWithAlpha('#ffffff', 0.08)}, transparent 35%)` }} />
-            <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `linear-gradient(120deg, ${hexWithAlpha(tokens.brand.secondary || tokens.brand.primary, 0.18)}, transparent 50%)` }} />
-            <div className="relative p-6 md:p-10 space-y-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-[0.2em] panel-muted">Apocapalette live</p>
-                  <h2 className="text-3xl md:text-4xl font-black" style={{ color: tokens.typography['heading'] }}>{displayThemeName}</h2>
-                  <p className="text-sm" style={{ color: tokens.typography['text-muted'] }}>Base {baseColor.toUpperCase()} • {mode} • {themeMode === 'pop' ? 'Pop' : (isDark ? 'Dark' : 'Light')}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold" style={{ color: tokens.typography['text-strong'] }}>
-                  <span className="px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Live preview</span>
-                  <span className="px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Chaos tuned</span>
-                </div>
-              </div>
-              <div 
-                className="relative rounded-2xl overflow-hidden ring-1 bg-white/5 backdrop-blur-md transition-all duration-500 ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4"
-                style={{ 
-                  backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.65),
-                  boxShadow: `0 24px 70px -50px ${tokens.brand.primary}`,
-                  borderColor: hexWithAlpha(tokens.cards["card-panel-border"], 0.5),
-                  color: tokens.typography["text-strong"]
-                }}
-                aria-label={`Live palette preview showing ${displayThemeName}`}
-              >
-                {/* Fake Navigation */}
-                <div className="h-12 border-b flex items-center px-4 gap-4" style={{ borderColor: tokens.surfaces["surface-plain-border"], backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.7) }}>
-                  <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-400/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
-                  <span className="text-xs font-semibold" style={{ color: tokens.typography['text-muted'] }}>Preview • Instant harmony</span>
-                </div>
-
-                <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {/* Sidebar Simulation */}
-                  <div className="space-y-4">
-                    <div className="h-8 w-3/4 rounded mb-6" style={{ backgroundColor: tokens.brand.primary, opacity: 0.25 }}></div>
-                    <div className="h-4 w-full rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
-                    <div className="h-4 w-5/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
-                    <div className="h-4 w-4/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
-                  </div>
-
-                  {/* Main Card Simulation */}
-                  <div 
-                    className="col-span-2 p-6 rounded-xl border shadow-2xl transition-all duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_30px_90px_-60px_rgba(0,0,0,0.5)]"
-                    style={{ 
-                      backgroundColor: tokens.cards["card-panel-surface"],
-                      borderColor: tokens.cards["card-panel-border"]
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-2xl font-extrabold" style={{ color: tokens.typography["heading"] }}>Thematic Output</h3>
-                      <span className="text-[11px] px-3 py-1 rounded-full border" style={{ borderColor: tokens.brand.primary, color: tokens.brand.primary }}>Instant copy</span>
-                    </div>
-                    <p className="mb-6" style={{ color: tokens.typography["text-body"] }}>
-                      Feel the palette first; tweak later. Surfaces, text, and primary action sit in balance so you can decide fast.
-                    </p>
-                    
-                    <div className="flex flex-wrap gap-3">
-                      <button className="px-4 py-2 rounded-lg font-semibold transition-transform active:scale-95 shadow-[0_10px_40px_-20px]" style={{ backgroundColor: tokens.brand.primary, color: '#fff', boxShadow: `0 12px 30px -18px ${tokens.brand.primary}` }}>
-                        Primary Action
-                      </button>
-                      <button className="px-4 py-2 rounded-lg font-semibold border transition-transform active:scale-95"
-                              style={{ 
-                                borderColor: tokens.brand.primary, 
-                                color: tokens.brand.primary 
-                              }}>
-                        Secondary
-                      </button>
-                    </div>
-
-                    <div className="mt-8 p-4 rounded border flex items-center gap-3"
-                         style={{ 
-                           backgroundColor: tokens.entity["entity-card-surface"],
-                           borderColor: tokens.entity["entity-card-border"]
-                         }}
-                    >
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner"
-                           style={{ backgroundColor: tokens.brand.accent, color: '#fff' }}>
-                        <Check size={20} />
-                      </div>
-                      <div>
-                        <div className="font-bold text-sm" style={{ color: tokens.entity["entity-card-heading"] }}>Entity Highlight</div>
-                        <div className="text-xs opacity-80" style={{ color: tokens.typography["text-body"] }}>Unique component tokens</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Quick essentials */}
-          <section className="space-y-3 motion-safe:animate-in motion-safe:fade-in duration-500">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Quick essentials</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Tap to copy. Instant gratification before the deep dive.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={copyAllEssentials}
-                  className="text-xs font-bold px-4 py-2 rounded-full hover:-translate-y-[2px] transition shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                  style={{
-                    backgroundColor: tokens.brand.primary,
-                    color: ctaTextColor,
-                    boxShadow: `0 14px 32px -22px ${tokens.brand.primary}`,
-                  }}
-                >
-                  Copy all as hex list
-                </button>
-                <button
-                  type="button"
-                  onClick={copyEssentialsList}
-                  className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
-                  style={{ borderColor: tokens.cards["card-panel-border"] }}
-                >
-                  <FileText size={14} />
-                  Copy quick kit
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3">
-              {quickEssentials.slice(0, 10).map(({ key, color }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => copyHexValue(color, `${key} hex`)}
-                  className="group relative p-3 rounded-xl border shadow-sm flex flex-col gap-2 hover:-translate-y-1 transition-all duration-300 hover:shadow-xl panel-surface-soft"
-                  style={{ borderColor: tokens.cards["card-panel-border"] }}
-                  aria-label={`Copy ${key} ${color}`}
-                >
-                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-300">{key}</span>
-                  <div className="h-12 rounded-lg border" style={{ backgroundColor: color, borderColor: hexWithAlpha(color, 0.18) }} />
-                  <span className="text-[11px] font-mono text-slate-700 dark:text-slate-100 uppercase tracking-wide">{color}</span>
-                  <span className="absolute right-3 top-3 text-[10px] opacity-0 group-hover:opacity-80 text-slate-500">Copy</span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* Pinned swatch strip */}
-          <div className="sticky top-3 md:top-16 z-10">
-            <div
-              className="rounded-2xl border panel-surface-soft shadow-sm px-4 py-3 flex items-center gap-3 overflow-x-auto snap-x snap-mandatory"
-              aria-label="Pinned swatch strip — quick palette preview"
-            >
-              {quickEssentials.slice(0, 8).map(({ key, color }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => copyHexValue(color, `${key} hex`)}
-                  className="min-w-[120px] flex-1 rounded-xl p-2 border shadow-sm snap-start text-left hover:-translate-y-0.5 transition"
-                  style={{ backgroundColor: color, borderColor: hexWithAlpha(color, 0.25) }}
-                  aria-label={`Copy ${key} ${color}`}
-                >
-                  <div className="text-[10px] font-bold uppercase tracking-tight panel-chip px-2 py-1 rounded-full inline-block shadow-sm">
-                    {color}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tabs */}
           <div className="flex justify-center">
-            <div
-              role="tablist"
-              aria-label="Palette views"
-              className="inline-flex gap-2 p-1 rounded-full border panel-surface-soft shadow-sm"
-            >
-              {tabOptions.map((tab, index) => (
-                <button
-                  key={tab}
-                  id={getTabId(tab)}
-                  role="tab"
-                  aria-selected={activeTab === tab}
-                  aria-controls={`tab-panel-${index}`}
-                  tabIndex={activeTab === tab ? 0 : -1}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                      const dir = e.key === 'ArrowRight' ? 1 : -1;
-                      const next = (index + dir + tabOptions.length) % tabOptions.length;
-                      setActiveTab(tabOptions[next]);
-                    }
-                  }}
-                  className={`px-4 py-2 text-xs font-bold rounded-full transition-all hover:opacity-90 ${activeTab === tab ? 'shadow-md' : ''}`}
-                  style={activeTab === tab
-                    ? { backgroundColor: tokens.brand.primary, color: ctaTextColor }
-                    : { color: tokens.typography['text-muted'] }}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+            <StageNav stages={STAGE_DEFS} currentStage={currentStage} onNavigate={handleStageNavigate} />
           </div>
 
-          <div className="space-y-10">
-            <div id="tab-panel-0" role="tabpanel" aria-labelledby={getTabId('Quick view')} hidden={activeTab !== 'Quick view'}>
-              {activeTab === 'Quick view' && (
-              <>
-                <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Ordered stack" reset={reset} message={message} />}>
-                  <div 
-                    className="p-6 rounded-2xl border shadow-sm panel-surface-soft backdrop-blur-sm"
-                    style={{ 
-                      borderColor: tokens.cards["card-panel-border"]
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Ordered token stack</h2>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Aligned to the handoff order for quick scanning.</p>
-                      </div>
-                      <div className="text-[11px] px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">Click swatches to copy</div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" role="list" aria-label="Ordered tokens">
-                      {orderedSwatches.map(({ name, color }, index) => (
-                        <ColorSwatch key={`${name}-${index}`} name={name} color={color} />
-                      ))}
-                    </div>
-                  </div>
-                </ErrorBoundary>
+          <BuildStage
+            headerOpen={headerOpen}
+            setHeaderOpen={setHeaderOpen}
+            chaosMenuOpen={chaosMenuOpen}
+            setChaosMenuOpen={setChaosMenuOpen}
+            randomRitual={randomRitual}
+            crankApocalypse={crankApocalypse}
+            tokens={tokens}
+            mode={mode}
+            setMode={setMode}
+            themeMode={themeMode}
+            setThemeMode={setThemeMode}
+            pickerColor={pickerColor}
+            baseInput={baseInput}
+            baseError={baseError}
+            handleBaseColorChange={handleBaseColorChange}
+            presets={presets}
+            applyPreset={applyPreset}
+            showFineTune={showFineTune}
+            setShowFineTune={setShowFineTune}
+            harmonyInput={harmonyInput}
+            neutralInput={neutralInput}
+            accentInput={accentInput}
+            apocalypseInput={apocalypseInput}
+            popInput={popInput}
+            debouncedHarmonyChange={debouncedHarmonyChange}
+            debouncedNeutralChange={debouncedNeutralChange}
+            debouncedAccentChange={debouncedAccentChange}
+            debouncedApocalypseChange={debouncedApocalypseChange}
+            debouncedPopChange={debouncedPopChange}
+          />
 
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setShowContrast((v) => !v)}
-                    className="p-2 rounded-md panel-surface-strong border hover:opacity-90 transition"
-                    title="Toggle contrast diagnostics"
-                    aria-pressed={showContrast}
-                    aria-label="Toggle contrast diagnostics panel"
-                  >
-                    {showContrast ? <Eye size={16} /> : <EyeOff size={16} />}
-                  </button>
-                </div>
+          <ValidateStage
+            tokens={tokens}
+            displayThemeName={displayThemeName}
+            baseColor={baseColor}
+            mode={mode}
+            themeMode={themeMode}
+            isDark={isDark}
+            ctaTextColor={ctaTextColor}
+            quickEssentials={quickEssentials}
+            copyAllEssentials={copyAllEssentials}
+            copyEssentialsList={copyEssentialsList}
+            copyHexValue={copyHexValue}
+            orderedSwatches={orderedSwatches}
+            showContrast={showContrast}
+            setShowContrast={setShowContrast}
+            contrastChecks={contrastChecks}
+            finalTokens={finalTokens}
+            paletteRows={paletteRows}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            getTabId={getTabId}
+            tabOptions={tabOptions}
+            onJumpToExports={handleJumpToExports}
+            isInternal={isInternal}
+          />
 
-                {showContrast && (
-                  <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Contrast checks" reset={reset} message={message} />}>
-                    <Suspense fallback={<div className="p-4 rounded-lg border panel-surface-soft text-sm">Loading contrast…</div>}>
-                      <ContrastPanel contrastChecks={contrastChecks} finalTokens={finalTokens} />
-                    </Suspense>
-                  </ErrorBoundary>
-                )}
+          <PackageStage
+            activeTab={activeTab}
+            getTabId={getTabId}
+            printMode={printMode}
+            setPrintMode={setPrintMode}
+            tokens={tokens}
+            ctaTextColor={ctaTextColor}
+            printAssetPack={printAssetPack}
+            canvaPrintHexes={canvaPrintHexes}
+          />
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Cohesive palette</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Main families at a glance</p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {paletteRows.map((row) => (
-                      <PaletteRow key={row.title} title={row.title} colors={row.colors} />
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            </div>
-
-            <div id="tab-panel-1" role="tabpanel" aria-labelledby={getTabId('Full system')} hidden={activeTab !== 'Full system'}>
-              {activeTab === 'Full system' && (
-              <div className="space-y-2">
-                <Section title="Foundation: Neutral Ladder" icon={<Layers size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.foundation.neutrals).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                <Section title="Foundation: Accents" icon={<Droplet size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.foundation.accents).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                <Section title="Brand & Core" icon={<Droplet size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.brand).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                <Section title="Text Palette" icon={<Type size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.textPalette).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                <Section title="Typography" icon={<Type size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.typography).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                <Section title="Borders" icon={<Grid size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.borders).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                <Section title="Surfaces & Backgrounds" icon={<Layers size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.surfaces).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                <Section title="Components: Cards & Tags" icon={<Grid size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.cards).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                <Section title="Components: Glass" icon={<Box size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.glass).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                <Section title="Components: Entity" icon={<Box size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.entity).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                <Section title="Status & Feedback" icon={<Check size={18} className="text-slate-400" />}>
-                  {Object.entries(tokens.status).map(([key, val]) => (
-                    <ColorSwatch key={key} name={key} color={val} />
-                  ))}
-                </Section>
-
-                {isInternal && (
-                  <>
-                    <Section title="Admin Palette" icon={<Box size={18} className="text-slate-400" />}>
-                      {Object.entries(tokens.admin).map(([key, val]) => (
-                        <ColorSwatch key={key} name={key} color={val} />
-                      ))}
-                    </Section>
-
-                    <Section title="Back-Compat Aliases" icon={<Box size={18} className="text-slate-400" />}>
-                      {Object.entries(tokens.aliases).map(([key, val]) => (
-                        <ColorSwatch key={key} name={key} color={val} />
-                      ))}
-                    </Section>
-
-                    <Section title="Dawn Overrides" icon={<Sun size={18} className="text-slate-400" />}>
-                      {Object.entries(tokens.dawn).map(([key, val]) => (
-                        <ColorSwatch key={key} name={key} color={val} />
-                      ))}
-                    </Section>
-
-                    <Section title="Legacy Palette" icon={<Box size={18} className="text-slate-400" />}>
-                      {Object.entries(tokens.named).map(([key, val]) => (
-                        <ColorSwatch key={key} name={key} color={val} />
-                      ))}
-                    </Section>
-                  </>
-                )}
-              </div>
-            )}
-
-            </div>
-
-          </div>
-
-          <section
-            id="tab-panel-2"
-            role="tabpanel"
-            aria-labelledby={getTabId('Print assets')}
-            hidden={activeTab !== 'Print assets'}
-            className="space-y-4"
-          >
-            {activeTab === 'Print assets' && (
-              <>
-                <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    <input
-                      type="checkbox"
-                      checked={printMode}
-                      onChange={(e) => setPrintMode(e.target.checked)}
-                      className="accent-indigo-500 h-4 w-4"
-                      aria-label="Toggle print mode"
-                    />
-                    Print
-                  </label>
-                </div>
-                <div className="space-y-4">
-                  {printMode ? (
-                    <div
-                      className="print:hidden p-6 rounded-2xl border shadow-sm panel-surface-soft backdrop-blur-sm"
-                      style={{
-                        borderColor: tokens.cards["card-panel-border"],
-                        boxShadow: `0 12px 40px -24px ${tokens.brand.primary}`
-                      }}
-                    >
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                            <Printer size={16} />
-                            <span>Print asset pack preview</span>
-                          </div>
-                          <p className="text-sm text-slate-600 dark:text-slate-300">
-                            With Print Mode enabled, exports stay CMYK-safe and add foil + ink tokens. The tarball will include:
-                          </p>
-                          <div className="space-y-2">
-                            {printAssetPack.map((item) => (
-                              <div
-                                key={item.name}
-                                className="flex items-start gap-3 p-3 rounded-lg border panel-surface-soft shadow-sm"
-                              >
-                                <div className="mt-0.5 text-indigo-500 dark:text-indigo-300">
-                                  {item.icon}
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.name}</div>
-                                  <div className="text-xs font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider">{item.files}</div>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400">{item.note}</div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                            <Palette size={16} />
-                            <span>Brand hex set for Canva</span>
-                          </div>
-                          <p className="text-sm text-slate-600 dark:text-slate-300">
-                            Click any swatch to copy the print-tuned hex values for quick brand kits in Canva.
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list" aria-label="Print hex swatches">
-                            {canvaPrintHexes.map(({ name, color }) => (
-                              <ColorSwatch key={name} name={name} color={color} />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-6 rounded-2xl border shadow-sm panel-surface-soft text-sm">
-                      <p className="font-semibold mb-2">Enable Print Mode to unlock the asset pack preview.</p>
-                      <p className="text-slate-500 dark:text-slate-400 mb-4">We’ll tune tokens for CMYK-safe values and add foil + ink layers before exporting.</p>
-                      <button
-                        type="button"
-                        onClick={() => setPrintMode(true)}
-                        className="px-4 py-2 rounded-lg text-xs font-bold hover:-translate-y-[1px] transition shadow"
-                        style={{
-                          backgroundColor: tokens.brand.primary,
-                          color: ctaTextColor,
-                          boxShadow: `0 12px 30px -20px ${tokens.brand.primary}`,
-                        }}
-                      >
-                        Turn on Print Mode
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </section>
-
-          <section
-            ref={exportsSectionRef}
-            id="tab-panel-3"
-            role="tabpanel"
-            aria-labelledby={getTabId('Exports')}
-            hidden={activeTab !== 'Exports'}
-            className="space-y-4"
-          >
-            {activeTab === 'Exports' && (
-              <>
-                <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mx-2 px-2 lg:flex-wrap lg:overflow-visible lg:pb-0 lg:px-0 lg:mx-0">
-                  <button
-                    type="button"
-                    onClick={handleJumpToExports}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:-translate-y-[1px] active:scale-95 transition border focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
-                    style={{
-                      backgroundImage: `linear-gradient(120deg, ${tokens.brand.primary} 0%, ${tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary} 100%)`,
-                      color: ctaTextColor,
-                      borderColor: tokens.brand['cta-hover'] || tokens.brand.primary,
-                      boxShadow: `0 18px 35px -22px ${tokens.brand.primary}`,
-                    }}
-                    aria-label="Jump to exports"
-                  >
-                    <Download size={14} />
-                    Exports
-                  </button>
-                  <button
-                    type="button"
-                    onClick={copyShareLink}
-                    className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border hover:opacity-90 active:scale-95 transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
-                    title="Copy a shareable link to this palette"
-                  >
-                    <LinkIcon size={14} />
-                    Copy share link
-                  </button>
-                  <div className="relative shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setOverflowOpen((v) => !v)}
-                      className="px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
-                      style={{ borderColor: tokens.cards["card-panel-border"] }}
-                      aria-expanded={overflowOpen}
-                      aria-haspopup="true"
-                      title="More actions"
-                    >
-                      ⋮
-                    </button>
-                    {overflowOpen && (
-                      <div
-                        className="absolute right-0 mt-2 w-40 rounded-xl border panel-surface-soft shadow-xl z-30"
-                      >
-                        <a
-                          href="docs/README.md"
-                          className="block px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:opacity-80 rounded-t-xl"
-                        >
-                          Docs
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => { setOverflowOpen(false); copyShareLink(); }}
-                          className="w-full text-left px-3 py-2 text-xs font-bold hover:opacity-80 rounded-b-xl"
-                        >
-                          Copy share link
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <ErrorBoundary resetMode="soft" fallback={({ reset, message }) => <SectionFallback label="Exports" reset={reset} message={message} />}>
-                  <Suspense fallback={<div className="p-4 rounded-lg border panel-surface-soft text-sm">Loading exports…</div>}>
-                    <ExportsPanel
-                      tokens={finalTokens}
-                      printMode={printMode}
-                      isExporting={isExportingAssets}
-                      exportError={exportError}
-                      exportBlocked={exportBlocked}
-                      canPrint={printSupported}
-                      ctaTextColor={ctaTextColor}
-                      neutralButtonTextColor={neutralButtonText}
-                      onExportAssets={exportAllAssets}
-                      onRetryAssets={exportAllAssets}
-                      onExportPdf={handleExportPdf}
-                      onExportPenpot={() => exportJson(`${displayThemeName}${printMode ? '-PRINT' : ''}.json`)}
-                      onExportGeneric={() => exportGenericJson('generic-tokens.json')}
-                      onExportFigmaTokens={() => exportFigmaTokensJson('figma-tokens.json')}
-                      onExportStyleDictionary={() => exportStyleDictionaryJson('style-dictionary.json')}
-                      onExportCssVars={exportCssVars}
-                      onExportWitchcraft={() => exportWitchcraftJson('witchcraft-theme.json')}
-                      isInternal={isInternal}
-                    />
-                  </Suspense>
-                </ErrorBoundary>
-              </>
-            )}
-          </section>
+          <ExportStage
+            activeTab={activeTab}
+            getTabId={getTabId}
+            exportsSectionRef={exportsSectionRef}
+            handleJumpToExports={handleJumpToExports}
+            copyShareLink={copyShareLink}
+            overflowOpen={overflowOpen}
+            setOverflowOpen={setOverflowOpen}
+            tokens={tokens}
+            ctaTextColor={ctaTextColor}
+            finalTokens={finalTokens}
+            printMode={printMode}
+            isExportingAssets={isExportingAssets}
+            exportError={exportError}
+            exportBlocked={exportBlocked}
+            printSupported={printSupported}
+            neutralButtonText={neutralButtonText}
+            exportAllAssets={exportAllAssets}
+            handleExportPdf={handleExportPdf}
+            exportJson={exportJson}
+            exportGenericJson={exportGenericJson}
+            exportFigmaTokensJson={exportFigmaTokensJson}
+            exportStyleDictionaryJson={exportStyleDictionaryJson}
+            exportCssVars={exportCssVars}
+            exportWitchcraftJson={exportWitchcraftJson}
+            displayThemeName={displayThemeName}
+            isInternal={isInternal}
+          />
             </>
           )}
         </main>

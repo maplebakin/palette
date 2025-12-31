@@ -5,6 +5,7 @@ import {
   wcagLuminance,
   parse,
 } from 'culori';
+import { escapeXml } from './colorUtils.js';
 
 const labConverter = converter('lab');
 const lchConverter = converter('lch');
@@ -89,7 +90,7 @@ export function generateSoc(name, colors, options = {}) {
             newName = `${newName} (${suffix})`;
         }
         sanitizedNames.add(newName);
-        return { ...color, name: newName };
+        return { ...color, name: escapeXml(newName) };
     });
 
     const xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>

@@ -10,7 +10,8 @@ extend([labPlugin]);
  * @returns {Array<{name: string, hex: string}>}
  */
 export function mergeProjectColors(project) {
-  const { sections, settings } = project;
+  const { sections } = project;
+  const safeSettings = project.settings && typeof project.settings === 'object' ? project.settings : {};
   const allColors = [];
 
   // 1. Combine all colors from all sections
@@ -43,7 +44,8 @@ export function mergeProjectColors(project) {
   });
 
   // 2. Near-duplicate removal
-  const { nearDupThreshold, anchorsAlwaysKeep } = settings;
+  const nearDupThreshold = Number.isFinite(safeSettings.nearDupThreshold) ? safeSettings.nearDupThreshold : 2.0;
+  const anchorsAlwaysKeep = typeof safeSettings.anchorsAlwaysKeep === 'boolean' ? safeSettings.anchorsAlwaysKeep : true;
   const finalColors = [];
 
   allColors.forEach(color => {
@@ -80,7 +82,7 @@ export function mergeProjectColors(project) {
 
 
   // 4. Neutral throttling
-  const { neutralCap } = settings;
+  const neutralCap = Number.isFinite(safeSettings.neutralCap) ? safeSettings.neutralCap : 8;
   const neutrals = finalColors.filter(c => new TinyColor(c.hex).toHsl().s < 0.12);
   const nonNeutrals = finalColors.filter(c => new TinyColor(c.hex).toHsl().s >= 0.12);
 
@@ -101,7 +103,7 @@ export function mergeProjectColors(project) {
   const cappedColors = [...nonNeutrals, ...throttledNeutrals];
 
   // 5. Cap total colors
-  const { maxColors } = settings;
+  const maxColors = Number.isFinite(safeSettings.maxColors) ? safeSettings.maxColors : 40;
   if (cappedColors.length > maxColors) {
     // Simple slice for now, could be more sophisticated
     cappedColors.length = maxColors;
