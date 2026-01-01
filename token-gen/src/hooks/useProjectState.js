@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useProjectStorage } from './useProjectStorage';
 import { useNotification } from '../context/NotificationContext';
-import { createEmptyProject, normalizeProject } from '../lib/projectUtils';
+import { buildSectionSnapshotFromPalette, createEmptyProject, normalizeProject } from '../lib/projectUtils';
 
 export function useProjectState() {
   const { notify } = useNotification();
@@ -38,13 +38,23 @@ export function useProjectState() {
   }, []);
 
   const addSection = useCallback(() => {
+    const existingLabels = new Set(sections.map((section) => section.label));
+    let idx = sections.length + 1;
+    let label = `Section ${idx}`;
+    while (existingLabels.has(label)) {
+      idx += 1;
+      label = `Section ${idx}`;
+    }
+    const timestamp = new Date().toISOString();
     const newSection = {
       id: `section-${Date.now()}`,
-      label: 'New Section',
+      label,
       kind: 'season',
-      baseHex: '#ffffff',
-      mode: 'mono',
+      baseHex: '',
+      mode: '',
       locked: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
     setSections([...sections, newSection]);
     notify('Added new section', 'success');
@@ -60,9 +70,12 @@ export function useProjectState() {
   }, [sections, setSections, notify]);
 
   const capturePalette = useCallback((sectionId, palette) => {
-    const { baseColor, mode, tokens } = palette;
-    const colors = Object.entries(tokens).map(([name, { hex }]) => ({ name, hex }));
-    updateSection(sectionId, { baseHex: baseColor, mode, colors, tokens });
+    const snapshot = buildSectionSnapshotFromPalette(palette);
+    if (!snapshot) {
+      notify('Capture failed — palette data is unavailable', 'warn');
+      return;
+    }
+    updateSection(sectionId, snapshot);
     notify('Palette captured into section', 'success');
   }, [updateSection, notify]);
 

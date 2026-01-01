@@ -33,6 +33,10 @@ const IdentityStage = ({
   importedOverrides,
   sanitizeThemeName,
   sanitizePrefix,
+  projectEdit,
+  onSaveProjectPalette,
+  onSaveProjectPaletteAsNew,
+  onCancelProjectEdit,
 }) => (
   <>
     {(storageAvailable === false || storageCorrupt) && (
@@ -93,6 +97,11 @@ const IdentityStage = ({
                     <p className="text-[11px] uppercase tracking-[0.3em] panel-muted">Welcome to</p>
                     <h1 className="text-2xl font-black" style={{ color: tokens.typography['heading'] }}>Apocapalette</h1>
                     <p className="text-xs panel-muted font-medium">Spin the chaos wheel, keep the pretty bits.</p>
+                    {projectEdit && (
+                      <p className="text-[11px] panel-muted">
+                        Editing project palette: {projectEdit.paletteName} (Project: {projectEdit.projectName})
+                      </p>
+                    )}
                   </div>
                   <div className="relative flex flex-wrap items-center gap-2 lg:ml-4">
                     <button
@@ -169,6 +178,42 @@ const IdentityStage = ({
                       tabIndex={-1}
                     />
                   </div>
+                  {projectEdit && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={onSaveProjectPalette}
+                        className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold hover:opacity-90 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
+                        style={{
+                          backgroundColor: tokens.brand.primary,
+                          color: primaryTextColor,
+                          boxShadow: `0 12px 30px -20px ${tokens.brand.primary}`,
+                        }}
+                        aria-label="Save changes to project palette"
+                        disabled={!onSaveProjectPalette}
+                      >
+                        <Save size={14} />
+                        Save changes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onSaveProjectPaletteAsNew}
+                        className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border shrink-0 whitespace-nowrap hover:opacity-90 disabled:opacity-60"
+                        disabled={!onSaveProjectPaletteAsNew}
+                      >
+                        <Save size={14} />
+                        Save as new
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onCancelProjectEdit}
+                        className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border shrink-0 whitespace-nowrap hover:opacity-90 disabled:opacity-60"
+                        disabled={!onCancelProjectEdit}
+                      >
+                        Cancel / Close
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="w-full">
                   <div

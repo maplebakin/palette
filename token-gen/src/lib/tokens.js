@@ -1,4 +1,5 @@
 import { blendColorsPerceptual, blendHue, getColor, getContrastRatio, hexToHsl, hslToHex } from './colorUtils.js';
+import { readPath } from './theme/paths.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -95,23 +96,9 @@ export const orderedSwatchSpec = [
   { name: 'Entity card icon shadow', path: 'glass.glass-shadow-soft' },
 ];
 
-const readTokenValue = (tokens, path) => {
-  const parts = path.split('.');
-  let current = tokens;
-  for (const part of parts) {
-    if (current && typeof current === 'object' && part in current) {
-      current = current[part];
-    } else {
-      return null;
-    }
-  }
-  if (current && typeof current === 'object' && 'value' in current) return current.value;
-  return current ?? null;
-};
-
 export const buildOrderedStack = (tokens) => orderedSwatchSpec
   .map((item) => {
-    const resolved = readTokenValue(tokens, item.path) ?? (item.fallbackPath ? readTokenValue(tokens, item.fallbackPath) : item.fallbackValue ?? null);
+    const resolved = readPath(tokens, item.path) ?? (item.fallbackPath ? readPath(tokens, item.fallbackPath) : item.fallbackValue ?? null);
     if (resolved === null || resolved === undefined) return null;
     return { name: item.name, path: item.path, value: resolved };
   })

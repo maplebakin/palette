@@ -61,6 +61,7 @@ const ValidateStage = ({
         </div>
         <div
           className="relative rounded-2xl overflow-hidden ring-1 bg-white/5 backdrop-blur-md transition-all duration-500 ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4"
+          data-testid="theme-preview-root"
           style={{
             backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.65),
             boxShadow: `0 24px 70px -50px ${tokens.brand.primary}`,
@@ -76,7 +77,7 @@ const ValidateStage = ({
             <span className="text-xs font-semibold" style={{ color: tokens.typography['text-muted'] }}>Preview • Instant harmony</span>
           </div>
 
-          <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-3 gap-8" data-testid="theme-preview-content">
             <div className="space-y-4">
               <div className="h-8 w-3/4 rounded mb-6" style={{ backgroundColor: tokens.brand.primary, opacity: 0.25 }}></div>
               <div className="h-4 w-full rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>

@@ -1,4 +1,5 @@
 import { normalizeHex } from './colorUtils.js';
+import { readPath } from './theme/paths.js';
 import { buildOrderedStack, generateTokens } from './tokens.js';
 
 export const PROJECT_SCHEMA_VERSION = 1;
@@ -87,6 +88,17 @@ const normalizeSection = (section, index) => {
   const locked = Boolean(section?.locked);
   const tokens = normalizeTokens(section?.tokens);
   const colors = normalizeColors(section?.colors);
+  const tokenSet = section?.tokenSet && typeof section.tokenSet === 'object' && !Array.isArray(section.tokenSet)
+    ? section.tokenSet
+    : undefined;
+  const paletteSpec = section?.paletteSpec && typeof section.paletteSpec === 'object' && !Array.isArray(section.paletteSpec)
+    ? section.paletteSpec
+    : undefined;
+  const snapshot = section?.snapshot && typeof section.snapshot === 'object' && !Array.isArray(section.snapshot)
+    ? section.snapshot
+    : undefined;
+  const createdAt = typeof section?.createdAt === 'string' ? section.createdAt : undefined;
+  const updatedAt = typeof section?.updatedAt === 'string' ? section.updatedAt : undefined;
 
   return {
     id,
@@ -97,6 +109,11 @@ const normalizeSection = (section, index) => {
     locked,
     ...(tokens ? { tokens } : {}),
     ...(colors ? { colors } : {}),
+    ...(tokenSet ? { tokenSet } : {}),
+    ...(paletteSpec ? { paletteSpec } : {}),
+    ...(snapshot ? { snapshot } : {}),
+    ...(createdAt ? { createdAt } : {}),
+    ...(updatedAt ? { updatedAt } : {}),
   };
 };
 
@@ -127,21 +144,6 @@ export const normalizeProject = (project) => {
   };
 };
 
-const readTokenValue = (tokens, path) => {
-  if (!tokens) return null;
-  const parts = path.split('.');
-  let current = tokens;
-  for (const part of parts) {
-    if (current && typeof current === 'object' && part in current) {
-      current = current[part];
-    } else {
-      return null;
-    }
-  }
-  if (current && typeof current === 'object' && 'value' in current) return current.value;
-  return current ?? null;
-};
-
 const ROLE_TOKEN_PATHS = {
   background: 'surfaces.background',
   surface: 'cards.card-panel-surface',
@@ -166,7 +168,8 @@ export const buildSectionSnapshotFromPalette = (paletteState) => {
   const accentStrength = paletteState.accentStrength ?? 100;
   const popIntensity = paletteState.popIntensity ?? 100;
 
-  const tokens = generateTokens(baseHex, generatorMode, themeMode, apocalypseIntensity, {
+  const tokensSource = paletteState.finalTokens || paletteState.tokens || null;
+  const tokens = tokensSource || generateTokens(baseHex, generatorMode, themeMode, apocalypseIntensity, {
     harmonyIntensity,
     neutralCurve,
     accentStrength,
@@ -174,20 +177,50 @@ export const buildSectionSnapshotFromPalette = (paletteState) => {
   });
 
   const roleTokens = Object.entries(ROLE_TOKEN_PATHS)
-    .map(([key, path]) => [key, normalizeHexValue(readTokenValue(tokens, path))])
+    .map(([key, path]) => [key, normalizeHexValue(readPath(tokens, path))])
     .filter(([, value]) => value);
 
-  const colors = buildOrderedStack(tokens)
+  const stack = Array.isArray(paletteState.orderedStack) ? paletteState.orderedStack : buildOrderedStack(tokens);
+  const colors = stack
     .map((swatch) => ({
       name: swatch.name,
       hex: normalizeHexValue(swatch.value),
     }))
     .filter((swatch) => swatch.hex);
 
+  const paletteSpec = {
+    baseColor: baseHex,
+    mode: generatorMode,
+    themeMode,
+    isDark: themeMode === 'dark',
+    printMode: Boolean(paletteState.printMode),
+    customThemeName: String(paletteState.customThemeName || paletteState.name || ''),
+    harmonyIntensity,
+    apocalypseIntensity,
+    neutralCurve,
+    accentStrength,
+    popIntensity,
+    tokenPrefix: paletteState.tokenPrefix || '',
+    importedOverrides: paletteState.importedOverrides ?? null,
+  };
+
+  const snapshot = {
+    baseHex,
+    mode: toProjectMode(generatorMode),
+    tokens: roleTokens.length ? Object.fromEntries(roleTokens) : undefined,
+    colors: colors.length ? colors : undefined,
+    tokenSet: tokensSource ? tokensSource : tokens,
+    orderedStack: stack,
+  };
+
   return {
     baseHex,
     mode: toProjectMode(generatorMode),
     tokens: roleTokens.length ? Object.fromEntries(roleTokens) : undefined,
     colors: colors.length ? colors : undefined,
+    ...(tokensSource ? { tokenSet: tokensSource } : { tokenSet: tokens }),
+    paletteSpec,
+    snapshot,
+    updatedAt: new Date().toISOString(),
   };
 };

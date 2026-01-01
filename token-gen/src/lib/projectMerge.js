@@ -16,8 +16,10 @@ export function mergeProjectColors(project) {
 
   // 1. Combine all colors from all sections
   sections.forEach(section => {
-    if (section.tokens) {
-      Object.entries(section.tokens).forEach(([role, hex]) => {
+    const snapshotTokens = section.snapshot?.tokens || section.tokens;
+    const snapshotColors = section.snapshot?.colors || section.colors;
+    if (snapshotTokens) {
+      Object.entries(snapshotTokens).forEach(([role, hex]) => {
         allColors.push({
           name: `${section.label} / ${role}`,
           hex: new TinyColor(hex).toHexString(),
@@ -27,10 +29,10 @@ export function mergeProjectColors(project) {
         });
       });
     }
-    if (section.colors) {
-      section.colors.forEach(color => {
+    if (snapshotColors) {
+      snapshotColors.forEach(color => {
         // Avoid adding duplicates from tokens
-        if (!Object.values(section.tokens || {}).includes(color.hex)) {
+        if (!Object.values(snapshotTokens || {}).includes(color.hex)) {
           allColors.push({
             name: `${section.label} / ${color.name}`,
             hex: new TinyColor(color.hex).toHexString(),

@@ -24,6 +24,7 @@ export default function ExportsPanel({
   onExportUiThemeCss,
   onDownloadThemePack,
   onDownloadThemePackWithPrint,
+  onGenerateListingAssets,
   onRetryAssets,
   isInternal,
 }) {
@@ -187,8 +188,24 @@ export default function ExportsPanel({
               }}
             >
               <Download size={14} />
-              Theme Pack + Print Assets
+              Theme Pack + CMYK Print Pack
             </button>
+            <div className="flex flex-col items-start gap-1">
+              <button
+                type="button"
+                onClick={onGenerateListingAssets}
+                className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
+                style={{
+                  backgroundColor: tokens.cards['card-panel-surface'],
+                  color: neutralButtonTextColor || pickReadableText(tokens.cards['card-panel-surface']),
+                  borderColor: tokens.cards['card-panel-border'],
+                }}
+              >
+                <Download size={14} />
+                Generate Listing Assets
+              </button>
+              <span className="text-[10px] font-semibold uppercase panel-muted">DEV ONLY</span>
+            </div>
           </>
         )}
         {isInternal && (

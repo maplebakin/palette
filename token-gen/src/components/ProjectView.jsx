@@ -3,7 +3,9 @@ import { ProjectContext } from '../context/ProjectContext';
 import { PaletteContext } from '../context/PaletteContext';
 import { useNotification } from '../context/NotificationContext';
 import { mergeProjectColors } from '../lib/projectMerge';
+import { flattenTokens } from '../lib/theme/paths';
 import { generateSoc } from '../lib/soc-exporter';
+import { buildExportFilename, downloadFile, exportJson } from '../lib/export';
 
 const StartPanel = ({ children, className }) => (
   <div className={className}>{children}</div>
@@ -25,7 +27,16 @@ const ExportPanel = ({ children, className }) => (
   <div className={className}>{children}</div>
 );
 
-function ProjectView({ onImportCss }) {
+function ProjectView({
+  onImportCss,
+  onOpenPalette,
+  onDownloadPrintAssets,
+  onExportPenpotPrintTokens,
+  projectExportStatus,
+  projectExporting,
+  projectPenpotStatus,
+  projectPenpotExporting,
+}) {
   const { notify } = useNotification();
   const { 
     project, 
@@ -61,36 +72,41 @@ function ProjectView({ onImportCss }) {
   };
 
   const handleFileSave = () => {
-    const data = JSON.stringify(project, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${projectName || 'project'}.apocaproject.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportJson(projectName || 'project', '.apocaproject', project, { sanitize: false });
   };
 
   const handleExportSoc = () => {
     const mergedColors = mergeProjectColors(project);
     const socContent = generateSoc(projectName, mergedColors);
-    const blob = new Blob([socContent], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${projectName || 'project'}.soc`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const filename = buildExportFilename(projectName || 'project', '', 'soc', { sanitize: false });
+    downloadFile({ data: socContent, filename, mime: 'application/octet-stream' });
   };
 
   const safeSections = Array.isArray(sections) ? sections : [];
+  const hasCapturedData = (section) => {
+    const hasTokens = section?.tokens && Object.keys(section.tokens).length > 0;
+    const hasTokenSet = section?.tokenSet && typeof section.tokenSet === 'object';
+    const hasColors = Array.isArray(section?.colors) && section.colors.length > 0;
+    const hasSnapshot = section?.snapshot && typeof section.snapshot === 'object';
+    return hasTokens || hasTokenSet || hasColors || hasSnapshot;
+  };
+  const getTokenCount = (section) => {
+    if (section?.snapshot?.tokenSet && typeof section.snapshot.tokenSet === 'object') {
+      return flattenTokens(section.snapshot.tokenSet).length;
+    }
+    if (section?.tokenSet && typeof section.tokenSet === 'object') {
+      return flattenTokens(section.tokenSet).length;
+    }
+    if (section?.tokens) return Object.keys(section.tokens).length;
+    return 0;
+  };
+  const getColorCount = (section) => {
+    if (Array.isArray(section?.snapshot?.colors)) return section.snapshot.colors.length;
+    return Array.isArray(section?.colors) ? section.colors.length : 0;
+  };
   const sectionCount = safeSections.length;
-  const totalColors = safeSections.reduce((sum, section) => (
-    sum + (Array.isArray(section.colors) ? section.colors.length : 0)
-  ), 0);
-  const totalTokens = safeSections.reduce((sum, section) => (
-    sum + (section.tokens ? Object.keys(section.tokens).length : 0)
-  ), 0);
+  const totalColors = safeSections.reduce((sum, section) => sum + getColorCount(section), 0);
+  const totalTokens = safeSections.reduce((sum, section) => sum + getTokenCount(section), 0);
   const safeSettings = settings && typeof settings === 'object' ? settings : {};
   const settingsItems = [
     { label: 'Max colors', value: safeSettings.maxColors },
@@ -100,6 +116,21 @@ function ProjectView({ onImportCss }) {
   ];
 
   const handleImportCss = onImportCss || (() => {});
+  const hasProjectName = Boolean(projectName && projectName.trim());
+  const hasSections = sectionCount > 0;
+  const hasCapturedSections = safeSections.some((section) => hasCapturedData(section));
+  const saveDisabledReason = !hasProjectName
+    ? 'Name the project to enable saving.'
+    : (!hasSections ? 'Add at least one section before saving.' : '');
+  const socDisabledReason = !hasProjectName
+    ? 'Name the project to enable .soc export.'
+    : (!hasCapturedSections ? 'Capture at least one section before exporting.' : '');
+  const printExportDisabledReason = !hasCapturedSections
+    ? 'Capture at least one palette before batch export.'
+    : '';
+  const penpotExportDisabledReason = !hasCapturedSections
+    ? 'Capture at least one palette before Penpot export.'
+    : '';
 
   return (
     <div className="p-4 panel-surface rounded-lg">
@@ -186,14 +217,18 @@ function ProjectView({ onImportCss }) {
             </div>
           ) : (
             safeSections.map((section) => {
-              const swatchCount = Array.isArray(section.colors) ? section.colors.length : 0;
-              const tokenCount = section.tokens ? Object.keys(section.tokens).length : 0;
+              const swatchCount = getColorCount(section);
+              const tokenCount = getTokenCount(section);
+              const captured = hasCapturedData(section);
               const mainSwatches = [];
-              if (typeof section.baseHex === 'string' && section.baseHex) {
+              if (captured && typeof section.baseHex === 'string' && section.baseHex) {
                 mainSwatches.push(section.baseHex);
               }
-              if (Array.isArray(section.colors)) {
-                for (const color of section.colors) {
+              const colorSource = Array.isArray(section.snapshot?.colors)
+                ? section.snapshot.colors
+                : section.colors;
+              if (Array.isArray(colorSource)) {
+                for (const color of colorSource) {
                   const hex = color?.hex;
                   if (typeof hex === 'string' && hex && !mainSwatches.includes(hex)) {
                     mainSwatches.push(hex);
@@ -202,8 +237,8 @@ function ProjectView({ onImportCss }) {
                 }
               }
               const previewSwatches = mainSwatches.slice(0, 2);
-              const previewColors = Array.isArray(section.colors)
-                ? section.colors.slice(0, 6).map((color) => color.hex)
+              const previewColors = Array.isArray(colorSource)
+                ? colorSource.slice(0, 6).map((color) => color.hex)
                 : [];
               return (
                 <div key={section.id} className="p-4 border panel-surface rounded-lg mb-3">
@@ -211,7 +246,12 @@ function ProjectView({ onImportCss }) {
                     <div className="flex flex-wrap items-center gap-3">
                       <input
                         value={section.label}
-                        onChange={(e) => updateSection(section.id, { label: e.target.value })}
+                        onChange={(e) => updateSection(section.id, {
+                          label: e.target.value,
+                          paletteSpec: section.paletteSpec
+                            ? { ...section.paletteSpec, customThemeName: e.target.value }
+                            : section.paletteSpec,
+                        })}
                         className="font-semibold bg-transparent text-lg panel-text flex-1 min-w-[160px]"
                         aria-label="Section label"
                       />
@@ -229,13 +269,34 @@ function ProjectView({ onImportCss }) {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => capturePalette(section.id, palette)} className="btn-sm">Capture</button>
-                      <button onClick={() => removeSection(section.id)} className="btn-sm-danger">Remove</button>
+                      <button
+                        onClick={() => onOpenPalette?.(section)}
+                        className="btn-sm"
+                        disabled={!section.paletteSpec && !section.baseHex}
+                      >
+                        Open
+                      </button>
+                      <button
+                        onClick={() => capturePalette(section.id, palette)}
+                        className="btn-sm"
+                        disabled={!palette}
+                      >
+                        Capture
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (captured && !window.confirm(`Remove "${section.label}"? Captured data will be lost.`)) return;
+                          removeSection(section.id);
+                        }}
+                        className="btn-sm-danger"
+                      >
+                        Remove
+                      </button>
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-xs panel-muted">
-                    <span>Base {section.baseHex ? section.baseHex.toUpperCase() : '—'}</span>
-                    <span>Mode {section.mode ?? '—'}</span>
+                    <span>Base {captured && section.baseHex ? section.baseHex.toUpperCase() : '—'}</span>
+                    <span>Mode {captured && section.mode ? section.mode : '—'}</span>
                     <span>Kind {section.kind ?? '—'}</span>
                     <span>{tokenCount} tokens</span>
                     <span>{swatchCount} colors</span>
@@ -265,9 +326,55 @@ function ProjectView({ onImportCss }) {
               <h3 className="text-lg font-semibold">Export</h3>
               <p className="text-sm panel-muted">Save the project file or export a .soc bundle.</p>
             </div>
-            <div className="flex items-center gap-3">
-              <button onClick={handleFileSave} className="btn-secondary">Save Project</button>
-              <button onClick={handleExportSoc} className="btn-primary">Export Project .soc</button>
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-3 flex-wrap justify-end">
+                <button
+                  onClick={handleFileSave}
+                  className="btn-secondary"
+                  disabled={Boolean(saveDisabledReason)}
+                  aria-disabled={Boolean(saveDisabledReason)}
+                >
+                  Save Project
+                </button>
+                <button
+                  onClick={handleExportSoc}
+                  className="btn-primary"
+                  disabled={Boolean(socDisabledReason)}
+                  aria-disabled={Boolean(socDisabledReason)}
+                >
+                  Export Project .soc
+                </button>
+                <button
+                  onClick={onDownloadPrintAssets}
+                  className="btn-secondary"
+                  disabled={Boolean(printExportDisabledReason) || projectExporting}
+                  aria-disabled={Boolean(printExportDisabledReason) || projectExporting}
+                >
+                  {projectExporting ? 'Building print assets…' : 'Download all print assets'}
+                </button>
+                <button
+                  onClick={onExportPenpotPrintTokens}
+                  className="btn-secondary"
+                  disabled={Boolean(penpotExportDisabledReason) || projectPenpotExporting}
+                  aria-disabled={Boolean(penpotExportDisabledReason) || projectPenpotExporting}
+                >
+                  {projectPenpotExporting ? 'Generating Penpot tokens…' : 'Export Project → Penpot (Print Tokens)'}
+                </button>
+              </div>
+              {(saveDisabledReason || socDisabledReason) && (
+                <div className="text-xs panel-muted text-right space-y-1">
+                  {saveDisabledReason && <p>Save disabled: {saveDisabledReason}</p>}
+                  {socDisabledReason && <p>Export disabled: {socDisabledReason}</p>}
+                </div>
+              )}
+              {(printExportDisabledReason || projectExportStatus || penpotExportDisabledReason || projectPenpotStatus) && (
+                <div className="text-xs panel-muted text-right space-y-1">
+                  {printExportDisabledReason && <p>Print export disabled: {printExportDisabledReason}</p>}
+                  {projectExportStatus && <p>{projectExportStatus}</p>}
+                  {penpotExportDisabledReason && <p>Penpot export disabled: {penpotExportDisabledReason}</p>}
+                  {projectPenpotStatus && <p>{projectPenpotStatus}</p>}
+                </div>
+              )}
             </div>
           </div>
         </ExportPanel>

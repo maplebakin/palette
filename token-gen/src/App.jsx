@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback, Suspense } from 'react';
-import { FileText, Image } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect, useCallback, Suspense, useContext } from 'react';
+import { FileText, Image as ImageIcon } from 'lucide-react';
 import ProjectView from './components/ProjectView';
 import { StageNav } from './components/stages/StageLayout';
 import IdentityStage from './components/stages/IdentityStage';
@@ -7,10 +7,13 @@ import BuildStage from './components/stages/BuildStage';
 import ValidateStage from './components/stages/ValidateStage';
 import PackageStage from './components/stages/PackageStage';
 import ExportStage from './components/stages/ExportStage';
+import MoodBoard from './components/MoodBoard';
+import ListingAssetsCanvas from './components/ListingAssetsCanvas';
 import useDarkClassSync from './hooks/useDarkClassSync';
 import useShareLink from './hooks/useShareLink';
 import { useNotification } from './context/NotificationContext.jsx';
 import { PaletteContext } from './context/PaletteContext.jsx';
+import { ProjectContext } from './context/ProjectContext.jsx';
 import {
   escapeXml,
   getContrastRatio,
@@ -22,9 +25,15 @@ import {
   normalizeHex,
   pickReadableText,
 } from './lib/colorUtils';
-import { addPrintMode, buildOrderedStack, generateTokens, orderedSwatchSpec } from './lib/tokens';
+import { orderedSwatchSpec } from './lib/tokens';
+import { nestTokens } from './lib/theme/paths';
 import { buildGenericPayload, buildPenpotPayload, buildWitchcraftPayload, buildFigmaTokensPayload, buildStyleDictionaryPayload } from './lib/payloads';
+import { toPenpotTokens } from './lib/penpotTokens';
 import { buildThemeCss, getThemeClassName, THEME_CLASSNAMES } from './lib/themeStyles';
+import { buildTheme } from './lib/theme/engine';
+import { buildCssVariables } from './lib/theme/styles';
+import { downloadFile, exportJson as exportJsonFile, exportAssets, exportThemePack, buildExportFilename, slugifyFilename } from './lib/export';
+import { buildSectionSnapshotFromPalette, toGeneratorMode } from './lib/projectUtils';
 
 const encoder = new TextEncoder();
 const encodeText = (str) => encoder.encode(str);
@@ -82,28 +91,23 @@ const sanitizePrefix = (value) => {
   if (typeof value !== 'string') return '';
   return value.replace(/[^a-z0-9_.-]/gi, '').slice(0, 32);
 };
-const slugifyThemeName = (value, fallback = 'theme') => {
-  const clean = sanitizeThemeName(value, fallback);
-  const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return slug || fallback;
+const buildPrintTokenTree = (printTokenSet) => {
+  if (!printTokenSet || typeof printTokenSet !== 'object') return null;
+  const root = {};
+  Object.entries(printTokenSet).forEach(([key, token]) => {
+    if (!key) return;
+    if (key === 'description' || key.startsWith('meta/')) return;
+    const tokenValue = token && typeof token === 'object' && 'value' in token ? token.value : token;
+    if (tokenValue == null) return;
+    const segments = String(key).split('/').map((segment) => segment.trim()).filter(Boolean);
+    if (!segments.length) return;
+    const payload = token && typeof token === 'object' && 'type' in token && 'value' in token
+      ? token
+      : tokenValue;
+    nestTokens(root, segments, payload);
+  });
+  return Object.keys(root).length ? root : null;
 };
-const downloadFile = (filename, content, mime = 'text/plain') => {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-};
-const buildCssVariables = (stack, prefix = '') => {
-  const safePrefix = prefix ? `${prefix}-` : '';
-  const lines = stack.map(({ path, value }) => `  --${safePrefix}${path.replace(/\./g, '-')}: ${value};`);
-  return `:root {\n${lines.join('\n')}\n}\n`;
-};
-
 const THEME_PACK_GUIDANCE = {
   Monochromatic: {
     best: 'Calm product UI, editorial systems',
@@ -194,26 +198,6 @@ const buildOverridesFromCss = (cssText) => {
     }
   });
   return { overrides, prefix: detectedPrefix };
-};
-
-const applyTokenOverrides = (baseTokens, overrides) => {
-  if (!overrides || Object.keys(overrides).length === 0) return baseTokens;
-  const next = typeof structuredClone === 'function'
-    ? structuredClone(baseTokens)
-    : JSON.parse(JSON.stringify(baseTokens));
-  Object.entries(overrides).forEach(([path, value]) => {
-    const parts = path.split('.');
-    let current = next;
-    for (let i = 0; i < parts.length - 1; i += 1) {
-      const key = parts[i];
-      if (!current[key] || typeof current[key] !== 'object') {
-        current[key] = {};
-      }
-      current = current[key];
-    }
-    current[parts[parts.length - 1]] = value;
-  });
-  return next;
 };
 
 const inferThemeMode = (value) => {
@@ -555,10 +539,18 @@ export default function App() {
   const savedTitleRef = useRef('');
   const exportsSectionRef = useRef(null);
   const savedPaletteInputRef = useRef(null);
+  const listingCoverRef = useRef(null);
+  const listingSwatchRef = useRef(null);
+  const listingSnippetRef = useRef(null);
   const [showFineTune, setShowFineTune] = useState(false);
   const [headerOpen, setHeaderOpen] = useState(true);
   const [chaosMenuOpen, setChaosMenuOpen] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
+  const [projectEdit, setProjectEdit] = useState(null);
+  const [projectExportStatus, setProjectExportStatus] = useState('');
+  const [projectExporting, setProjectExporting] = useState(false);
+  const [projectPenpotStatus, setProjectPenpotStatus] = useState('');
+  const [projectPenpotExporting, setProjectPenpotExporting] = useState(false);
   const statusTimerRef = useRef(null);
   const harmonyDebounceRef = useRef(null);
   const neutralDebounceRef = useRef(null);
@@ -577,6 +569,7 @@ export default function App() {
     statusTimerRef.current = setTimeout(() => setSaveStatus(''), 2400);
   }, [notify]);
 
+  const projectContext = useContext(ProjectContext);
   const isDark = themeMode === 'dark';
   useDarkClassSync(isDark);
   useEffect(() => {
@@ -673,6 +666,26 @@ export default function App() {
     } else {
       setImportedOverrides(null);
     }
+  }, []);
+
+  const buildSpecFromSection = useCallback((section) => {
+    if (!section || typeof section !== 'object') return null;
+    const baseColor = sanitizeHexInput(section.baseHex || '#6366f1', '#6366f1');
+    return {
+      baseColor,
+      mode: toGeneratorMode(section.mode || 'mono'),
+      themeMode: section.paletteSpec?.themeMode || (section.paletteSpec?.isDark ? 'dark' : 'light'),
+      isDark: section.paletteSpec?.isDark ?? (section.paletteSpec?.themeMode === 'dark'),
+      printMode: Boolean(section.paletteSpec?.printMode),
+      customThemeName: sanitizeThemeName(section.paletteSpec?.customThemeName || section.label || '', ''),
+      harmonyIntensity: section.paletteSpec?.harmonyIntensity ?? 100,
+      apocalypseIntensity: section.paletteSpec?.apocalypseIntensity ?? 100,
+      neutralCurve: section.paletteSpec?.neutralCurve ?? 100,
+      accentStrength: section.paletteSpec?.accentStrength ?? 100,
+      popIntensity: section.paletteSpec?.popIntensity ?? 100,
+      tokenPrefix: sanitizePrefix(section.paletteSpec?.tokenPrefix || ''),
+      importedOverrides: section.paletteSpec?.importedOverrides ?? null,
+    };
   }, []);
 
   const handleBaseColorChange = useCallback((value) => {
@@ -800,21 +813,71 @@ export default function App() {
   const autoThemeName = useMemo(() => `${mode} ${themeMode === 'dark' ? 'Dark' : themeMode === 'pop' ? 'Pop' : 'Light'}`, [mode, themeMode]);
   const safeCustomThemeName = useMemo(() => sanitizeThemeName(customThemeName, ''), [customThemeName]);
   const displayThemeName = safeCustomThemeName || autoThemeName;
-  const tokens = useMemo(() => {
-    const generated = generateTokens(baseColor, mode, themeMode, apocalypseIntensity, {
-      harmonyIntensity,
-      neutralCurve,
-      accentStrength,
-      popIntensity,
-      printMode,
-    });
-    return applyTokenOverrides(generated, importedOverrides);
-  }, [baseColor, mode, themeMode, apocalypseIntensity, harmonyIntensity, neutralCurve, accentStrength, popIntensity, printMode, importedOverrides]);
-  const paletteSnapshot = useMemo(() => ({
+  const themeMaster = useMemo(() => buildTheme({
+    name: displayThemeName,
     baseColor,
     mode,
+    themeMode,
+    isDark,
+    printMode,
+    apocalypseIntensity,
+    harmonyIntensity,
+    neutralCurve,
+    accentStrength,
+    popIntensity,
+    importedOverrides,
+  }), [
+    displayThemeName,
+    baseColor,
+    mode,
+    themeMode,
+    isDark,
+    printMode,
+    apocalypseIntensity,
+    harmonyIntensity,
+    neutralCurve,
+    accentStrength,
+    popIntensity,
+    importedOverrides,
+  ]);
+  const { tokens, finalTokens, orderedStack, currentTheme } = themeMaster;
+  const paletteSnapshot = useMemo(() => ({
+    name: displayThemeName,
+    baseColor,
+    mode,
+    themeMode,
+    isDark,
+    printMode,
+    customThemeName: sanitizeThemeName(customThemeName, ''),
+    harmonyIntensity,
+    apocalypseIntensity,
+    neutralCurve,
+    accentStrength,
+    popIntensity,
+    tokenPrefix: sanitizePrefix(tokenPrefix),
+    importedOverrides: importedOverrides && Object.keys(importedOverrides).length ? importedOverrides : null,
     tokens,
-  }), [baseColor, mode, tokens]);
+    finalTokens,
+    orderedStack,
+  }), [
+    displayThemeName,
+    baseColor,
+    mode,
+    themeMode,
+    isDark,
+    printMode,
+    customThemeName,
+    harmonyIntensity,
+    apocalypseIntensity,
+    neutralCurve,
+    accentStrength,
+    popIntensity,
+    tokenPrefix,
+    importedOverrides,
+    tokens,
+    finalTokens,
+    orderedStack,
+  ]);
   const serializePalette = useCallback(() => ({
     id: Date.now(),
     name: displayThemeName,
@@ -901,7 +964,7 @@ export default function App() {
       exportedAt: new Date().toISOString(),
       palettes: savedPalettes,
     };
-    downloadFile('apocapalette-saved-palettes.json', JSON.stringify(payload, null, 2), 'application/json');
+    exportJsonFile('apocapalette-saved-palettes', '', payload);
     setStatusMessage('Saved palettes exported', 'success');
   }, [savedPalettes, setStatusMessage]);
 
@@ -1037,6 +1100,123 @@ export default function App() {
     setStatusMessage(`Loaded "${target.name}"`, 'success');
   }, [savedPalettes, applySavedPalette, setStatusMessage]);
 
+  const openProjectPalette = useCallback((section) => {
+    if (!section || !projectContext) return;
+    const paletteSpec = section.paletteSpec || buildSpecFromSection(section);
+    if (!paletteSpec) {
+      notify('Palette spec is missing', 'warn');
+      return;
+    }
+    applySavedPalette(paletteSpec);
+    setProjectEdit({
+      sectionId: section.id,
+      paletteName: section.label || paletteSpec.customThemeName || 'Palette',
+      projectName: projectContext.projectName || 'Project',
+      paletteSpec,
+    });
+    setView('palette');
+  }, [applySavedPalette, buildSpecFromSection, notify, projectContext, setView]);
+
+  const saveProjectPalette = useCallback((options = {}) => {
+    if (!projectEdit || !projectContext) return;
+    const snapshot = buildSectionSnapshotFromPalette(paletteSnapshot);
+    if (!snapshot) {
+      notify('Save failed — palette data is unavailable', 'warn');
+      return;
+    }
+    const paletteSpec = snapshot.paletteSpec;
+    const label = paletteSpec.customThemeName || projectEdit.paletteName || 'Palette';
+    const timestamp = new Date().toISOString();
+    if (options.asNew) {
+      const newSection = {
+        id: `section-${Date.now()}`,
+        label,
+        kind: 'season',
+        locked: false,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        ...snapshot,
+      };
+      projectContext.setSections([...(projectContext.sections || []), newSection]);
+      setProjectEdit({
+        sectionId: newSection.id,
+        paletteName: label,
+        projectName: projectContext.projectName || 'Project',
+        paletteSpec,
+      });
+      notify('Project palette saved as new', 'success');
+      return;
+    }
+    projectContext.updateSection(projectEdit.sectionId, {
+      label,
+      updatedAt: timestamp,
+      ...snapshot,
+    });
+    setProjectEdit((prev) => (prev ? { ...prev, paletteName: label, paletteSpec } : prev));
+    notify('Project palette updated', 'success');
+  }, [notify, paletteSnapshot, projectContext, projectEdit]);
+
+  const cancelProjectEdit = useCallback(() => {
+    if (!projectEdit) return;
+    applySavedPalette(projectEdit.paletteSpec);
+    setProjectEdit(null);
+    setView('project');
+  }, [applySavedPalette, projectEdit, setView]);
+
+  const applyMoodBoardSpec = useCallback((paletteSpec) => {
+    if (!paletteSpec || typeof paletteSpec !== 'object') return;
+    applySavedPalette(paletteSpec);
+    setView('palette');
+  }, [applySavedPalette, setView]);
+
+  const saveMoodBoardDraft = useCallback((cluster) => {
+    if (!projectContext) return;
+    const paletteSpec = cluster?.paletteSpec;
+    if (!paletteSpec?.baseColor) {
+      notify('Draft is missing a base color', 'warn');
+      return;
+    }
+    const label = paletteSpec.customThemeName || cluster?.title || 'Palette';
+    const themeMaster = buildTheme({
+      name: label,
+      baseColor: paletteSpec.baseColor,
+      mode: paletteSpec.mode,
+      themeMode: paletteSpec.themeMode,
+      isDark: paletteSpec.isDark,
+      printMode: false,
+      apocalypseIntensity: paletteSpec.apocalypseIntensity ?? 100,
+      harmonyIntensity: paletteSpec.harmonyIntensity ?? 100,
+      neutralCurve: paletteSpec.neutralCurve ?? 100,
+      accentStrength: paletteSpec.accentStrength ?? 100,
+      popIntensity: paletteSpec.popIntensity ?? 100,
+      importedOverrides: paletteSpec.importedOverrides ?? null,
+    });
+    const paletteState = {
+      name: label,
+      ...paletteSpec,
+      tokens: themeMaster.tokens,
+      finalTokens: themeMaster.finalTokens,
+      orderedStack: themeMaster.orderedStack,
+    };
+    const snapshot = buildSectionSnapshotFromPalette(paletteState);
+    if (!snapshot) {
+      notify('Draft save failed — palette data unavailable', 'warn');
+      return;
+    }
+    const timestamp = new Date().toISOString();
+    const newSection = {
+      id: `section-${Date.now()}`,
+      label,
+      kind: 'season',
+      locked: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...snapshot,
+    };
+    projectContext.setSections([...(projectContext.sections || []), newSection]);
+    notify('Draft palette added to project', 'success');
+  }, [buildSectionSnapshotFromPalette, buildTheme, notify, projectContext]);
+
   const handleCssImport = useCallback((event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1072,27 +1252,13 @@ export default function App() {
     reader.readAsText(file);
     event.target.value = '';
   }, [notify, setBaseColor, setBaseInput, setBaseError, setCustomThemeName, setThemeMode, setTokenPrefix, setImportedOverrides]);
-  const finalTokens = useMemo(
-    () => (printMode ? addPrintMode(tokens, baseColor, mode, isDark) : tokens),
-    [tokens, printMode, baseColor, mode, isDark]
-  );
-  const currentTheme = useMemo(() => ({
-    name: displayThemeName,
-    mode,
-    themeMode,
-    isDark,
-    baseColor,
-    tokens: finalTokens,
-    printMode,
-  }), [displayThemeName, mode, themeMode, isDark, baseColor, finalTokens, printMode]);
-  const orderedStack = useMemo(() => buildOrderedStack(finalTokens), [finalTokens]);
   const orderedSwatches = useMemo(
     () => orderedStack.map(({ name, value }) => ({ name, color: value })),
     [orderedStack]
   );
   const printAssetPack = useMemo(() => ([
-    { icon: <Image size={14} />, name: 'Palette card', files: 'palette-card.svg + palette-card.png', note: 'Hero palette overview built from the print palette.' },
-    { icon: <Image size={14} />, name: 'Swatch strip', files: 'swatch-strip.svg + swatch-strip.png', note: '8-swatch strip for quick brand references.' },
+    { icon: <ImageIcon size={14} />, name: 'Palette card', files: 'palette-card.svg + palette-card.png', note: 'Hero palette overview built from the print palette.' },
+    { icon: <ImageIcon size={14} />, name: 'Swatch strip', files: 'swatch-strip.svg + swatch-strip.png', note: '8-swatch strip for quick brand references.' },
     { icon: <FileText size={14} />, name: 'Tokens JSON', files: 'tokens.json', note: 'Penpot-ready tokens including the print layer & foil markers.' },
   ]), []);
   const canvaPrintHexes = useMemo(() => {
@@ -1317,13 +1483,15 @@ export default function App() {
     { namingPrefix: tokenPrefix }
   ), [finalTokens, orderedStack, displayThemeName, mode, baseColor, isDark, printMode, tokenPrefix]);
 
-  const exportJson = (filename) => {
+  const exportJson = (themeName, suffix = '') => {
     if (!import.meta.env.DEV) return;
     const penpotPayload = buildExportPayload();
-    downloadFile(filename, JSON.stringify(penpotPayload, null, 2), 'application/json');
+    exportJsonFile(themeName, suffix, penpotPayload);
+    const penpotTokens = toPenpotTokens(penpotPayload);
+    exportJsonFile(themeName, `${suffix}-PENPOT`, penpotTokens);
   };
 
-  const exportGenericJson = (filename) => {
+  const exportGenericJson = () => {
     if (!import.meta.env.DEV) return;
     const payload = buildGenericPayload(finalTokens, {
       themeName: displayThemeName,
@@ -1334,42 +1502,147 @@ export default function App() {
       generatedAt: new Date().toISOString(),
       tokenPrefix: tokenPrefix || undefined,
     });
-    downloadFile(filename, JSON.stringify(payload, null, 2), 'application/json');
+    exportJsonFile('generic-tokens', '', payload);
   };
 
-  const exportWitchcraftJson = (filename) => {
+  const exportWitchcraftJson = () => {
     if (!import.meta.env.DEV) return;
     const witchcraftPayload = buildWitchcraftPayload(finalTokens, displayThemeName, mode, isDark);
-    downloadFile(filename, JSON.stringify(witchcraftPayload, null, 2), 'application/json');
+    exportJsonFile('witchcraft-theme', '', witchcraftPayload);
   };
 
-  const exportFigmaTokensJson = (filename) => {
+  const exportFigmaTokensJson = () => {
     if (!import.meta.env.DEV) return;
     const payload = buildFigmaTokensPayload(finalTokens, { namingPrefix: tokenPrefix || undefined });
-    downloadFile(filename, JSON.stringify(payload, null, 2), 'application/json');
+    exportJsonFile('figma-tokens', '', payload);
   };
 
-  const exportStyleDictionaryJson = (filename) => {
+  const exportStyleDictionaryJson = () => {
     if (!import.meta.env.DEV) return;
     const payload = buildStyleDictionaryPayload(finalTokens, { namingPrefix: tokenPrefix || undefined });
-    downloadFile(filename, JSON.stringify(payload, null, 2), 'application/json');
+    exportJsonFile('style-dictionary', '', payload);
   };
   const exportCssVars = () => {
     if (!import.meta.env.DEV) return;
-    const css = buildCssVariables(orderedStack, sanitizePrefix(tokenPrefix));
-    const slugBase = sanitizeThemeName(displayThemeName || 'theme', 'theme');
-    const slug = slugBase.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'theme';
-    downloadFile(`${slug}-tokens.css`, css, 'text/css');
+    const css = buildCssVariables(themeMaster, sanitizePrefix(tokenPrefix));
+    const slug = slugifyFilename(displayThemeName || 'theme', 'theme');
+    const filename = buildExportFilename(slug, '-tokens', 'css');
+    downloadFile({ data: css, filename, mime: 'text/css' });
     setStatusMessage('CSS variables exported', 'success');
   };
   const exportUiThemeCss = () => {
     if (!import.meta.env.DEV) return;
-    const slugBase = sanitizeThemeName(displayThemeName || 'theme', 'theme');
-    const slug = slugBase.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'theme';
+    const slug = slugifyFilename(displayThemeName || 'theme', 'theme');
     const css = buildThemeCss(uiTheme, `:root.${themeClass}`);
-    downloadFile(`${slug}-ui-theme.css`, css, 'text/css');
+    const filename = buildExportFilename(slug, '-ui-theme', 'css');
+    downloadFile({ data: css, filename, mime: 'text/css' });
     setStatusMessage('UI theme CSS exported', 'success');
   };
+  const handleGenerateListingAssets = useCallback(async (options = {}) => {
+    const {
+      rootFolder = 'listing',
+      includeMeta = true,
+      zipName,
+      successMessage = 'Listing assets generated',
+    } = options;
+    if (!import.meta.env.DEV) return;
+    if (typeof Blob === 'undefined') {
+      notify('File export is not supported in this browser', 'error');
+      return;
+    }
+    const coverNode = listingCoverRef.current;
+    const swatchNode = listingSwatchRef.current;
+    if (!coverNode || !swatchNode) {
+      notify('Listing asset templates are not ready', 'error');
+      return;
+    }
+    const previewNode = document.querySelector('[data-testid="theme-preview-content"]')
+      || document.querySelector('[data-testid="theme-preview-root"]');
+    if (!previewNode) {
+      notify('Preview panel could not be found', 'error');
+      return;
+    }
+    try {
+      const { toPng } = await import('html-to-image');
+      const JSZip = (await import('jszip')).default;
+      const toBytes = async (dataUrl) => {
+        const res = await fetch(dataUrl);
+        return new Uint8Array(await res.arrayBuffer());
+      };
+      const captureNode = async (node, options) => {
+        const dataUrl = await toPng(node, {
+          cacheBust: true,
+          pixelRatio: 2,
+          ...options,
+        });
+        return toBytes(dataUrl);
+      };
+      const zip = new JSZip();
+      const listingFolder = zip.folder(rootFolder || 'listing');
+      if (!listingFolder) throw new Error('Failed to create listing folder');
+      const coverPng = await captureNode(coverNode, {
+        width: 1200,
+        height: 1200,
+        backgroundColor: tokens.surfaces.background,
+      });
+      listingFolder.file('cover.png', coverPng);
+      const swatchPng = await captureNode(swatchNode, {
+        width: 1600,
+        height: 400,
+        backgroundColor: tokens.surfaces.background,
+      });
+      listingFolder.file('swatches.png', swatchPng);
+      const uiPng = await captureNode(previewNode, {
+        width: 1600,
+        height: 900,
+        style: { width: '1600px', height: '900px' },
+        backgroundColor: tokens.surfaces.background,
+      });
+      listingFolder.file('ui.png', uiPng);
+      if (listingSnippetRef.current) {
+        try {
+          const snippetPng = await captureNode(listingSnippetRef.current, {
+            width: 1200,
+            height: 600,
+            backgroundColor: tokens.surfaces.background,
+          });
+          listingFolder.file('tokens-snippet.png', snippetPng);
+        } catch (err) {
+          console.warn('Listing tokens snippet failed', err);
+        }
+      }
+      if (includeMeta) {
+        const meta = {
+          themeName: displayThemeName,
+          baseHex: normalizeHex(baseColor || '#000000', '#000000').toUpperCase(),
+          harmonyMode: mode,
+          themeMode,
+          timestamp: new Date().toISOString(),
+          version: 'v1',
+        };
+        listingFolder.file('meta.json', JSON.stringify(meta, null, 2));
+      }
+      const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
+      const defaultName = buildExportFilename(
+        slugifyFilename(displayThemeName || 'theme', 'theme'),
+        '-listing-assets-v1',
+        'zip'
+      );
+      exportAssets({ data: blob, filename: zipName || defaultName, mime: 'application/zip' });
+      setStatusMessage(successMessage, 'success');
+    } catch (err) {
+      console.error('Listing assets export failed', err);
+      notify('Listing assets export failed. Check console for details.', 'error');
+    }
+  }, [
+    baseColor,
+    displayThemeName,
+    mode,
+    notify,
+    setStatusMessage,
+    themeMode,
+    tokens,
+  ]);
   const handleDownloadThemePack = useCallback(async () => {
     if (!import.meta.env.DEV) return;
     if (typeof Blob === 'undefined') {
@@ -1380,18 +1653,16 @@ export default function App() {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
       const themeLabel = sanitizeThemeName(displayThemeName || 'Theme', 'Theme');
-      const themeSlug = slugifyThemeName(themeLabel, 'theme');
+      const themeSlug = slugifyFilename(themeLabel, 'theme');
       const root = zip.folder(themeSlug);
       if (!root) throw new Error('Failed to create zip root folder');
-      const { date } = getPrintTimestamps();
-      const baseHex = normalizeHex(baseColor || '#000000', '#000000').replace('#', '');
-      const modeSlug = mode.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'mode';
-      const zipName = `${themeSlug}__${modeSlug}__${date}__${baseHex}.zip`;
+      const baseHex = normalizeHex(baseColor || '#000000', '#000000').toUpperCase();
+      const zipName = buildExportFilename(themeSlug, '-theme-pack-v1', 'zip');
       const { best, not: notFor } = getThemePackGuidance(mode);
       const themeModeLabel = themeMode || (isDark ? 'dark' : 'light');
       const readme = [
         `Theme name: ${themeLabel}`,
-        `Base hex: ${normalizeHex(baseColor || '#000000', '#000000').toUpperCase()}`,
+        `Base hex: ${baseHex}`,
         `Harmony mode: ${mode}`,
         `Theme mode: ${themeModeLabel}`,
         `Best for: ${best}`,
@@ -1419,7 +1690,7 @@ export default function App() {
 
       root.folder('css')?.file(
         'variables.css',
-        buildCssVariables(orderedStack, sanitizePrefix(tokenPrefix))
+        buildCssVariables(themeMaster, sanitizePrefix(tokenPrefix))
       );
 
       const figmaPayload = buildFigmaTokensPayload(finalTokens, {
@@ -1462,14 +1733,7 @@ export default function App() {
       }
 
       const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = zipName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
+      exportThemePack({ data: blob, filename: zipName, mime: 'application/zip' });
       setStatusMessage('Theme pack downloaded', 'success');
     } catch (err) {
       console.error('Theme pack export failed', err);
@@ -1483,10 +1747,10 @@ export default function App() {
     isDark,
     mode,
     notify,
-    orderedStack,
     printMode,
     setStatusMessage,
     themeMode,
+    themeMaster,
     tokenPrefix,
   ]);
   const copyShareLink = useCallback(async () => {
@@ -1537,8 +1801,7 @@ export default function App() {
     setIsExportingAssets(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 0));
-      const slugBase = sanitizeThemeName(currentTheme.name || 'theme', 'theme');
-      const slug = slugBase.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'theme';
+      const slug = slugifyFilename(currentTheme.name || 'theme', 'theme');
       const paletteSvg = buildPaletteCardSvg(currentTheme);
       const stripSvg = buildStripSvg(currentTheme);
       const [palettePng, stripPng] = await Promise.all([
@@ -1555,15 +1818,8 @@ export default function App() {
       ];
 
       const tarData = createTarArchive(files);
-      const blob = new Blob([tarData], { type: 'application/x-tar' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `${slug}-asset-pack.tar`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
+      const filename = buildExportFilename(slug, '-asset-pack', 'tar');
+      exportAssets({ data: tarData, filename, mime: 'application/x-tar' });
     } catch (err) {
       notify('Asset export failed. Check console for details.', 'error', 4000);
       console.error('Asset export failed', err);
@@ -1572,11 +1828,245 @@ export default function App() {
     }
   }, [buildExportPayload, currentTheme, notify]);
 
+  const exportProjectPrintAssets = useCallback(async () => {
+    if (!projectContext || projectExporting) return;
+    const sections = projectContext.sections || [];
+    if (!sections.length) {
+      setProjectExportStatus('Add at least one palette to export.');
+      return;
+    }
+    setProjectExporting(true);
+    setProjectExportStatus('Preparing print assets…');
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const projectSlug = slugifyFilename(projectContext.projectName || 'project', 'project');
+      const root = zip.folder(projectSlug);
+      if (!root) throw new Error('Failed to create project folder');
+      const skipped = [];
+
+      for (let i = 0; i < sections.length; i += 1) {
+        const section = sections[i];
+        const paletteName = section?.label || `Palette ${i + 1}`;
+        setProjectExportStatus(`Generating ${i + 1}/${sections.length}: ${paletteName}`);
+        if (!section) {
+          skipped.push(`(missing section ${i + 1})`);
+          continue;
+        }
+        const paletteSpec = section.paletteSpec || buildSpecFromSection(section);
+        if (!paletteSpec?.baseColor) {
+          skipped.push(paletteName);
+          continue;
+        }
+        const snapshotTokens = section.snapshot?.tokenSet || section.tokenSet || null;
+        const themeMaster = snapshotTokens
+          ? {
+            finalTokens: snapshotTokens,
+            currentTheme: {
+              name: paletteName,
+              mode: paletteSpec.mode,
+              themeMode: paletteSpec.themeMode,
+              isDark: paletteSpec.themeMode === 'dark',
+              baseColor: paletteSpec.baseColor,
+              tokens: snapshotTokens,
+              printMode: Boolean(paletteSpec.printMode),
+            },
+          }
+          : buildTheme({
+            name: paletteName,
+            baseColor: paletteSpec.baseColor,
+            mode: paletteSpec.mode,
+            themeMode: paletteSpec.themeMode,
+            isDark: paletteSpec.isDark,
+            printMode: paletteSpec.printMode,
+            apocalypseIntensity: paletteSpec.apocalypseIntensity ?? 100,
+            harmonyIntensity: paletteSpec.harmonyIntensity ?? 100,
+            neutralCurve: paletteSpec.neutralCurve ?? 100,
+            accentStrength: paletteSpec.accentStrength ?? 100,
+            popIntensity: paletteSpec.popIntensity ?? 100,
+            importedOverrides: paletteSpec.importedOverrides ?? null,
+          });
+
+        const theme = snapshotTokens ? themeMaster.currentTheme : themeMaster.currentTheme;
+        const paletteSlug = slugifyFilename(paletteName, `palette-${i + 1}`);
+        const paletteFolder = root.folder(paletteSlug);
+        if (!paletteFolder) continue;
+
+        try {
+          paletteFolder.file('palette-card.svg', buildPaletteCardSvg(theme));
+          paletteFolder.file('swatch-strip.svg', buildStripSvg(theme));
+        } catch (err) {
+          console.warn('Palette SVG export failed', err);
+        }
+
+        const [palettePng, stripPng] = await Promise.allSettled([
+          renderPaletteCardPng(theme),
+          renderStripPng(theme),
+        ]);
+        if (palettePng.status === 'fulfilled') {
+          paletteFolder.file('palette-card.png', palettePng.value);
+        }
+        if (stripPng.status === 'fulfilled') {
+          paletteFolder.file('swatch-strip.png', stripPng.value);
+        }
+        paletteFolder.file('tokens.json', JSON.stringify(theme.tokens, null, 2));
+      }
+
+      const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
+      const filename = buildExportFilename(projectSlug, '-print-assets', 'zip');
+      exportThemePack({ data: blob, filename, mime: 'application/zip' });
+      setProjectExportStatus(
+        skipped.length
+          ? `Completed with skips: ${skipped.join(', ')}`
+          : 'Print assets downloaded'
+      );
+    } catch (err) {
+      console.error('Project print assets export failed', err);
+      setProjectExportStatus('Project export failed — see console.');
+    } finally {
+      setProjectExporting(false);
+    }
+  }, [buildSpecFromSection, projectContext, projectExporting, setProjectExportStatus]);
+
+  const exportProjectPenpotPrintTokens = useCallback(async () => {
+    if (!projectContext || projectPenpotExporting) return;
+    const sections = projectContext.sections || [];
+    if (!sections.length) {
+      setProjectPenpotStatus('Add at least one palette to export.');
+      return;
+    }
+    setProjectPenpotExporting(true);
+    setProjectPenpotStatus('Preparing Penpot print tokens…');
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const projectSlug = slugifyFilename(projectContext.projectName || 'project', 'project');
+      const root = zip.folder(`${projectSlug}-penpot`);
+      if (!root) throw new Error('Failed to create Penpot folder');
+      const skipped = [];
+
+      for (let i = 0; i < sections.length; i += 1) {
+        const section = sections[i];
+        const paletteName = section?.label || `Palette ${i + 1}`;
+        setProjectPenpotStatus(`Generating ${i + 1}/${sections.length}: ${paletteName}`);
+        if (!section) {
+          skipped.push(`(missing section ${i + 1})`);
+          continue;
+        }
+        const paletteSpec = section.paletteSpec || buildSpecFromSection(section);
+        if (!paletteSpec?.baseColor) {
+          skipped.push(paletteName);
+          continue;
+        }
+        const snapshotTokens = section.snapshot?.tokenSet || section.tokenSet;
+        const printTokenSet = snapshotTokens?.print && typeof snapshotTokens.print === 'object'
+          ? snapshotTokens.print
+          : buildTheme({
+            name: paletteName,
+            baseColor: paletteSpec.baseColor,
+            mode: paletteSpec.mode,
+            themeMode: paletteSpec.themeMode,
+            isDark: paletteSpec.isDark,
+            printMode: true,
+            apocalypseIntensity: paletteSpec.apocalypseIntensity ?? 100,
+            harmonyIntensity: paletteSpec.harmonyIntensity ?? 100,
+            neutralCurve: paletteSpec.neutralCurve ?? 100,
+            accentStrength: paletteSpec.accentStrength ?? 100,
+            popIntensity: paletteSpec.popIntensity ?? 100,
+            importedOverrides: paletteSpec.importedOverrides ?? null,
+          }).finalTokens?.print;
+        const printTokens = buildPrintTokenTree(printTokenSet);
+        if (!printTokens) {
+          skipped.push(paletteName);
+          continue;
+        }
+
+        const penpotPayload = buildPenpotPayload(
+          printTokens,
+          [],
+          null,
+          { namingPrefix: paletteSpec.tokenPrefix || undefined }
+        );
+        const penpotTokens = toPenpotTokens(penpotPayload);
+        const paletteSlug = slugifyFilename(paletteName, `palette-${i + 1}`);
+        root.file(`${paletteSlug}.json`, JSON.stringify(penpotTokens, null, 2));
+      }
+
+      const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
+      const filename = buildExportFilename(projectSlug, '-penpot-print-tokens', 'zip');
+      exportThemePack({ data: blob, filename, mime: 'application/zip' });
+      setProjectPenpotStatus(
+        skipped.length
+          ? `Completed with skips: ${skipped.join(', ')}`
+          : 'Penpot print tokens downloaded'
+      );
+    } catch (err) {
+      console.error('Project Penpot export failed', err);
+      setProjectPenpotStatus('Penpot export failed — see console.');
+    } finally {
+      setProjectPenpotExporting(false);
+    }
+  }, [buildSpecFromSection, projectContext, projectPenpotExporting, setProjectPenpotStatus]);
+
   const handleDownloadThemePackWithPrint = useCallback(async () => {
     if (!import.meta.env.DEV) return;
+    const themeLabel = sanitizeThemeName(displayThemeName || 'Theme', 'Theme');
+    const themeSlug = slugifyFilename(themeLabel, 'theme');
     await handleDownloadThemePack();
-    await exportAllAssets();
-  }, [exportAllAssets, handleDownloadThemePack]);
+    if (!printMode) {
+      notify('Run Forge assets (print pack) first', 'warn');
+      return;
+    }
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const root = zip.folder(themeSlug);
+      if (!root) throw new Error('Failed to create zip root folder');
+      try {
+        const printTokens = buildExportPayload();
+        root.file('tokens.json', JSON.stringify(printTokens, null, 2));
+      } catch (err) {
+        console.warn('CMYK print pack tokens failed', err);
+      }
+      try {
+        const paletteSvg = buildPaletteCardSvg(currentTheme);
+        root.file('palette-card.svg', paletteSvg);
+      } catch (err) {
+        console.warn('CMYK print pack palette SVG failed', err);
+      }
+      try {
+        const stripSvg = buildStripSvg(currentTheme);
+        root.file('swatch-strip.svg', stripSvg);
+      } catch (err) {
+        console.warn('CMYK print pack strip SVG failed', err);
+      }
+      const [palettePng, stripPng] = await Promise.allSettled([
+        renderPaletteCardPng(currentTheme),
+        renderStripPng(currentTheme),
+      ]);
+      if (palettePng.status === 'fulfilled') {
+        root.file('palette-card.png', palettePng.value);
+      }
+      if (stripPng.status === 'fulfilled') {
+        root.file('swatch-strip.png', stripPng.value);
+      }
+      const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
+      const filename = buildExportFilename(themeSlug, '-cmyk-print-pack-v1', 'zip');
+      exportThemePack({ data: blob, filename, mime: 'application/zip' });
+      setStatusMessage('CMYK print pack downloaded', 'success');
+    } catch (err) {
+      console.error('CMYK print pack export failed', err);
+      notify('CMYK print pack export failed. Check console for details.', 'error');
+    }
+  }, [
+    buildExportPayload,
+    currentTheme,
+    displayThemeName,
+    handleDownloadThemePack,
+    notify,
+    printMode,
+    setStatusMessage,
+  ]);
 
   const handleExportPdf = () => {
     if (!import.meta.env.DEV) return;
@@ -1809,6 +2299,10 @@ export default function App() {
           importedOverrides={importedOverrides}
           sanitizeThemeName={sanitizeThemeName}
           sanitizePrefix={sanitizePrefix}
+          projectEdit={projectEdit}
+          onSaveProjectPalette={() => saveProjectPalette()}
+          onSaveProjectPaletteAsNew={() => saveProjectPalette({ asNew: true })}
+          onCancelProjectEdit={cancelProjectEdit}
         />
 
       {/* Quick controls bar (sticky when header collapsed) */}
@@ -1884,7 +2378,16 @@ export default function App() {
           {view === 'project' ? (
             <Suspense fallback={<div className="p-4 rounded-lg border panel-surface-soft text-sm">Loading Project...</div>}>
               <PaletteContext.Provider value={paletteSnapshot}>
-                <ProjectView onImportCss={handleCssImport} />
+                <ProjectView
+                  onImportCss={handleCssImport}
+                  onOpenPalette={openProjectPalette}
+                  onDownloadPrintAssets={exportProjectPrintAssets}
+                  onExportPenpotPrintTokens={exportProjectPenpotPrintTokens}
+                  projectExportStatus={projectExportStatus}
+                  projectExporting={projectExporting}
+                  projectPenpotStatus={projectPenpotStatus}
+                  projectPenpotExporting={projectPenpotExporting}
+                />
               </PaletteContext.Provider>
             </Suspense>
           ) : (
@@ -1923,6 +2426,13 @@ export default function App() {
             debouncedAccentChange={debouncedAccentChange}
             debouncedApocalypseChange={debouncedApocalypseChange}
             debouncedPopChange={debouncedPopChange}
+          />
+          <MoodBoard
+            tokens={tokens}
+            baseColor={baseColor}
+            onApplyPaletteSpec={applyMoodBoardSpec}
+            onSaveDraft={saveMoodBoardDraft}
+            canSaveDraft={Boolean(projectContext)}
           />
 
           <ValidateStage
@@ -1992,6 +2502,7 @@ export default function App() {
               exportWitchcraftJson={exportWitchcraftJson}
               onDownloadThemePack={handleDownloadThemePack}
               onDownloadThemePackWithPrint={handleDownloadThemePackWithPrint}
+              onGenerateListingAssets={handleGenerateListingAssets}
               displayThemeName={displayThemeName}
               isInternal={isInternal}
             />
@@ -2000,6 +2511,18 @@ export default function App() {
           )}
         </main>
         {/* Main Content */}
+        {isDev && (
+          <ListingAssetsCanvas
+            tokens={tokens}
+            baseColor={baseColor}
+            mode={mode}
+            themeMode={themeMode}
+            displayThemeName={displayThemeName}
+            coverRef={listingCoverRef}
+            swatchRef={listingSwatchRef}
+            snippetRef={listingSnippetRef}
+          />
+        )}
       </div>
   );
 }
