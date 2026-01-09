@@ -644,11 +644,6 @@ export default function App() {
     setNeutralCurve(nextNeutral);
     setAccentStrength(nextAccent);
     setPopIntensity(nextPop);
-    setHarmonyInput(nextHarmony);
-    setApocalypseInput(nextApoc);
-    setNeutralInput(nextNeutral);
-    setAccentInput(nextAccent);
-    setPopInput(nextPop);
     setTokenPrefix(sanitizePrefix(payload.tokenPrefix || ''));
     const savedOverrides = payload.importedOverrides;
     if (savedOverrides && typeof savedOverrides === 'object') {
