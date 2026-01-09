@@ -131,9 +131,9 @@ export default function ListingAssetsCanvas({
             </div>
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
-            {swatches.map((swatch) => (
+            {swatches.map((swatch, index) => (
               <div
-                key={swatch}
+                key={`swatch-${index}`}
                 style={{
                   width: 96,
                   height: 96,
@@ -179,9 +179,9 @@ export default function ListingAssetsCanvas({
           Swatch strip • {displayThemeName}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 18 }}>
-          {swatches.map((swatch) => (
+          {swatches.map((swatch, index) => (
             <div
-              key={swatch}
+              key={`swatch-strip-${index}`}
               style={{
                 height: 220,
                 borderRadius: 20,
