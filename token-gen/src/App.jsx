@@ -519,11 +519,6 @@ export default function App() {
   const [neutralCurve, setNeutralCurve] = useState(100);
   const [accentStrength, setAccentStrength] = useState(100);
   const [popIntensity, setPopIntensity] = useState(100);
-  const [harmonyInput, setHarmonyInput] = useState(100);
-  const [neutralInput, setNeutralInput] = useState(100);
-  const [accentInput, setAccentInput] = useState(100);
-  const [apocalypseInput, setApocalypseInput] = useState(100);
-  const [popInput, setPopInput] = useState(100);
   const [activeTab, setActiveTab] = useState('Quick view');
   const [tokenPrefix, setTokenPrefix] = useState('');
   const [savedPalettes, setSavedPalettes] = useState([]);
@@ -552,11 +547,6 @@ export default function App() {
   const [projectPenpotStatus, setProjectPenpotStatus] = useState('');
   const [projectPenpotExporting, setProjectPenpotExporting] = useState(false);
   const statusTimerRef = useRef(null);
-  const harmonyDebounceRef = useRef(null);
-  const neutralDebounceRef = useRef(null);
-  const accentDebounceRef = useRef(null);
-  const apocalypseDebounceRef = useRef(null);
-  const popDebounceRef = useRef(null);
   const pickerColor = baseColor.length === 9 && baseColor.startsWith('#') ? baseColor.slice(0, 7) : baseColor;
   // Controls the UI theme (preview background)
   // Usually we want this to sync with generated tokens for best preview, but nice to keep separate for inspection
@@ -793,21 +783,8 @@ export default function App() {
     }
   }, [baseColor, mode, themeMode, printMode, customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve, accentStrength, popIntensity, tokenPrefix, importedOverrides, notify, storageAvailable, setStatusMessage]);
 
-  useEffect(() => {
-    setHarmonyInput(harmonyIntensity);
-    setNeutralInput(neutralCurve);
-    setAccentInput(accentStrength);
-    setApocalypseInput(apocalypseIntensity);
-    setPopInput(popIntensity);
-  }, [harmonyIntensity, neutralCurve, accentStrength, apocalypseIntensity, popIntensity]);
-
   useEffect(() => () => {
     if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
-    if (harmonyDebounceRef.current) clearTimeout(harmonyDebounceRef.current);
-    if (neutralDebounceRef.current) clearTimeout(neutralDebounceRef.current);
-    if (accentDebounceRef.current) clearTimeout(accentDebounceRef.current);
-    if (apocalypseDebounceRef.current) clearTimeout(apocalypseDebounceRef.current);
-    if (popDebounceRef.current) clearTimeout(popDebounceRef.current);
   }, []);
 
   const autoThemeName = useMemo(() => `${mode} ${themeMode === 'dark' ? 'Dark' : themeMode === 'pop' ? 'Pop' : 'Light'}`, [mode, themeMode]);
@@ -1351,36 +1328,6 @@ export default function App() {
     if (nextMode === 'Apocalypse') {
       setApocalypseIntensity(Math.round(50 + Math.random() * 100));
     }
-  }, []);
-  const debouncedHarmonyChange = useCallback((value) => {
-    const next = clampValue(value, 50, 160);
-    setHarmonyInput(next);
-    if (harmonyDebounceRef.current) clearTimeout(harmonyDebounceRef.current);
-    harmonyDebounceRef.current = setTimeout(() => setHarmonyIntensity(next), 120);
-  }, []);
-  const debouncedNeutralChange = useCallback((value) => {
-    const next = clampValue(value, 60, 140);
-    setNeutralInput(next);
-    if (neutralDebounceRef.current) clearTimeout(neutralDebounceRef.current);
-    neutralDebounceRef.current = setTimeout(() => setNeutralCurve(next), 120);
-  }, []);
-  const debouncedAccentChange = useCallback((value) => {
-    const next = clampValue(value, 60, 140);
-    setAccentInput(next);
-    if (accentDebounceRef.current) clearTimeout(accentDebounceRef.current);
-    accentDebounceRef.current = setTimeout(() => setAccentStrength(next), 120);
-  }, []);
-  const debouncedApocalypseChange = useCallback((value) => {
-    const next = clampValue(value, 20, 150);
-    setApocalypseInput(next);
-    if (apocalypseDebounceRef.current) clearTimeout(apocalypseDebounceRef.current);
-    apocalypseDebounceRef.current = setTimeout(() => setApocalypseIntensity(next), 120);
-  }, []);
-  const debouncedPopChange = useCallback((value) => {
-    const next = clampValue(value, 60, 140);
-    setPopInput(next);
-    if (popDebounceRef.current) clearTimeout(popDebounceRef.current);
-    popDebounceRef.current = setTimeout(() => setPopIntensity(next), 120);
   }, []);
 
   const updatePrintMeta = useCallback(() => {
@@ -2416,16 +2363,16 @@ export default function App() {
             applyPreset={applyPreset}
             showFineTune={showFineTune}
             setShowFineTune={setShowFineTune}
-            harmonyInput={harmonyInput}
-            neutralInput={neutralInput}
-            accentInput={accentInput}
-            apocalypseInput={apocalypseInput}
-            popInput={popInput}
-            debouncedHarmonyChange={debouncedHarmonyChange}
-            debouncedNeutralChange={debouncedNeutralChange}
-            debouncedAccentChange={debouncedAccentChange}
-            debouncedApocalypseChange={debouncedApocalypseChange}
-            debouncedPopChange={debouncedPopChange}
+            harmonyIntensity={harmonyIntensity}
+            neutralCurve={neutralCurve}
+            accentStrength={accentStrength}
+            apocalypseIntensity={apocalypseIntensity}
+            popIntensity={popIntensity}
+            setHarmonyIntensity={setHarmonyIntensity}
+            setNeutralCurve={setNeutralCurve}
+            setAccentStrength={setAccentStrength}
+            setApocalypseIntensity={setApocalypseIntensity}
+            setPopIntensity={setPopIntensity}
           />
           <MoodBoard
             tokens={tokens}
