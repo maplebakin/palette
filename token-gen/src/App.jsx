@@ -2390,6 +2390,7 @@ export default function App() {
             baseColor={baseColor}
             onApplyPaletteSpec={applyMoodBoardSpec}
             onSaveDraft={saveMoodBoardDraft}
+            copyHexValue={copyHexValue}
             canSaveDraft={Boolean(projectContext)}
           />
 

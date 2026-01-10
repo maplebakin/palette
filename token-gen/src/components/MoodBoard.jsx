@@ -19,6 +19,7 @@ const MoodBoard = ({
   onApplyPaletteSpec,
   onSaveDraft,
   canSaveDraft = false,
+  copyHexValue,
 }) => {
   const [clusters, setClusters] = useState([]);
   const [generatedAt, setGeneratedAt] = useState('');
@@ -163,8 +164,10 @@ const MoodBoard = ({
                 <div className="grid grid-cols-6 gap-2">
                   {cluster.slots.map((slot) => (
                     <div key={slot.id} className="relative">
-                      <span
-                        className="h-8 rounded-md border shadow-inner block"
+                      <button
+                        type="button"
+                        onClick={() => copyHexValue(slot.color, slot.color)}
+                        className="h-8 rounded-md border shadow-inner block w-full hover:scale-[1.02] active:scale-95 transition"
                         style={{
                           backgroundColor: slot.color,
                           borderColor: hexWithAlpha('#000', 0.15),
@@ -173,7 +176,7 @@ const MoodBoard = ({
                             : undefined,
                         }}
                         title={slot.color}
-                        aria-label={slot.color}
+                        aria-label={`Copy ${slot.color}`}
                       />
                       <button
                         type="button"
