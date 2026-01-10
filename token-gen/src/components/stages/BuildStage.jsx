@@ -9,6 +9,7 @@ const BuildStage = ({
   setChaosMenuOpen,
   randomRitual,
   crankApocalypse,
+  resetPalette,
   tokens,
   mode,
   setMode,
@@ -231,6 +232,14 @@ const BuildStage = ({
                       >
                         <span>Crank Apocalypse</span>
                         <Flame size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setChaosMenuOpen(false); resetPalette(); }}
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold hover:opacity-80"
+                      >
+                        <span>Reset</span>
+                        <Palette size={14} />
                       </button>
                     </div>
                   )}

@@ -1380,11 +1380,26 @@ export default function App() {
     setThemeMode('dark');
     setPrintMode(false);
     setApocalypseIntensity(boostedApoc);
-    setApocalypseInput(boostedApoc);
     setAccentStrength((prev) => Math.max(prev, boostedAccent));
-    setAccentInput((prev) => Math.max(prev, boostedAccent));
     notify('Apocalypse cranked. Wear goggles.', 'warn');
   }, [notify]);
+
+  const resetPalette = useCallback(() => {
+    setBaseColor('#7b241c');
+    setMode('Monochromatic');
+    setThemeMode('dark');
+    setPrintMode(false);
+    setCustomThemeName('');
+    setHarmonyIntensity(100);
+    setApocalypseIntensity(100);
+    setNeutralCurve(100);
+    setAccentStrength(100);
+    setPopIntensity(100);
+    setTokenPrefix('');
+    setImportedOverrides(null);
+    notify('Palette has been reset', 'info');
+  }, [notify]);
+  
   const copyEssentialsList = useCallback(() => {
     copyAllEssentials();
     notify('Quick kit copied. Handle with care.', 'success');
@@ -2345,6 +2360,7 @@ export default function App() {
             setChaosMenuOpen={setChaosMenuOpen}
             randomRitual={randomRitual}
             crankApocalypse={crankApocalypse}
+            resetPalette={resetPalette}
             tokens={tokens}
             mode={mode}
             setMode={setMode}
