@@ -1,4 +1,10 @@
 // Color helpers for palette generation and contrast checks.
+// JSDoc type definitions for better type safety
+/**
+ * @typedef {{h: number, s: number, l: number}} HSL
+ * @typedef {{r: number, g: number, b: number}} RGB
+ */
+
 const clamp01 = (value) => Math.min(1, Math.max(0, value));
 const wrapHue = (value) => ((value % 360) + 360) % 360;
 const hueDelta = (from, to) => ((to - from + 540) % 360) - 180;
@@ -17,7 +23,28 @@ const toSrgb = (value) => {
 
 const toByte = (value) => Math.round(clamp01(value) * 255);
 
-export const hexToHsl = (hex) => {
+/**
+ * Validates if a hex color string is valid
+ * @param {any} hex - Input value to validate
+ * @returns {boolean} True if valid hex color
+ */
+const isValidHex = (hex) => {
+  return typeof hex === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex);
+};
+
+/**
+ * Safely converts hex color to HSL, with fallback for invalid inputs
+ * @param {any} hex - Hex color string to convert
+ * @param {HSL} fallback - Fallback HSL values if conversion fails
+ * @returns {HSL} HSL values or fallback
+ */
+export const hexToHsl = (hex, fallback = { h: 0, s: 0, l: 50 }) => {
+  // Defensive check: ensure input is a valid hex string
+  if (!isValidHex(hex)) {
+    console.warn(`Invalid hex color: ${hex}, using fallback`, fallback);
+    return fallback;
+  }
+
   let r = 0, g = 0, b = 0;
   if (hex.length === 4) {
     r = '0x' + hex[1] + hex[1];
@@ -49,7 +76,26 @@ export const hexToHsl = (hex) => {
   return { h, s, l };
 };
 
-export const hslToHex = (h, s, l) => {
+/**
+ * Safely converts HSL to hex color, with validation
+ * @param {number} h - Hue (0-360)
+ * @param {number} s - Saturation (0-100)
+ * @param {number} l - Lightness (0-100)
+ * @param {string} fallback - Fallback hex color if conversion fails
+ * @returns {string} Hex color string
+ */
+export const hslToHex = (h, s, l, fallback = '#808080') => {
+  // Defensive checks: ensure inputs are valid numbers
+  if (typeof h !== 'number' || typeof s !== 'number' || typeof l !== 'number') {
+    console.warn(`Invalid HSL values: h=${h}, s=${s}, l=${l}, using fallback`, fallback);
+    return fallback;
+  }
+
+  // Clamp values to valid ranges
+  h = Math.min(360, Math.max(0, h));
+  s = Math.min(100, Math.max(0, s));
+  l = Math.min(100, Math.max(0, l));
+
   s /= 100;
   l /= 100;
   const c = (1 - Math.abs(2 * l - 1)) * s;
@@ -75,12 +121,43 @@ export const hslToHex = (h, s, l) => {
   return '#' + r + g + b;
 };
 
-export const getColor = (baseHsl, hueShift = 0, satMult = 1, lightSet = null, lightShift = 0) => {
+/**
+ * Safely gets a color with adjustments, with fallback for invalid inputs
+ * @param {HSL} baseHsl - Base HSL values
+ * @param {number} hueShift - Amount to shift hue (degrees)
+ * @param {number} satMult - Factor to multiply saturation
+ * @param {number|null} lightSet - Fixed lightness value (or null to use shift)
+ * @param {number} lightShift - Amount to shift lightness
+ * @param {string} fallback - Fallback hex color if conversion fails
+ * @returns {string} Hex color string
+ */
+export const getColor = (baseHsl, hueShift = 0, satMult = 1, lightSet = null, lightShift = 0, fallback = '#808080') => {
+  // Defensive check: ensure baseHsl is valid
+  if (!baseHsl || typeof baseHsl !== 'object' || typeof baseHsl.h !== 'number' || typeof baseHsl.s !== 'number' || typeof baseHsl.l !== 'number') {
+    console.warn(`Invalid baseHSL: ${JSON.stringify(baseHsl)}, using fallback`, fallback);
+    return fallback;
+  }
+
   let h = (baseHsl.h + hueShift) % 360;
   if (h < 0) h += 360;
   const s = Math.max(0, Math.min(100, baseHsl.s * satMult));
   const l = lightSet !== null ? lightSet : Math.max(0, Math.min(100, baseHsl.l + lightShift));
-  return hslToHex(h, s, l);
+  return hslToHex(h, s, l, fallback);
+};
+
+export const getOklchColor = (baseHex, {
+  lightnessSet = null,
+  lightnessShift = 0,
+  chromaSet = null,
+  chromaShift = 0,
+  hueSet = null,
+  hueShift = 0,
+}) => {
+  const baseOklch = hexToOklch(baseHex);
+  const l = lightnessSet !== null ? clamp01(lightnessSet) : clamp01(baseOklch.l + lightnessShift);
+  const c = chromaSet !== null ? Math.max(0, chromaSet) : Math.max(0, baseOklch.c + chromaShift);
+  const h = hueSet !== null ? wrapHue(hueSet) : wrapHue(baseOklch.h + hueShift);
+  return oklchToHex({ l, c, h });
 };
 
 export const blendHue = (base, shift, weight = 0) => {
@@ -89,20 +166,82 @@ export const blendHue = (base, shift, weight = 0) => {
   return interpolateHue(origin, target, weight);
 };
 
+/**
+ * Safely normalizes hex color format, with fallback for invalid inputs
+ * @param {any} hex - Input hex color
+ * @param {string} fallback - Fallback color if input is invalid
+ * @returns {string} Normalized hex color
+ */
 export const normalizeHex = (hex, fallback = '#111827') => {
-  if (typeof hex !== 'string') return fallback;
-  const match = hex.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
-  if (!match) return fallback;
-  const raw = match[1];
-  if (raw.length === 3) {
-    return '#' + raw.split('').map((c) => c + c).join('');
+  if (typeof hex !== 'string') {
+    console.warn(`Invalid hex input: ${hex}, using fallback`, fallback);
+    return fallback;
   }
-  return '#' + raw.toLowerCase();
+
+  // Check if it's a valid hex format
+  const hexMatch = hex.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  if (hexMatch) {
+    const raw = hexMatch[1];
+    if (raw.length === 3) {
+      return '#' + raw.split('').map((c) => c + c).join('');
+    }
+    return '#' + raw.toLowerCase();
+  }
+
+  // Check if it's an RGBA format
+  const rgbaMatch = hex.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)$/);
+  if (rgbaMatch) {
+    const r = parseInt(rgbaMatch[1], 10);
+    const g = parseInt(rgbaMatch[2], 10);
+    const b = parseInt(rgbaMatch[3], 10);
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`.toLowerCase();
+  }
+
+  console.warn(`Invalid hex format: ${hex}, using fallback`, fallback);
+  return fallback;
 };
 
-export const hexToRgb = (hex) => {
-  const clean = normalizeHex(hex);
+/**
+ * Parse RGBA string to RGB object
+ * @param {string} rgba - RGBA color string like "rgba(255, 255, 255, 0.8)"
+ * @returns {RGB|null} RGB values or null if parsing fails
+ */
+const parseRgba = (rgba) => {
+  if (typeof rgba !== 'string') return null;
+
+  const match = rgba.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)$/);
+  if (!match) return null;
+
+  return {
+    r: parseInt(match[1], 10),
+    g: parseInt(match[2], 10),
+    b: parseInt(match[3], 10)
+  };
+};
+
+/**
+ * Convert RGB object to hex string
+ * @param {RGB} rgb - RGB values
+ * @returns {string} Hex color string
+ */
+const rgbToHex = (rgb) => {
+  const toHex = (value) => Math.min(255, Math.max(0, Math.round(value))).toString(16).padStart(2, '0');
+  return `#${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`;
+};
+
+/**
+ * Safely converts hex to RGB object, with fallback for invalid inputs
+ * @param {any} hex - Hex color string
+ * @param {RGB} fallback - Fallback RGB values if conversion fails
+ * @returns {RGB} RGB values
+ */
+export const hexToRgb = (hex, fallback = { r: 128, g: 128, b: 128 }) => {
+  const clean = normalizeHex(hex, fallback ? `#${fallback.r.toString(16).padStart(2, '0')}${fallback.g.toString(16).padStart(2, '0')}${fallback.b.toString(16).padStart(2, '0')}` : '#808080');
   const num = parseInt(clean.slice(1), 16);
+  if (isNaN(num)) {
+    console.warn(`Invalid hex for RGB conversion: ${hex}, using fallback`, fallback);
+    return fallback;
+  }
   return {
     r: (num >> 16) & 255,
     g: (num >> 8) & 255,
@@ -110,12 +249,23 @@ export const hexToRgb = (hex) => {
   };
 };
 
-export const hexWithAlpha = (hex, alpha = 1) => {
+/**
+ * Safely creates RGBA string from hex and alpha, with fallback for invalid inputs
+ * @param {any} hex - Hex color string
+ * @param {number} alpha - Alpha value (0-1)
+ * @param {string} fallback - Fallback RGBA string if conversion fails
+ * @returns {string} RGBA string
+ */
+export const hexWithAlpha = (hex, alpha = 1, fallback = 'rgba(128,128,128,1)') => {
+  if (typeof alpha !== 'number' || alpha < 0 || alpha > 1) {
+    console.warn(`Invalid alpha value: ${alpha}, using fallback`, fallback);
+    return fallback;
+  }
   const { r, g, b } = hexToRgb(hex);
   return `rgba(${r},${g},${b},${alpha})`;
 };
 
-const hexToOklch = (hex) => {
+export const hexToOklch = (hex) => {
   const { r, g, b } = hexToRgb(hex);
   const lr = toLinear(r / 255);
   const lg = toLinear(g / 255);
@@ -135,7 +285,7 @@ const hexToOklch = (hex) => {
   return { l: clamp01(L), c: C, h };
 };
 
-const oklchToHex = ({ l, c, h }) => {
+export const oklchToHex = ({ l, c, h }) => {
   const hr = (wrapHue(h) * Math.PI) / 180;
   const a = Math.cos(hr) * Math.max(0, c);
   const b = Math.sin(hr) * Math.max(0, c);
@@ -171,14 +321,43 @@ export const blendColorsPerceptual = (hex1, hex2, weight = 0) => {
   return oklchToHex({ l, c, h });
 };
 
-export const pickReadableText = (bgHex, light = '#ffffff', dark = '#0f172a', threshold = 4.5) => {
-  const ratioLight = getContrastRatio(light, bgHex);
-  const ratioDark = getContrastRatio(dark, bgHex);
-  if (ratioLight >= threshold || ratioLight >= ratioDark) return light;
-  return dark;
+/**
+ * Safely picks readable text color based on background, with fallback for invalid inputs
+ * @param {any} bgHex - Background hex color
+ * @param {string} light - Light text color
+ * @param {string} dark - Dark text color
+ * @param {number} threshold - Minimum contrast ratio
+ * @param {string} fallback - Fallback text color if calculation fails
+ * @returns {string} Readable text color
+ */
+export const pickReadableText = (bgHex, light = '#ffffff', dark = '#0f172a', threshold = 4.5, fallback = '#000000') => {
+  // Validate inputs
+  if (!isValidHex(normalizeHex(bgHex))) {
+    console.warn(`Invalid background hex: ${bgHex}, using fallback`, fallback);
+    return fallback;
+  }
+
+  const safeLight = isValidHex(normalizeHex(light)) ? light : '#ffffff';
+  const safeDark = isValidHex(normalizeHex(dark)) ? dark : '#0f172a';
+
+  const ratioLight = getContrastRatio(safeLight, bgHex);
+  const ratioDark = getContrastRatio(safeDark, bgHex);
+  if (ratioLight >= threshold || ratioLight >= ratioDark) return safeLight;
+  return safeDark;
 };
 
-export const getLuminance = (hex) => {
+/**
+ * Safely calculates luminance of a hex color, with fallback for invalid inputs
+ * @param {any} hex - Hex color string
+ * @param {number} fallback - Fallback luminance value if calculation fails
+ * @returns {number} Luminance value (0-1)
+ */
+export const getLuminance = (hex, fallback = 0.5) => {
+  if (!isValidHex(normalizeHex(hex))) {
+    console.warn(`Invalid hex for luminance calculation: ${hex}, using fallback`, fallback);
+    return fallback;
+  }
+
   const rgb = hexToRgb(hex);
   const [r, g, b] = ['r', 'g', 'b'].map((channel) => {
     const val = rgb[channel] / 255;
@@ -187,8 +366,21 @@ export const getLuminance = (hex) => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 };
 
-export const getContrastRatio = (fg, bg) => {
+/**
+ * Safely calculates contrast ratio between two colors, with fallback for invalid inputs
+ * @param {any} fg - Foreground hex color
+ * @param {any} bg - Background hex color
+ * @param {number} fallback - Fallback contrast ratio if calculation fails
+ * @returns {number} Contrast ratio
+ */
+export const getContrastRatio = (fg, bg, fallback = 1) => {
   try {
+    // Validate inputs
+    if (!isValidHex(normalizeHex(fg)) || !isValidHex(normalizeHex(bg))) {
+      console.warn(`Invalid colors for contrast calculation: fg=${fg}, bg=${bg}, using fallback`, fallback);
+      return fallback;
+    }
+
     const l1 = getLuminance(fg);
     const l2 = getLuminance(bg);
     const lighter = Math.max(l1, l2);
@@ -196,7 +388,7 @@ export const getContrastRatio = (fg, bg) => {
     return (lighter + 0.05) / (darker + 0.05);
   } catch (err) {
     console.warn('Contrast calculation failed:', err);
-    return 1;
+    return fallback;
   }
 };
 

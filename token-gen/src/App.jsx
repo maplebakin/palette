@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback, Suspense, useContext } from 'react';
-import { FileText, Image as ImageIcon } from 'lucide-react';
+import { FileText, Image as ImageIcon, Shuffle, Settings } from 'lucide-react';
 import ProjectView from './components/ProjectView';
 import { StageNav } from './components/stages/StageLayout';
 import IdentityStage from './components/stages/IdentityStage';
@@ -14,6 +14,8 @@ import useShareLink from './hooks/useShareLink';
 import { useNotification } from './context/NotificationContext.jsx';
 import { PaletteContext } from './context/PaletteContext.jsx';
 import { ProjectContext } from './context/ProjectContext.jsx';
+import { HistoryProvider, useHistory } from './context/HistoryContext.jsx';
+import { MoodBoardProvider } from './context/MoodBoardContext.jsx';
 import {
   escapeXml,
   getContrastRatio,
@@ -548,6 +550,11 @@ export default function App() {
   const [projectPenpotExporting, setProjectPenpotExporting] = useState(false);
   const statusTimerRef = useRef(null);
   const pickerColor = baseColor.length === 9 && baseColor.startsWith('#') ? baseColor.slice(0, 7) : baseColor;
+
+  // History state for undo/redo functionality
+  const [history, setHistory] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(-1);
+  const MAX_HISTORY = 50;
   // Controls the UI theme (preview background)
   // Usually we want this to sync with generated tokens for best preview, but nice to keep separate for inspection
   // For this UX, I will sync them. When you generate Dark Tokens, the UI becomes dark.
@@ -558,6 +565,107 @@ export default function App() {
     notify(message, tone);
     statusTimerRef.current = setTimeout(() => setSaveStatus(''), 2400);
   }, [notify]);
+
+  // History management functions
+  const addToHistory = useCallback((state) => {
+    // If we're not at the end of history, truncate everything after current index
+    const newHistory = history.slice(0, currentIndex + 1);
+    // Add the new state
+    newHistory.push(state);
+    // Limit history to MAX_HISTORY items, removing oldest if necessary
+    if (newHistory.length > MAX_HISTORY) {
+      newHistory.shift();
+      setCurrentIndex(MAX_HISTORY - 1);
+    } else {
+      setCurrentIndex(newHistory.length - 1);
+    }
+    setHistory(newHistory);
+  }, [history, currentIndex]);
+
+  const undo = useCallback(() => {
+    if (currentIndex > 0) {
+      const prevState = history[currentIndex - 1];
+      setCurrentIndex(prevIndex => prevIndex - 1);
+
+      // Restore state from history
+      setBaseColor(prevState.baseColor);
+      setBaseInput(prevState.baseInput);
+      setBaseError(prevState.baseError);
+      setMode(prevState.mode);
+      setThemeMode(prevState.themeMode);
+      setPrintMode(prevState.printMode);
+      setCustomThemeName(prevState.customThemeName);
+      setHarmonyIntensity(prevState.harmonyIntensity);
+      setApocalypseIntensity(prevState.apocalypseIntensity);
+      setNeutralCurve(prevState.neutralCurve);
+      setAccentStrength(prevState.accentStrength);
+      setPopIntensity(prevState.popIntensity);
+      setTokenPrefix(prevState.tokenPrefix);
+      setImportedOverrides(prevState.importedOverrides);
+    }
+  }, [currentIndex, history]);
+
+  const redo = useCallback(() => {
+    if (currentIndex < history.length - 1) {
+      const nextState = history[currentIndex + 1];
+      setCurrentIndex(prevIndex => prevIndex + 1);
+
+      // Restore state from history
+      setBaseColor(nextState.baseColor);
+      setBaseInput(nextState.baseInput);
+      setBaseError(nextState.baseError);
+      setMode(nextState.mode);
+      setThemeMode(nextState.themeMode);
+      setPrintMode(nextState.printMode);
+      setCustomThemeName(nextState.customThemeName);
+      setHarmonyIntensity(nextState.harmonyIntensity);
+      setApocalypseIntensity(nextState.apocalypseIntensity);
+      setNeutralCurve(nextState.neutralCurve);
+      setAccentStrength(nextState.accentStrength);
+      setPopIntensity(nextState.popIntensity);
+      setTokenPrefix(nextState.tokenPrefix);
+      setImportedOverrides(nextState.importedOverrides);
+    }
+  }, [currentIndex, history]);
+
+  const canUndo = currentIndex > 0;
+  const canRedo = currentIndex < history.length - 1;
+
+  // Capture current state for history
+  const captureState = useCallback(() => ({
+    baseColor,
+    baseInput,
+    baseError,
+    mode,
+    themeMode,
+    printMode,
+    customThemeName,
+    harmonyIntensity,
+    apocalypseIntensity,
+    neutralCurve,
+    accentStrength,
+    popIntensity,
+    tokenPrefix,
+    importedOverrides,
+  }), [
+    baseColor, baseInput, baseError, mode, themeMode, printMode,
+    customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve,
+    accentStrength, popIntensity, tokenPrefix, importedOverrides
+  ]);
+
+  // Add current state to history when it changes significantly
+  useEffect(() => {
+    const currentState = captureState();
+    // Only add to history if state has actually changed significantly
+    if (history.length === 0 || JSON.stringify(history[currentIndex]) !== JSON.stringify(currentState)) {
+      addToHistory(currentState);
+    }
+  }, [
+    baseColor, baseInput, baseError, mode, themeMode, printMode,
+    customThemeName, harmonyIntensity, apocalypseIntensity, neutralCurve,
+    accentStrength, popIntensity, tokenPrefix, importedOverrides,
+    addToHistory, captureState, history, currentIndex
+  ]);
 
   const projectContext = useContext(ProjectContext);
   const isDark = themeMode === 'dark';
@@ -1187,7 +1295,7 @@ export default function App() {
     };
     projectContext.setSections([...(projectContext.sections || []), newSection]);
     notify('Draft palette added to project', 'success');
-  }, [buildSectionSnapshotFromPalette, buildTheme, notify, projectContext]);
+  }, [notify, projectContext]);
 
   const handleCssImport = useCallback((event) => {
     const file = event.target.files?.[0];
@@ -1373,6 +1481,36 @@ export default function App() {
     randomize();
     notify('Ritual complete. The colors are judging you.', 'info');
   }, [randomize, notify]);
+  const debouncedHarmonyChange = useCallback((value) => {
+    const next = clampValue(value, 50, 160);
+    setHarmonyInput(next);
+    if (harmonyDebounceRef.current) clearTimeout(harmonyDebounceRef.current);
+    harmonyDebounceRef.current = setTimeout(() => setHarmonyIntensity(next), 120);
+  }, []);
+  const debouncedNeutralChange = useCallback((value) => {
+    const next = clampValue(value, 60, 140);
+    setNeutralInput(next);
+    if (neutralDebounceRef.current) clearTimeout(neutralDebounceRef.current);
+    neutralDebounceRef.current = setTimeout(() => setNeutralCurve(next), 120);
+  }, []);
+  const debouncedAccentChange = useCallback((value) => {
+    const next = clampValue(value, 60, 140);
+    setAccentInput(next);
+    if (accentDebounceRef.current) clearTimeout(accentDebounceRef.current);
+    accentDebounceRef.current = setTimeout(() => setAccentStrength(next), 120);
+  }, []);
+  const debouncedApocalypseChange = useCallback((value) => {
+    const next = clampValue(value, 20, 150);
+    setApocalypseInput(next);
+    if (apocalypseDebounceRef.current) clearTimeout(apocalypseDebounceRef.current);
+    apocalypseDebounceRef.current = setTimeout(() => setApocalypseIntensity(next), 120);
+  }, []);
+  const debouncedPopChange = useCallback((value) => {
+    const next = clampValue(value, 60, 140);
+    setPopInput(next);
+    if (popDebounceRef.current) clearTimeout(popDebounceRef.current);
+    popDebounceRef.current = setTimeout(() => setPopIntensity(next), 120);
+  }, []);
   const crankApocalypse = useCallback(() => {
     const boostedApoc = 130;
     const boostedAccent = 120;
@@ -1380,7 +1518,9 @@ export default function App() {
     setThemeMode('dark');
     setPrintMode(false);
     setApocalypseIntensity(boostedApoc);
+    setApocalypseInput(boostedApoc);
     setAccentStrength((prev) => Math.max(prev, boostedAccent));
+    setAccentInput((prev) => Math.max(prev, boostedAccent));
     notify('Apocalypse cranked. Wear goggles.', 'warn');
   }, [notify]);
 
@@ -2048,9 +2188,7 @@ export default function App() {
   const headerBackground = hexWithAlpha(tokens.surfaces['header-background'], 0.9);
   const headerGlowA = hexWithAlpha(tokens.brand.primary, 0.08);
   const headerGlowB = hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.06);
-  const pageBackground = finalTokens.surfaces['page-background']
-    || finalTokens.surfaces.background
-    || tokens.surfaces['page-background'];
+  const pageBackground = tokens.surfaces.background;
   const backgroundImage = [
     `radial-gradient(circle at 16% 14%, ${hexWithAlpha(tokens.brand.primary, 0.12)}, transparent 28%)`,
     `radial-gradient(circle at 82% 8%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.1)}, transparent 30%)`,
@@ -2144,6 +2282,11 @@ export default function App() {
     '--status-info': statusInfo,
     '--status-info-text': statusInfoText,
     '--status-info-border': hexWithAlpha(statusInfo, 0.45),
+    '--text-primary': tokens.typography?.['text-strong'] || tokens.typography?.heading || panelTextStrong,
+    '--text-body': tokens.typography?.['text-body'] || panelText,
+    '--text-muted': tokens.typography?.['text-muted'] || panelMuted,
+    '--text-strong': tokens.typography?.['text-strong'] || panelTextStrong,
+    '--heading': tokens.typography?.heading || tokens.typography?.['text-strong'] || panelTextStrong,
   }), [
     pageBackground,
     backgroundImage,
@@ -2196,10 +2339,49 @@ export default function App() {
     if (themeMeta) themeMeta.setAttribute('content', pageBackground);
   }, [pageBackground, themeClass, themeCssText]);
 
+  // Keyboard shortcuts effect
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Only trigger shortcuts when not typing in input fields
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+
+      // Prevent default for our shortcuts
+      switch (event.key.toLowerCase()) {
+        case 'r':
+          if (!event.ctrlKey && !event.metaKey) {
+            event.preventDefault();
+            randomRitual();
+          }
+          break;
+        case 'f':
+          if (!event.ctrlKey && !event.metaKey) {
+            event.preventDefault();
+            setShowFineTune(v => !v);
+          }
+          break;
+        case 'h':
+          if (!event.ctrlKey && !event.metaKey) {
+            event.preventDefault();
+            setHeaderOpen(v => !v);
+          }
+          break;
+        case 'escape':
+          // Close any open modals or menus
+          setChaosMenuOpen(false);
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  });
+
   return (
-      <div 
-        className="min-h-screen transition-colors duration-500 app-theme"
-      >
+    <div
+      className="min-h-screen transition-colors duration-500 app-theme"
+    >
+    <MoodBoardProvider>
+      <>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 px-3 py-2 rounded"
@@ -2384,6 +2566,10 @@ export default function App() {
             setAccentStrength={setAccentStrength}
             setApocalypseIntensity={setApocalypseIntensity}
             setPopIntensity={setPopIntensity}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            undo={undo}
+            redo={redo}
           />
           <MoodBoard
             tokens={tokens}
@@ -2482,6 +2668,86 @@ export default function App() {
             snippetRef={listingSnippetRef}
           />
         )}
+
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-6 right-6 space-y-3 z-50">
+        <button
+          type="button"
+          onClick={randomRitual}
+          className="w-14 h-14 rounded-full bg-purple-500 hover:bg-purple-600 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center justify-center group"
+          aria-label="Generate random palette"
+          title="Random Palette (R)"
+        >
+          <Shuffle size={20} className="group-hover:rotate-180 transition-transform duration-500" />
+        </button>
+
+        {/* Quick Actions Menu */}
+        {view !== 'project' && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowFineTune(!showFineTune)}
+              className="w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center justify-center"
+              aria-label="Toggle fine-tune controls"
+              title="Fine-tune (F)"
+            >
+              <Settings size={18} />
+            </button>
+          </div>
+        )}
       </div>
-  );
+
+      {/* Debug Overlay - Temporary for development */}
+      {isDev && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '10px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          zIndex: 9999,
+          fontFamily: 'monospace',
+          maxWidth: '300px',
+          maxHeight: '200px',
+          overflow: 'auto'
+        }}>
+          <h4 style={{ margin: '0 0 5px 0', color: '#6366f1' }}>DEBUG: Active Tokens</h4>
+          <ul style={{ margin: 0, padding: '0 0 0 15px' }}>
+            <li style={{ marginBottom: '3px' }}>
+              <span style={{ color: '#93c5fd' }}>primary:</span> {tokens?.brand?.primary || 'undefined'}
+            </li>
+            <li style={{ marginBottom: '3px' }}>
+              <span style={{ color: '#93c5fd' }}>secondary:</span> {tokens?.brand?.secondary || 'undefined'}
+            </li>
+            <li style={{ marginBottom: '3px' }}>
+              <span style={{ color: '#93c5fd' }}>accent:</span> {tokens?.brand?.accent || 'undefined'}
+            </li>
+            <li style={{ marginBottom: '3px' }}>
+              <span style={{ color: '#93c5fd' }}>cta:</span> {tokens?.brand?.cta || 'undefined'}
+            </li>
+            <li style={{ marginBottom: '3px' }}>
+              <span style={{ color: '#c4b5fd' }}>text-strong:</span> {tokens?.typography?.['text-strong'] || 'undefined'}
+            </li>
+            <li style={{ marginBottom: '3px' }}>
+              <span style={{ color: '#c4b5fd' }}>text-body:</span> {tokens?.typography?.['text-body'] || 'undefined'}
+            </li>
+            <li style={{ marginBottom: '3px' }}>
+              <span style={{ color: '#c4b5fd' }}>text-muted:</span> {tokens?.typography?.['text-muted'] || 'undefined'}
+            </li>
+            <li style={{ marginBottom: '3px' }}>
+              <span style={{ color: '#a78bfa' }}>background:</span> {tokens?.surfaces?.background || 'undefined'}
+            </li>
+            <li style={{ marginBottom: '3px' }}>
+              <span style={{ color: '#a78bfa' }}>card-panel:</span> {tokens?.cards?.['card-panel-surface'] || 'undefined'}
+            </li>
+          </ul>
+        </div>
+      )}
+    </>
+  </MoodBoardProvider>
+  </div>
+);
 }
