@@ -15,12 +15,6 @@ const createSeededRandom = (seed) => {
 
 const between = (rng, min, max) => min + (max - min) * rng();
 const jitter = (rng, center, range) => center + (rng() * 2 - 1) * range;
-const addUnique = (list, seen, color) => {
-  if (seen.has(color)) return false;
-  seen.add(color);
-  list.push(color);
-  return true;
-};
 
 const MIN_HUE_DISTANCE = 24;
 
@@ -33,12 +27,6 @@ const isHueDistinct = (hue, hues, minDistance = MIN_HUE_DISTANCE) => (
   hues.every((existing) => hueDistance(existing, hue) >= minDistance)
 );
 
-const pushDistinctHue = (hues, hue, minDistance = MIN_HUE_DISTANCE) => {
-  const wrapped = wrapHue(hue);
-  if (!isHueDistinct(wrapped, hues, minDistance)) return false;
-  hues.push(wrapped);
-  return true;
-};
 
 const shuffle = (items, rng) => {
   const list = [...items];

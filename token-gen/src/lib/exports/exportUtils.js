@@ -58,7 +58,7 @@ export const slugifyFilename = (name, fallback) => {
  * Normalizes hex color
  * @param {string} hex - Hex color
  * @param {string} fallback - Fallback color
- * @returns {string} Normalized 6-digit hex
+ * @return {string} Normalized hex color
  */
 export const normalizeHex = (hex, fallback) => {
   if (!hex) return fallback;

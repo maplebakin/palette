@@ -1,21 +1,52 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
-export const StageNav = ({ stages, currentStage, onNavigate }) => (
-  <nav className="panel-surface-soft border rounded-full px-3 py-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
-    {stages.map((stage) => (
-      <a
-        key={stage.id}
-        href={`#${stage.id}`}
-        onClick={(event) => onNavigate(event, stage)}
-        className={`px-3 py-1 rounded-full transition ${currentStage === stage.label ? 'panel-surface shadow-sm' : 'panel-surface-strong'}`}
-        aria-current={currentStage === stage.label ? 'step' : undefined}
-      >
-        {stage.label}
-      </a>
-    ))}
-  </nav>
-);
+export const StageNav = ({ stages, currentStage, onNavigate }) => {
+  const getStageIndex = (stageLabel) => stages.findIndex(s => s.label === stageLabel);
+  const currentIndex = getStageIndex(currentStage);
+  
+  return (
+    <nav className="panel-surface-soft border rounded-full px-2 py-2 flex items-center gap-1 text-xs font-semibold overflow-x-auto max-w-full">
+      {stages.map((stage, index) => {
+        const isActive = currentStage === stage.label;
+        const isCompleted = index < currentIndex;
+        
+        return (
+          <a
+            key={stage.id}
+            href={`#${stage.id}`}
+            onClick={(event) => onNavigate(event, stage)}
+            className={`
+              px-2.5 py-1.5 rounded-full transition-all duration-200 whitespace-nowrap flex items-center gap-1
+              ${isActive 
+                ? 'panel-surface shadow-md scale-105' 
+                : isCompleted
+                ? 'panel-surface-strong opacity-80 hover:opacity-100'
+                : 'panel-surface-strong opacity-60 hover:opacity-80'
+              }
+            `}
+            aria-current={isActive ? 'step' : undefined}
+            title={`${stage.label} Stage${isActive ? ' (Current)' : isCompleted ? ' (Completed)' : ' (Upcoming)'}`}
+          >
+            <span className={`
+              w-1.5 h-1.5 rounded-full
+              ${isActive 
+                ? 'bg-blue-500 dark:bg-blue-400' 
+                : isCompleted 
+                ? 'bg-green-500 dark:bg-green-400' 
+                : 'bg-gray-400 dark:bg-gray-500'
+              }
+            `} />
+            <span className="hidden sm:inline">{stage.label}</span>
+            <span className="sm:hidden">
+              {stage.label.charAt(0)}
+            </span>
+          </a>
+        );
+      })}
+    </nav>
+  );
+};
 
 export const StageSection = ({
   id,

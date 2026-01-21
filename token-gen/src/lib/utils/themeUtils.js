@@ -1,5 +1,3 @@
-import { sanitizeThemeName } from './stringUtils.js';
-
 const THEME_PACK_GUIDANCE = {
   Monochromatic: {
     best: 'Calm product UI, editorial systems',

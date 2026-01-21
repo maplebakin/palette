@@ -6,6 +6,7 @@ import ErrorBoundary from '../ErrorBoundary.jsx';
 import SectionFallback from '../SectionFallback.jsx';
 import PaletteRow from '../PaletteRow';
 import ColorVisionPanel from '../ColorVisionPanel';
+import ColorBlindnessSimulator from '../ColorBlindnessSimulator';
 import { StageSection } from './StageLayout';
 import { hexWithAlpha } from '../../lib/colorUtils';
 
@@ -37,102 +38,104 @@ const ValidateStage = ({
   isInternal,
 }) => (
   <StageSection id="validate" title="Validate" subtitle="Preview, review, and copy essentials before you package or export.">
-    <section
-      className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-500"
-      style={{
-        boxShadow: `0 35px 120px -80px ${tokens.brand.primary}aa`,
-        backgroundImage: `linear-gradient(140deg, ${hexWithAlpha(tokens.surfaces["background"], 1)} 0%, ${hexWithAlpha(tokens.brand.primary, 0.32)} 45%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.32)} 90%)`,
-        borderColor: tokens.cards["card-panel-border"],
-      }}
-    >
-      <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `radial-gradient(circle at 20% 20%, ${hexWithAlpha('#ffffff', 0.08)}, transparent 35%)` }} />
-      <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `linear-gradient(120deg, ${hexWithAlpha(tokens.brand.secondary || tokens.brand.primary, 0.18)}, transparent 50%)` }} />
-      <div className="relative p-6 md:p-10 space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-[0.2em] panel-muted">Apocapalette live</p>
-            <h2 className="text-3xl md:text-4xl font-black" style={{ color: tokens.typography['heading'] }}>{displayThemeName}</h2>
-            <p className="text-sm" style={{ color: tokens.typography['text-muted'] }}>Base {baseColor.toUpperCase()} • {mode} • {themeMode === 'pop' ? 'Pop' : (isDark ? 'Dark' : 'Light')}</p>
+    <ColorBlindnessSimulator>
+      <section
+        className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-500"
+        style={{
+          boxShadow: `0 35px 120px -80px ${tokens.brand.primary}aa`,
+          backgroundImage: `linear-gradient(140deg, ${hexWithAlpha(tokens.surfaces["background"], 1)} 0%, ${hexWithAlpha(tokens.brand.primary, 0.32)} 45%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.32)} 90%)`,
+          borderColor: tokens.cards["card-panel-border"],
+        }}
+      >
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `radial-gradient(circle at 20% 20%, ${hexWithAlpha('#ffffff', 0.08)}, transparent 35%)` }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `linear-gradient(120deg, ${hexWithAlpha(tokens.brand.secondary || tokens.brand.primary, 0.18)}, transparent 50%)` }} />
+        <div className="relative p-6 md:p-10 space-y-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-[0.2em] panel-muted">Apocapalette live</p>
+              <h2 className="text-3xl md:text-4xl font-black" style={{ color: tokens.typography['heading'] }}>{displayThemeName}</h2>
+              <p className="text-sm" style={{ color: tokens.typography['text-muted'] }}>Base {baseColor.toUpperCase()} • {mode} • {themeMode === 'pop' ? 'Pop' : (isDark ? 'Dark' : 'Light')}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold" style={{ color: tokens.typography['text-strong'] }}>
+              <span className="px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Live preview</span>
+              <span className="px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Chaos tuned</span>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold" style={{ color: tokens.typography['text-strong'] }}>
-            <span className="px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Live preview</span>
-            <span className="px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/10">Chaos tuned</span>
-          </div>
-        </div>
-        <div
-          className="relative rounded-2xl overflow-hidden ring-1 bg-white/5 backdrop-blur-md transition-all duration-500 ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4"
-          data-testid="theme-preview-root"
-          style={{
-            backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.65),
-            boxShadow: `0 24px 70px -50px ${tokens.brand.primary}`,
-            borderColor: hexWithAlpha(tokens.cards["card-panel-border"], 0.5),
-            color: tokens.typography["text-strong"],
-          }}
-          aria-label={`Live palette preview showing ${displayThemeName}`}
-        >
-          <div className="h-12 border-b flex items-center px-4 gap-4" style={{ borderColor: tokens.surfaces["surface-plain-border"], backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.7) }}>
-            <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
-            <div className="w-3 h-3 rounded-full bg-yellow-400/80"></div>
-            <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
-            <span className="text-xs font-semibold" style={{ color: tokens.typography['text-muted'] }}>Preview • Instant harmony</span>
-          </div>
-
-          <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-3 gap-8" data-testid="theme-preview-content">
-            <div className="space-y-4">
-              <div className="h-8 w-3/4 rounded mb-6" style={{ backgroundColor: tokens.brand.primary, opacity: 0.25 }}></div>
-              <div className="h-4 w-full rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
-              <div className="h-4 w-5/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
-              <div className="h-4 w-4/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
+          <div
+            className="relative rounded-2xl overflow-hidden ring-1 bg-white/5 backdrop-blur-md transition-all duration-500 ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4"
+            data-testid="theme-preview-root"
+            style={{
+              backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.65),
+              boxShadow: `0 24px 70px -50px ${tokens.brand.primary}`,
+              borderColor: hexWithAlpha(tokens.cards["card-panel-border"], 0.5),
+              color: tokens.typography["text-strong"],
+            }}
+            aria-label={`Live palette preview showing ${displayThemeName}`}
+          >
+            <div className="h-12 border-b flex items-center px-4 gap-4" style={{ borderColor: tokens.surfaces["surface-plain-border"], backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.7) }}>
+              <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
+              <div className="w-3 h-3 rounded-full bg-yellow-400/80"></div>
+              <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
+              <span className="text-xs font-semibold" style={{ color: tokens.typography['text-muted'] }}>Preview • Instant harmony</span>
             </div>
 
-            <div
-              className="col-span-2 p-6 rounded-xl border shadow-2xl transition-all duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_30px_90px_-60px_rgba(0,0,0,0.5)]"
-              style={{
-                backgroundColor: tokens.cards["card-panel-surface"],
-                borderColor: tokens.cards["card-panel-border"],
-              }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-2xl font-extrabold" style={{ color: tokens.typography["heading"] }}>Thematic Output</h3>
-                <span className="text-[11px] px-3 py-1 rounded-full border" style={{ borderColor: tokens.brand.primary, color: tokens.brand.primary }}>Instant copy</span>
-              </div>
-              <p className="mb-6" style={{ color: tokens.typography["text-body"] }}>
-                Feel the palette first; tweak later. Surfaces, text, and primary action sit in balance so you can decide fast.
-              </p>
-
-              <div className="flex flex-wrap gap-3">
-                <button className="px-4 py-2 rounded-lg font-semibold transition-transform active:scale-95 shadow-[0_10px_40px_-20px]" style={{ backgroundColor: tokens.brand.primary, color: '#fff', boxShadow: `0 12px 30px -18px ${tokens.brand.primary}` }}>
-                  Primary Action
-                </button>
-                <button className="px-4 py-2 rounded-lg font-semibold border transition-transform active:scale-95"
-                        style={{
-                          borderColor: tokens.brand.primary,
-                          color: tokens.brand.primary,
-                        }}>
-                  Secondary
-                </button>
+            <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-3 gap-8" data-testid="theme-preview-content">
+              <div className="space-y-4">
+                <div className="h-8 w-3/4 rounded mb-6" style={{ backgroundColor: tokens.brand.primary, opacity: 0.25 }}></div>
+                <div className="h-4 w-full rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
+                <div className="h-4 w-5/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
+                <div className="h-4 w-4/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
               </div>
 
-              <div className="mt-8 p-4 rounded border flex items-center gap-3"
-                   style={{
-                     backgroundColor: tokens.entity["entity-card-surface"],
-                     borderColor: tokens.entity["entity-card-border"],
-                   }}
+              <div
+                className="col-span-2 p-6 rounded-xl border shadow-2xl transition-all duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_30px_90px_-60px_rgba(0,0,0,0.5)]"
+                style={{
+                  backgroundColor: tokens.cards["card-panel-surface"],
+                  borderColor: tokens.cards["card-panel-border"],
+                }}
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner"
-                     style={{ backgroundColor: tokens.brand.accent, color: '#fff' }}>
-                  <Check size={20} />
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-2xl font-extrabold" style={{ color: tokens.typography["heading"] }}>Thematic Output</h3>
+                  <span className="text-[11px] px-3 py-1 rounded-full border" style={{ borderColor: tokens.brand.primary, color: tokens.brand.primary }}>Instant copy</span>
                 </div>
-                <div>
-                  <div className="font-bold text-sm" style={{ color: tokens.entity["entity-card-heading"] }}>Entity Highlight</div>
-                  <div className="text-xs opacity-80" style={{ color: tokens.typography["text-body"] }}>Unique component tokens</div>
+                <p className="mb-6" style={{ color: tokens.typography["text-body"] }}>
+                  Feel the palette first; tweak later. Surfaces, text, and primary action sit in balance so you can decide fast.
+                </p>
+
+                <div className="flex flex-wrap gap-3">
+                  <button className="px-4 py-2 rounded-lg font-semibold transition-transform active:scale-95 shadow-[0_10px_40px_-20px]" style={{ backgroundColor: tokens.brand.primary, color: '#fff', boxShadow: `0 12px 30px -18px ${tokens.brand.primary}` }}>
+                    Primary Action
+                  </button>
+                  <button className="px-4 py-2 rounded-lg font-semibold border transition-transform active:scale-95"
+                          style={{
+                            borderColor: tokens.brand.primary,
+                            color: tokens.brand.primary,
+                          }}>
+                    Secondary
+                  </button>
+                </div>
+
+                <div className="mt-8 p-4 rounded border flex items-center gap-3"
+                     style={{
+                       backgroundColor: tokens.entity["entity-card-surface"],
+                       borderColor: tokens.entity["entity-card-border"],
+                     }}
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner"
+                       style={{ backgroundColor: tokens.brand.accent, color: '#fff' }}>
+                    <Check size={20} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm" style={{ color: tokens.entity["entity-card-heading"] }}>Entity Highlight</div>
+                    <div className="text-xs opacity-80" style={{ color: tokens.typography["text-body"] }}>Unique component tokens</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </ColorBlindnessSimulator>
 
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex-1 flex justify-center">

@@ -35,57 +35,104 @@ const BuildStage = ({
   setPopIntensity,
 }) => (
   <StageSection id="build" title="Build" subtitle="Base color, harmony, and generation controls.">
-    <div className="flex flex-wrap items-center gap-2">
+    {/* Quick Actions Bar */}
+    <div className="flex flex-wrap items-center gap-2 mb-4">
       <button
         type="button"
         onClick={() => setHeaderOpen((v) => !v)}
-        className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition shrink-0 whitespace-nowrap"
+        className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition shrink-0 whitespace-nowrap shadow-md"
         aria-expanded={headerOpen}
         aria-label={headerOpen ? 'Hide controls' : 'Show controls'}
       >
         {headerOpen ? <EyeOff size={14} /> : <Eye size={14} />}
-        Controls
+        {headerOpen ? 'Hide' : 'Show'} Controls
       </button>
+      
+      {/* Quick actions grouped */}
+      <div className="flex items-center gap-1 panel-surface-soft rounded-full px-2 py-1">
+        <button
+          type="button"
+          onClick={resetPalette}
+          className="flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-bold hover:bg-gray-500/20 transition"
+          aria-label="Reset palette"
+          title="Reset to default palette"
+        >
+          <span>⟲</span>
+          Reset
+        </button>
+      </div>
+
+      <div className="flex items-center gap-1 panel-surface-soft rounded-full px-2 py-1">
+        <button
+          type="button"
+          onClick={randomRitual}
+          className="flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-bold hover:bg-purple-500/20 transition"
+          aria-label="Random ritual"
+          title="Generate random palette"
+        >
+          <Shuffle size={12} />
+          Random
+        </button>
+        <button
+          type="button"
+          onClick={crankApocalypse}
+          className="flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-bold hover:bg-red-500/20 transition"
+          aria-label="Crank apocalypse"
+          title="Intensify colors"
+        >
+          <Flame size={12} />
+          Apocalypse
+        </button>
+      </div>
     </div>
 
     {headerOpen && (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        <div
-          className="flex flex-col gap-3 p-3 rounded-xl border panel-surface-soft backdrop-blur-sm"
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 panel-surface-strong p-1.5 rounded-lg border">
-              <input
-                type="color"
-                value={pickerColor}
-                onChange={(e) => handleBaseColorChange(e.target.value)}
-                className="w-8 h-8 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
-                aria-label="Choose base color"
-              />
-              <input
-                type="text"
-                value={baseInput}
-                onChange={(e) => handleBaseColorChange(e.target.value)}
-                className="w-28 bg-transparent text-sm font-mono panel-text outline-none uppercase border-b border-transparent"
-                style={{ borderColor: baseError ? tokens.status.error : 'transparent' }}
-                aria-label="Base color hex value"
-                aria-invalid={Boolean(baseError)}
-              />
-            </div>
-            <select
-              onChange={(e) => applyPreset(e.target.value)}
-              className="px-3 py-2 rounded-lg panel-surface-strong panel-text text-sm border focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
-              defaultValue=""
-              aria-label="Choose a preset palette"
-            >
-              <option value="" disabled>Presets…</option>
-              {presets.map((p) => (
-                <option key={p.name} value={p.name}>{p.name}</option>
-              ))}
-            </select>
+      <div className="space-y-4">
+        {/* Compact Color Controls - Sticky */}
+        <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl border panel-surface-soft backdrop-blur-sm sticky top-0 z-20 shadow-sm">
+          <div className="flex items-center gap-2 panel-surface-strong p-2 rounded-lg border shadow-sm">
+            <input
+              type="color"
+              value={pickerColor}
+              onChange={(e) => handleBaseColorChange(e.target.value)}
+              className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
+              aria-label="Choose base color"
+            />
+            <input
+              type="text"
+              value={baseInput}
+              onChange={(e) => handleBaseColorChange(e.target.value)}
+              className="w-24 bg-transparent text-sm font-mono panel-text outline-none uppercase border-b border-transparent"
+              style={{ borderColor: baseError ? tokens.status.error : 'transparent' }}
+              aria-label="Base color hex value"
+              aria-invalid={Boolean(baseError)}
+              placeholder="#000000"
+            />
           </div>
-          {baseError && <p className="text-xs font-semibold" style={{ color: tokens.status.error }} role="alert">{baseError}</p>}
+          
+          <select
+            onChange={(e) => applyPreset(e.target.value)}
+            className="px-3 py-2.5 rounded-lg panel-surface-strong panel-text text-sm border focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2 shadow-sm"
+            defaultValue=""
+            aria-label="Choose a preset palette"
+          >
+            <option value="" disabled>🎨 Presets…</option>
+            {presets.map((p) => (
+              <option key={p.name} value={p.name}>{p.name}</option>
+            ))}
+          </select>
+
+          {baseError && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+              <span className="text-xs font-semibold text-red-600 dark:text-red-400" role="alert">
+                ⚠️ {baseError}
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Controls Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         <div
           className="flex flex-col gap-3 p-3 rounded-xl border panel-surface-soft backdrop-blur-sm"
@@ -200,9 +247,9 @@ const BuildStage = ({
                       aria-label="Adjust pop intensity"
                       aria-valuemin={60}
                       aria-valuemax={140}
-                      aria-valuenow={popInput}
+                      aria-valuenow={popIntensity}
                     />
-                    <span className="text-xs w-10 text-right font-mono panel-muted">{popInput}%</span>
+                    <span className="text-xs w-10 text-right font-mono panel-muted">{popIntensity}%</span>
                   </div>
                 )}
                 <div className="relative">
@@ -271,6 +318,7 @@ const BuildStage = ({
               </button>
             ))}
           </div>
+        </div>
         </div>
       </div>
     )}

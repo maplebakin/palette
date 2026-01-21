@@ -33,7 +33,7 @@ const createPaletteSlice = (set, get) => ({
   setTokenPrefix: (prefix) => set({ tokenPrefix: prefix }),
   setImportedOverrides: (overrides) => set({ importedOverrides: overrides }),
 
-  // Debounced intensity setters (with cleanup)
+  // Intensity setters
   setHarmonyIntensity: (value) => set({ harmonyIntensity: value }),
   setApocalypseIntensity: (value) => set({ apocalypseIntensity: value }),
   setNeutralCurve: (value) => set({ neutralCurve: value }),
@@ -79,65 +79,72 @@ const createPaletteSlice = (set, get) => ({
   },
 });
 
-const createStorageSlice = (set, get) => ({
-  savedPalettes: [],
-  saveStatus: '',
-  storageAvailable: null,
-  storageCorrupt: false,
-  storageQuotaExceeded: false,
+const createStorageSlice = (set, get) => {
+  const STORAGE_KEYS = {
+    current: 'token-gen/current-palette',
+    saved: 'token-gen/saved-palettes',
+  };
 
-  setSavedPalettes: (palettes) => set({ savedPalettes: palettes }),
-  setSaveStatus: (status) => set({ saveStatus: status }),
-  setStorageAvailable: (available) => set({ storageAvailable: available }),
-  setStorageCorrupt: (corrupt) => set({ storageCorrupt: corrupt }),
-  setStorageQuotaExceeded: (exceeded) => set({ storageQuotaExceeded: exceeded }),
+  return {
+    savedPalettes: [],
+    saveStatus: '',
+    storageAvailable: null,
+    storageCorrupt: false,
+    storageQuotaExceeded: false,
 
-  // Save palette to localStorage
-  saveCurrentPalette: () => {
-    const state = get();
-    if (!state.storageAvailable || state.storageCorrupt) {
-      return { success: false, error: 'Storage unavailable' };
-    }
-    try {
-      const palette = state.serializePalette();
-      const filtered = state.savedPalettes.filter(p => p.name !== palette.name);
-      const updated = [palette, ...filtered].slice(0, 20);
-      localStorage.setItem('token-gen/saved-palettes', JSON.stringify(updated));
-      set({ savedPalettes: updated, saveStatus: 'Saved' });
-      return { success: true };
-    } catch (err) {
-      if (err?.name === 'QuotaExceededError') {
-        set({ storageQuotaExceeded: true });
+    setSavedPalettes: (palettes) => set({ savedPalettes: palettes }),
+    setSaveStatus: (status) => set({ saveStatus: status }),
+    setStorageAvailable: (available) => set({ storageAvailable: available }),
+    setStorageCorrupt: (corrupt) => set({ storageCorrupt: corrupt }),
+    setStorageQuotaExceeded: (exceeded) => set({ storageQuotaExceeded: exceeded }),
+
+    // Save palette to localStorage
+    saveCurrentPalette: () => {
+      const state = get();
+      if (!state.storageAvailable || state.storageCorrupt) {
+        return { success: false, error: 'Storage unavailable' };
       }
-      return { success: false, error: err.message };
-    }
-  },
+      try {
+        const palette = state.serializePalette();
+        const filtered = state.savedPalettes.filter(p => p.name !== palette.name);
+        const updated = [palette, ...filtered].slice(0, 20);
+        localStorage.setItem(STORAGE_KEYS.saved, JSON.stringify(updated));
+        set({ savedPalettes: updated, saveStatus: 'Saved' });
+        return { success: true };
+      } catch (err) {
+        if (err?.name === 'QuotaExceededError') {
+          set({ storageQuotaExceeded: true });
+        }
+        return { success: false, error: err.message };
+      }
+    },
 
-  // Load palette by ID
-  loadSavedPalette: (id) => {
-    const state = get();
-    const palette = state.savedPalettes.find(p => p.id === Number(id));
-    if (!palette) return { success: false, error: 'Palette not found' };
-    state.loadPaletteSpec(palette);
-    return { success: true };
-  },
-
-  // Clear all saved data
-  clearSavedData: () => {
-    try {
-      localStorage.removeItem('token-gen/saved-palettes');
-      localStorage.removeItem('token-gen/current-palette');
-      set({
-        savedPalettes: [],
-        storageCorrupt: false,
-        storageQuotaExceeded: false
-      });
+    // Load palette by ID
+    loadSavedPalette: (id) => {
+      const state = get();
+      const palette = state.savedPalettes.find(p => p.id === Number(id));
+      if (!palette) return { success: false, error: 'Palette not found' };
+      state.loadPaletteSpec(palette);
       return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  },
-});
+    },
+
+    // Clear all saved data
+    clearSavedData: () => {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.saved);
+        localStorage.removeItem(STORAGE_KEYS.current);
+        set({
+          savedPalettes: [],
+          storageCorrupt: false,
+          storageQuotaExceeded: false
+        });
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: err.message };
+      }
+    },
+  };
+};
 
 const createExportSlice = (set) => ({
   exportError: '',

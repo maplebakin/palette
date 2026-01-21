@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Lock, Unlock, Wand2 } from 'lucide-react';
+import { Lock, Unlock, Wand2, Save, Palette, Trash2 } from 'lucide-react';
 import { StageSection } from './stages/StageLayout';
 import { createMoodCluster, regenerateMoodCluster, getMoodClusterTypes } from '../lib/theme/moodBoard';
 import { hexWithAlpha, pickReadableText, normalizeHex } from '../lib/colorUtils';
+import { useMoodBoard } from '../context/MoodBoardContext';
 
 const sanitizeHexInput = (value, fallback = null) => {
   if (typeof value !== 'string') return fallback;
@@ -19,21 +20,24 @@ const MoodBoard = ({
   onApplyPaletteSpec,
   onSaveDraft,
   canSaveDraft = false,
-  copyHexValue,
 }) => {
+  const { savedMoodBoards, saveMoodBoard, deleteMoodBoard } = useMoodBoard();
   const [clusters, setClusters] = useState([]);
   const [generatedAt, setGeneratedAt] = useState('');
   const [requiredHex, setRequiredHex] = useState(() => normalizeHex(baseColor || '#6366f1', '#6366f1'));
   const [requiredDirty, setRequiredDirty] = useState(false);
+  const [showSavedMoodBoards, setShowSavedMoodBoards] = useState(false);
 
   useEffect(() => {
     if (!requiredDirty) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRequiredHex(normalizeHex(baseColor || '#6366f1', '#6366f1'));
     }
   }, [baseColor, requiredDirty]);
 
   useEffect(() => {
     if (!requiredHex || clusters.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setClusters((prev) => prev.map((cluster) => {
       const duplicateIds = cluster.slots
         .filter((slot) => slot.role !== 'required' && !slot.locked && String(slot.color || '').toLowerCase() === requiredHex.toLowerCase())
@@ -100,6 +104,30 @@ const MoodBoard = ({
     }));
   };
 
+
+
+  const handleGenerateThemeFromColor = (hexColor) => {
+    // Apply the selected color as the base color to the main palette creator
+    // This will be handled by calling the appropriate callback
+    const paletteSpec = {
+      baseColor: hexColor,
+      mode: 'Monochromatic', // Default mode
+      themeMode: 'dark', // Default theme mode
+      isDark: true,
+      printMode: false,
+      customThemeName: `Theme from ${hexColor}`,
+      harmonyIntensity: 100,
+      apocalypseIntensity: 100,
+      neutralCurve: 100,
+      accentStrength: 100,
+      popIntensity: 100,
+      tokenPrefix: '',
+      importedOverrides: null,
+    };
+
+    onApplyPaletteSpec?.(paletteSpec);
+  };
+
   return (
     <StageSection
       id="mood-board"
@@ -120,6 +148,20 @@ const MoodBoard = ({
           <Wand2 size={14} />
           Regenerate Unlocked
         </button>
+
+        <button
+          type="button"
+          onClick={() => setShowSavedMoodBoards(!showSavedMoodBoards)}
+          className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold shadow-md hover:-translate-y-[1px] active:scale-95 transition border panel-surface-strong"
+          style={{
+            backgroundColor: tokens.brand.secondary,
+            color: pickReadableText(tokens.brand.secondary),
+            borderColor: hexWithAlpha(tokens.brand.secondary, 0.4),
+          }}
+        >
+          <Palette size={14} />
+          {showSavedMoodBoards ? 'Hide Saved' : 'View Saved'} ({savedMoodBoards.length})
+        </button>
         <label className="flex items-center gap-2 text-xs font-semibold panel-muted">
           Required hex
           <input
@@ -136,12 +178,86 @@ const MoodBoard = ({
         )}
       </div>
 
+      {/* Display saved mood boards if requested */}
+      {showSavedMoodBoards && (
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold panel-text mb-4">Saved Mood Boards</h3>
+          {savedMoodBoards.length === 0 ? (
+            <div className="panel-surface-strong border rounded-xl p-4 text-sm panel-muted">
+              No saved mood boards yet. Save some to see them here.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {savedMoodBoards.map((moodBoard) => (
+                <div key={moodBoard.id} className="panel-surface-strong border rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold panel-text">{moodBoard.title}</h4>
+                    <button
+                      type="button"
+                      onClick={() => deleteMoodBoard(moodBoard.id)}
+                      className="text-xs p-1 rounded-full hover:bg-red-500/20 hover:text-red-500"
+                      aria-label="Delete mood board"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <p className="text-xs panel-muted">
+                    Created: {new Date(moodBoard.createdAt).toLocaleDateString()}
+                  </p>
+
+                  {/* Display color swatches from the mood board */}
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold panel-muted mb-2">Colors:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {moodBoard.clusters && moodBoard.clusters.flatMap(cluster =>
+                        cluster.slots ? cluster.slots.map(slot => slot.color) : []
+                      ).filter(Boolean).slice(0, 12).map((color, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleGenerateThemeFromColor(color)}
+                          className="w-6 h-6 rounded border shadow-sm hover:scale-110 transition-transform"
+                          style={{
+                            backgroundColor: color,
+                            borderColor: hexWithAlpha('#000', 0.2),
+                          }}
+                          title={`Generate theme from ${color}`}
+                          aria-label={`Generate theme from ${color}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Apply the first cluster's palette spec as an example
+                      if (moodBoard.clusters && moodBoard.clusters[0]?.paletteSpec) {
+                        onApplyPaletteSpec?.(moodBoard.clusters[0].paletteSpec);
+                      }
+                    }}
+                    className="w-full px-3 py-1.5 rounded text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+                    style={{
+                      backgroundColor: tokens.brand.cta,
+                      color: pickReadableText(tokens.brand.cta),
+                      borderColor: hexWithAlpha(tokens.brand.cta, 0.4),
+                    }}
+                  >
+                    Apply First Cluster
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {clusters.length === 0 ? (
         <div className="panel-surface-strong border rounded-xl p-4 text-sm panel-muted">
           No mood board yet. Generate to explore color families.
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
           {clusters.map((cluster) => {
             const clusterLocked = cluster.slots.every((slot) => slot.locked);
             return (
@@ -166,8 +282,8 @@ const MoodBoard = ({
                     <div key={slot.id} className="relative">
                       <button
                         type="button"
-                        onClick={() => copyHexValue(slot.color, slot.color)}
-                        className="h-8 rounded-md border shadow-inner block w-full hover:scale-[1.02] active:scale-95 transition"
+                        onClick={() => handleGenerateThemeFromColor(slot.color)}
+                        className="h-8 rounded-md border shadow-inner block w-full hover:scale-[1.02] active:scale-95 transition relative group"
                         style={{
                           backgroundColor: slot.color,
                           borderColor: hexWithAlpha('#000', 0.15),
@@ -175,9 +291,11 @@ const MoodBoard = ({
                             ? `0 0 0 2px ${hexWithAlpha(tokens.brand.primary, 0.45)}`
                             : undefined,
                         }}
-                        title={slot.color}
-                        aria-label={`Copy ${slot.color}`}
-                      />
+                        title={`Generate theme from ${slot.color}`}
+                        aria-label={`Generate theme from ${slot.color}`}
+                      >
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-opacity rounded-md pointer-events-none" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => toggleSlotLock(cluster.id, slot.id)}
@@ -202,6 +320,28 @@ const MoodBoard = ({
                     }}
                   >
                     Apply to Editor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const moodBoardData = {
+                        title: `${cluster.title} Palette - ${new Date().toLocaleDateString()}`,
+                        clusters: [cluster],
+                        baseColor,
+                        requiredHex,
+                        generatedAt: new Date().toISOString()
+                      };
+                      saveMoodBoard(moodBoardData);
+                    }}
+                    className="flex items-center gap-1 px-3 py-2 rounded-full text-[11px] font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+                    style={{
+                      backgroundColor: tokens.brand.accent,
+                      color: pickReadableText(tokens.brand.accent),
+                      borderColor: hexWithAlpha(tokens.brand.accent, 0.4),
+                    }}
+                  >
+                    <Save size={12} />
+                    Save {cluster.title}
                   </button>
                   {canSaveDraft && (
                     <button

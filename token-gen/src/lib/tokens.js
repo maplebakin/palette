@@ -113,6 +113,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const hsl = hexToHsl(normalizedBase);
   const isDark = themeMode === 'dark';
   const isPop = themeMode === 'pop';
+  const isLight = themeMode === 'light';
   const isApocalypse = mode === 'Apocalypse';
   const intensity = isApocalypse ? (Math.max(20, Math.min(150, apocalypseIntensity)) / 100) : 1;
   const {
@@ -151,7 +152,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   let textMainL = isApocalypse ? (isDark ? 98 : 8) : (isDark ? 95 : 10);
   let textMutedL = isApocalypse ? (isDark ? 70 : 35) : (isDark ? 65 : 40);
   let borderL = isApocalypse ? (isDark ? 10 : 88) : (isDark ? 25 : 90);
-  if (!isDark) {
+  if (isLight) {
     if (isApocalypse) {
       bgL = 98;
       surfaceL = 94;
@@ -162,7 +163,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       borderL = 88;
     }
   }
-  if (isPop && !isDark) {
+  if (isPop) {
     const basePop = clamp(56 + ((popScale - 1) * 6) - (isApocalypse ? 2 : 0), 42, 62);
     bgL = basePop;
     surfaceL = clamp(basePop - (isApocalypse ? 2 : 4), 38, 58);
@@ -176,6 +177,12 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   let surfaceSat = isDark
     ? baseSurfaceSat
     : Math.min(isApocalypse ? 32 : 24, Math.max(8, gammaLightSat * (isApocalypse ? 0.85 : 0.65)));
+  if (isPop) {
+    const popSurfaceCap = isApocalypse ? 38 : 34;
+    const popSurfaceFloor = isApocalypse ? 14 : 10;
+    const popSurfaceBoost = 1 + (popBoost * 1.4);
+    surfaceSat = clamp(surfaceSat * popSurfaceBoost, popSurfaceFloor, popSurfaceCap);
+  }
 
   let brandLightness = isApocalypse ? (isDark ? 75 : 52) : (isDark ? 60 : 50); 
   let accentLightness = isApocalypse ? (isDark ? 78 : 56) : (isDark ? 67 : 55);
@@ -218,20 +225,20 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const backgroundHue = resolvedBackgroundMix > 0.2
     ? hexToHsl(blendColorsPerceptual(normalizedBase, accentTarget, resolvedBackgroundMix)).h
     : blendHue(hsl.h, accH, resolvedBackgroundMix);
-  const neutralShift = isDark ? 0 : LIGHT_TEMP_SHIFT;
+  const neutralShift = isDark ? 0 : (isPop ? 0 : LIGHT_TEMP_SHIFT);
   const neutralSurfaceHue = (surfaceHue + neutralShift) % 360;
   const neutralBackgroundHue = (backgroundHue + neutralShift) % 360;
   const backgroundSatScale = isDark ? 0.85 : 1.05;
   const backgroundBase = { h: neutralBackgroundHue, s: surfaceSat * backgroundSatScale, l: bgL };
   const surfaceBase = { h: neutralSurfaceHue, s: surfaceSat, l: bgL };
-  const popSurfaceInfluenceLarge = isPop && !isDark ? 0.02 + (popBoost * 0.05) : 0;
-  const popSurfaceInfluenceMedium = isPop && !isDark ? 0.08 + (popBoost * 0.1) : 0;
+  const popSurfaceInfluenceLarge = isPop ? 0.12 + (popBoost * 0.12) : 0;
+  const popSurfaceInfluenceMedium = isPop ? 0.2 + (popBoost * 0.2) : 0;
   const popLargeHue = blendHue(neutralBackgroundHue, hsl.h - neutralBackgroundHue, popSurfaceInfluenceLarge);
   const popMediumHue = blendHue(neutralSurfaceHue, hsl.h - neutralSurfaceHue, popSurfaceInfluenceMedium);
-  const popLargeSat = isPop && !isDark ? clamp(surfaceSat * 0.9, 4, 14) : surfaceSat;
-  const popMediumSat = isPop && !isDark ? clamp(surfaceSat * (1 + (popBoost * 0.7)), 6, 26) : surfaceSat;
-  const largeSurfaceBase = isPop && !isDark ? { h: popLargeHue, s: popLargeSat, l: bgL } : backgroundBase;
-  const mediumSurfaceBase = isPop && !isDark ? { h: popMediumHue, s: popMediumSat, l: bgL } : surfaceBase;
+  const popLargeSat = isPop ? clamp(surfaceSat * (0.9 + (popBoost * 0.5)), 10, 30) : surfaceSat;
+  const popMediumSat = isPop ? clamp(surfaceSat * (1 + (popBoost * 0.8)), 14, 38) : surfaceSat;
+  const largeSurfaceBase = isPop ? { h: popLargeHue, s: popLargeSat, l: bgL } : backgroundBase;
+  const mediumSurfaceBase = isPop ? { h: popMediumHue, s: popMediumSat, l: bgL } : surfaceBase;
   const neutralColor = (lightness, satMult = 0.3) =>
     getColor({ h: neutralBackgroundHue, s: surfaceSat * satMult, l: lightness }, 0, 1, lightness);
   const lightNeutralSteps = isApocalypse
@@ -321,7 +328,11 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     return blackRatio >= whiteRatio ? black : white;
   };
 
-  const headerL = isDark ? bgL + 2 : clamp(bgL + (isPop ? 1 : 2), isPop ? 90 : 94, 98);
+  const headerL = isDark
+    ? bgL + 2
+    : isPop
+      ? clamp(bgL + 6, 48, 74)
+      : clamp(bgL + 2, 94, 98);
   const tokens = {
     foundation: {
       hue: hsl.h,
@@ -420,7 +431,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       "card-panel-surface-strong": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 5 : Math.min(97, surfaceL + (isPop ? 2 : 4))),
       "card-panel-border": getColor(mediumSurfaceBase, 0, 1, borderL),
       "card-panel-border-soft": getColor(mediumSurfaceBase, 0, 1, isDark ? borderL - 5 : Math.min(96, borderL + 6)),
-      "card-panel-border-strong": getColor(surfaceBase, 0, 1, isDark ? borderL + 15 : 85),
+      "card-panel-border-strong": getColor(surfaceBase, 0, 1, isDark ? borderL + 15 : (isPop ? clamp(borderL + 14, 40, 70) : 85)),
       "card-tag-bg": isDark
         ? getColor(hsl, 0, 0.2, 20)
         : getColor(hsl, accH, 0.12 + (popBoost * 0.2), 94),
@@ -431,14 +442,14 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     },
 
     glass: {
-      "glass-surface": getColor(hsl, 0, 0.1, isDark ? 20 : 95),
-      "glass-surface-strong": getColor(hsl, 0, 0.1, isDark ? 30 : 90),
-      "glass-border": getColor(hsl, 0, 0.1, isDark ? 35 : 85),
-      "glass-border-strong": getColor(hsl, 0, 0.2, isDark ? 45 : 80),
-      "glass-hover": getColor(hsl, accH, 0.3, isDark ? 25 : 95),
-      "glass-shadow": getColor(hsl, 0, 0.3, isDark ? 5 : 80),
-      "glass-highlight": getColor(hsl, 0, 0, isDark ? 30 : 99),
-      "glass-glow": getColor(hsl, accH, 0.5, isDark ? 28 : 72),
+      "glass-surface": getColor(hsl, 0, 0.1, isDark ? 20 : (isPop ? clamp(surfaceL + 16, 48, 78) : 95)),
+      "glass-surface-strong": getColor(hsl, 0, 0.1, isDark ? 30 : (isPop ? clamp(surfaceL + 10, 44, 72) : 90)),
+      "glass-border": getColor(hsl, 0, 0.1, isDark ? 35 : (isPop ? clamp(borderL + 18, 46, 76) : 85)),
+      "glass-border-strong": getColor(hsl, 0, 0.2, isDark ? 45 : (isPop ? clamp(borderL + 12, 42, 70) : 80)),
+      "glass-hover": getColor(hsl, accH, 0.3, isDark ? 25 : (isPop ? clamp(surfaceL + 14, 50, 82) : 95)),
+      "glass-shadow": getColor(hsl, 0, 0.3, isDark ? 5 : (isPop ? clamp(surfaceL - 8, 16, 34) : 80)),
+      "glass-highlight": getColor(hsl, 0, 0, isDark ? 30 : (isPop ? clamp(surfaceL + 24, 60, 92) : 99)),
+      "glass-glow": getColor(hsl, accH, 0.5, isDark ? 28 : (isPop ? clamp(60 + (popBoost * 12), 60, 78) : 72)),
       "glass-shadow-soft": isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.1)',
       "glass-shadow-strong": isDark ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.18)',
       "glass-blur": glassBlur,
@@ -446,10 +457,10 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     },
 
     entity: {
-      "entity-card-surface": getColor(hsl, secH, 0.15, isDark ? 18 : 98),
-      "entity-card-border": getColor(hsl, secH, 0.2, isDark ? 35 : 85),
-      "entity-card-glow": getColor(hsl, secH, 0.6, isDark ? 25 : 90),
-      "entity-card-highlight": getColor(hsl, secH, 0.4, isDark ? 30 : 95),
+      "entity-card-surface": getColor(hsl, secH, 0.15, isDark ? 18 : (isPop ? clamp(surfaceL + 18, 50, 80) : 98)),
+      "entity-card-border": getColor(hsl, secH, 0.2, isDark ? 35 : (isPop ? clamp(borderL + 16, 44, 74) : 85)),
+      "entity-card-glow": getColor(hsl, secH, 0.6, isDark ? 25 : (isPop ? clamp(surfaceL + 14, 48, 82) : 90)),
+      "entity-card-highlight": getColor(hsl, secH, 0.4, isDark ? 30 : (isPop ? clamp(surfaceL + 24, 60, 90) : 95)),
       "entity-card-heading": getColor(hsl, secH, 0.5, isDark ? 80 : 20),
     },
 
@@ -476,7 +487,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     },
 
     admin: {
-      "admin-surface-base": getColor(isPop && !isDark ? mediumSurfaceBase : backgroundBase, 0, 1, isDark ? bgL + 6 : Math.min(98, bgL + 3)),
+      "admin-surface-base": getColor(isPop ? mediumSurfaceBase : backgroundBase, 0, 1, isDark ? bgL + 6 : (isPop ? clamp(bgL + 6, 48, 76) : Math.min(98, bgL + 3))),
       "admin-accent": getColor(hsl, accH, isDark ? 0.95 : 0.85 + (popBoost * 0.35), isDark ? 64 : 54),
     },
 

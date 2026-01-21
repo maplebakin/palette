@@ -4,19 +4,19 @@ import { exportAssets, buildExportFilename, slugifyFilename } from './exportUtil
 /**
  * Exports tokens as CSS variables file
  * @param {Object} options
- * @param {Object} options.finalTokens - Token object
+ * @param {Object} options.themeMaster - Theme master object
  * @param {string} options.themeName - Theme name
  * @param {string} options.tokenPrefix - Optional prefix
  * @returns {Promise<void>}
  */
 export const exportCSS = async (options) => {
-  const { finalTokens, themeName, tokenPrefix } = options;
+  const { themeMaster, themeName, tokenPrefix } = options;
 
   if (typeof Blob === 'undefined') {
     throw new Error('Blob is not supported in this environment');
   }
 
-  const css = buildCssVariables(finalTokens, { prefix: tokenPrefix });
+  const css = buildCssVariables(themeMaster, tokenPrefix || '');
   const blob = new Blob([css], { type: 'text/css' });
   const filename = buildExportFilename(
     slugifyFilename(themeName || 'theme', 'theme'),

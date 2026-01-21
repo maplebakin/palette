@@ -133,15 +133,15 @@ function ProjectView({
     : '';
 
   return (
-    <div className="p-4 panel-surface rounded-lg">
-      <div className="space-y-6">
+    <div className="p-2 sm:p-4 panel-surface rounded-lg">
+      <div className="space-y-4 sm:space-y-6">
         <StartPanel className="panel-surface-strong border rounded-lg p-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-bold">Project Manager</h2>
               <p className="text-sm panel-muted">Start a new project or load an existing build file.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button onClick={createNewProject} className="btn-primary">New Project</button>
               <input type="file" accept=".apocaproject.json" onChange={handleFileLoad} className="hidden" id="load-project-file" />
               <label htmlFor="load-project-file" className="btn-secondary cursor-pointer">Load Project</label>
@@ -166,7 +166,7 @@ function ProjectView({
             onChange={(e) => setProjectName(e.target.value)}
             className="mt-2 block w-full rounded-md border panel-surface-strong shadow-sm focus:border-[var(--panel-accent)] focus:ring-[var(--panel-accent)] sm:text-sm"
           />
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 md:grid-cols-4">
             <div className="panel-surface border rounded-md p-2">
               <p className="text-[10px] uppercase tracking-wider panel-muted">Sections</p>
               <p className="text-sm font-semibold">{sectionCount}</p>
@@ -187,7 +187,7 @@ function ProjectView({
         </NamePanel>
 
         <BuildPanel className="panel-surface-strong border rounded-lg p-4 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
             <div>
               <h3 className="text-lg font-semibold">Build Sections</h3>
               <p className="text-sm panel-muted">Create sections before capturing palettes.</p>
@@ -242,8 +242,8 @@ function ProjectView({
                 : [];
               return (
                 <div key={section.id} className="p-4 border panel-surface rounded-lg mb-3">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       <input
                         value={section.label}
                         onChange={(e) => updateSection(section.id, {
@@ -294,7 +294,7 @@ function ProjectView({
                       </button>
                     </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs panel-muted">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3 text-xs panel-muted">
                     <span>Base {captured && section.baseHex ? section.baseHex.toUpperCase() : '—'}</span>
                     <span>Mode {captured && section.mode ? section.mode : '—'}</span>
                     <span>Kind {section.kind ?? '—'}</span>
@@ -303,7 +303,7 @@ function ProjectView({
                     <span>{section.locked ? 'Locked' : 'Unlocked'}</span>
                   </div>
                   {previewColors.length > 0 && (
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-2">
                       {previewColors.map((color, index) => (
                         <span
                           key={`${section.id}-preview-${index}`}
@@ -321,7 +321,7 @@ function ProjectView({
         </ReviewPanel>
 
         <ExportPanel className="panel-surface-strong border rounded-lg p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
             <div>
               <h3 className="text-lg font-semibold">Export</h3>
               <p className="text-sm panel-muted">Save the project file or export a .soc bundle.</p>

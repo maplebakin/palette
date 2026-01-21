@@ -1,84 +1,89 @@
-import { captureNodeAsImage } from './exportImage.js';
-import { exportAssets, buildExportFilename, slugifyFilename, normalizeHex } from './exportUtils.js';
-import { sanitizeThemeName } from '../utils/stringUtils.js';
+import { exportAssets, buildExportFilename, slugifyFilename } from './exportUtils.js';
 
 /**
- * Generates and exports listing assets as a ZIP file.
+ * Generates listing assets (cover, swatches, UI previews) as a ZIP
  * @param {Object} options
- * @param {HTMLElement} options.coverNode - DOM node for the cover image.
- * @param {HTMLElement} options.swatchNode - DOM node for the swatch strip image.
- * @param {HTMLElement} options.previewNode - DOM node for the UI preview image.
- * @param {HTMLElement | null} options.snippetNode - Optional DOM node for a tokens snippet image.
- * @param {Object} options.tokenStore - The token store (for tokens.surfaces.background).
- * @param {Object} options.paletteStore - The palette store (for baseColor, mode, themeMode).
- * @param {string} options.displayThemeName - The display name of the theme.
- * @param {Function} options.notify - Notification function.
- * @param {Function} options.setStatusMessage - Status message function.
- * @param {string} [options.rootFolder='listing'] - Name of the root folder in the zip.
- * @param {boolean} [options.includeMeta=true] - Whether to include meta.json.
- * @param {string} options.zipName - Custom name for the zip file.
- * @param {string} [options.successMessage='Listing assets generated'] - Message on successful export.
+ * @param {HTMLElement} options.coverNode - Cover element to capture
+ * @param {HTMLElement} options.swatchNode - Swatch element to capture
+ * @param {HTMLElement} options.snippetNode - Snippet element to capture
+ * @param {HTMLElement} options.previewNode - Preview element to capture
+ * @param {Object} options.tokens - Theme tokens
+ * @param {string} options.themeName - Theme name
+ * @param {string} options.rootFolder - Root folder name in ZIP
+ * @param {boolean} options.includeMeta - Whether to include metadata
  * @returns {Promise<void>}
  */
 export const exportListingAssets = async (options) => {
   const {
     coverNode,
     swatchNode,
-    previewNode,
     snippetNode,
-    tokenStore,
-    paletteStore,
-    displayThemeName,
-    notify,
-    setStatusMessage,
+    previewNode,
+    tokens,
+    themeName,
     rootFolder = 'listing',
     includeMeta = true,
-    zipName,
-    successMessage = 'Listing assets generated',
   } = options;
 
   if (typeof Blob === 'undefined') {
-    throw new Error('File export is not supported in this browser');
+    throw new Error('Blob is not supported in this environment');
   }
 
   if (!coverNode || !swatchNode || !previewNode) {
-    throw new Error('Required listing asset templates are not ready');
+    throw new Error('Required nodes for listing assets are missing');
   }
 
-  try {
-    const JSZip = (await import('jszip')).default;
-    const zip = new JSZip();
-    const listingFolder = zip.folder(rootFolder || 'listing');
-    if (!listingFolder) throw new Error('Failed to create listing folder');
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+  const listingFolder = zip.folder(rootFolder || 'listing');
+  
+  if (!listingFolder) throw new Error('Failed to create listing folder');
 
-    const coverPng = await captureNodeAsImage(coverNode, {
+  try {
+    const { toPng } = await import('html-to-image');
+    
+    const captureNode = async (node, opts) => {
+      const dataUrl = await toPng(node, {
+        cacheBust: true,
+        pixelRatio: 2,
+        ...opts,
+      });
+      const res = await fetch(dataUrl);
+      return new Uint8Array(await res.arrayBuffer());
+    };
+
+    // Capture cover image
+    const coverPng = await captureNode(coverNode, {
       width: 1200,
       height: 1200,
-      backgroundColor: tokenStore.tokens.surfaces.background,
+      backgroundColor: tokens?.surfaces?.background || '#ffffff',
     });
     listingFolder.file('cover.png', coverPng);
 
-    const swatchPng = await captureNodeAsImage(swatchNode, {
+    // Capture swatch image
+    const swatchPng = await captureNode(swatchNode, {
       width: 1600,
       height: 400,
-      backgroundColor: tokenStore.tokens.surfaces.background,
+      backgroundColor: tokens?.surfaces?.background || '#ffffff',
     });
     listingFolder.file('swatches.png', swatchPng);
 
-    const uiPng = await captureNodeAsImage(previewNode, {
+    // Capture UI preview
+    const uiPng = await captureNode(previewNode, {
       width: 1600,
       height: 900,
       style: { width: '1600px', height: '900px' },
-      backgroundColor: tokenStore.tokens.surfaces.background,
+      backgroundColor: tokens?.surfaces?.background || '#ffffff',
     });
     listingFolder.file('ui.png', uiPng);
 
+    // Capture snippet if available
     if (snippetNode) {
       try {
-        const snippetPng = await captureNodeAsImage(snippetNode, {
+        const snippetPng = await captureNode(snippetNode, {
           width: 1200,
           height: 600,
-          backgroundColor: tokenStore.tokens.surfaces.background,
+          backgroundColor: tokens?.surfaces?.background || '#ffffff',
         });
         listingFolder.file('tokens-snippet.png', snippetPng);
       } catch (err) {
@@ -86,12 +91,10 @@ export const exportListingAssets = async (options) => {
       }
     }
 
+    // Add metadata if requested
     if (includeMeta) {
       const meta = {
-        themeName: displayThemeName,
-        baseHex: normalizeHex(paletteStore.baseColor || '#000000', '#000000').toUpperCase(),
-        harmonyMode: paletteStore.mode,
-        themeMode: paletteStore.themeMode,
+        themeName: themeName,
         timestamp: new Date().toISOString(),
         version: 'v1',
       };
@@ -100,14 +103,14 @@ export const exportListingAssets = async (options) => {
 
     const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
     const defaultName = buildExportFilename(
-      slugifyFilename(displayThemeName || 'theme', 'theme'),
+      slugifyFilename(themeName || 'theme', 'theme'),
       '-listing-assets-v1',
       'zip'
     );
-    exportAssets({ data: blob, filename: zipName || defaultName, mime: 'application/zip' });
-    setStatusMessage(successMessage, 'success');
+    
+    exportAssets({ data: blob, filename: defaultName, mime: 'application/zip' });
   } catch (err) {
     console.error('Listing assets export failed', err);
-    notify('Listing assets export failed. Check console for details.', 'error');
+    throw err;
   }
 };

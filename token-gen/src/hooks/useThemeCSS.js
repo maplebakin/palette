@@ -1,19 +1,22 @@
 import { useEffect } from 'react';
-import { THEME_CLASSNAMES, buildThemeCss } from '../lib/themeStyles';
 
 /**
- * Injects theme CSS variables into the DOM and manages theme classes on the root element.
- * @param {object} uiTheme - The object containing CSS variables for the UI theme.
- * @param {string} themeClass - The class name representing the current theme ('light', 'dark', 'pop').
+ * Injects theme CSS variables into DOM
+ * @param {Object} cssVars - CSS variable object
+ * @param {string} themeClass - Theme class name ('light' | 'dark')
  */
-export const useThemeCSS = (uiTheme, themeClass) => {
+export const useThemeCSS = (cssVars, themeClass) => {
   useEffect(() => {
     if (typeof document === 'undefined') return;
 
     const root = document.documentElement;
-    THEME_CLASSNAMES.forEach((name) => root.classList.remove(name));
+    const THEME_CLASSES = ['light', 'dark', 'pop'];
+
+    // Update class
+    THEME_CLASSES.forEach((cls) => root.classList.remove(cls));
     root.classList.add(themeClass);
 
+    // Inject CSS variables
     let styleTag = document.getElementById('theme-vars');
     if (!styleTag) {
       styleTag = document.createElement('style');
@@ -21,19 +24,18 @@ export const useThemeCSS = (uiTheme, themeClass) => {
       document.head.appendChild(styleTag);
     }
 
-    const themeCssText = buildThemeCss(uiTheme, `:root.${themeClass}`);
-    if (styleTag.textContent !== themeCssText) {
-      styleTag.textContent = themeCssText;
-    }
+    const cssText = `:root {${Object.entries(cssVars)
+      .map(([key, value]) => `${key}: ${value};`)
+      .join('\n')}}`;
+    styleTag.textContent = cssText;
 
+    // Update theme-color meta tag
     const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeMeta) themeMeta.setAttribute('content', uiTheme['--page-background']);
+    if (themeMeta) themeMeta.setAttribute('content', cssVars['--page-background']);
 
-    // Cleanup is not strictly necessary here as we want the theme to persist.
-    // However, if the component were to unmount and theme persistence wasn't desired,
-    // a cleanup function could remove the style tag and classes.
+    // Cleanup
     return () => {
-      // Optional cleanup
+      // Don't remove style tag - keep for next mount
     };
-  }, [uiTheme, themeClass]);
+  }, [cssVars, themeClass]);
 };

@@ -13,24 +13,20 @@ export const generateRandomPalette = () => {
   const modes = ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'];
   const themeModes = ['light', 'dark', 'pop'];
 
-  const nextBase = randomHex();
-  const nextMode = modes[Math.floor(Math.random() * modes.length)];
-  const nextThemeMode = themeModes[Math.floor(Math.random() * themeModes.length)];
-
   return {
-    baseColor: nextBase,
-    mode: nextMode,
-    themeMode: nextThemeMode,
-    harmonyIntensity: Math.round(70 + Math.random() * 80), // 70-150
-    apocalypseIntensity: Math.round(50 + Math.random() * 100), // 50-150
-    neutralCurve: Math.round(80 + Math.random() * 50), // 80-130
-    accentStrength: Math.round(80 + Math.random() * 50), // 80-130
+    baseColor: randomHex(),
+    mode: modes[Math.floor(Math.random() * modes.length)],
+    themeMode: themeModes[Math.floor(Math.random() * themeModes.length)],
+    harmonyIntensity: 70 + Math.floor(Math.random() * 60), // 70-130
+    apocalypseIntensity: 80 + Math.floor(Math.random() * 40), // 80-120
+    neutralCurve: 90 + Math.floor(Math.random() * 20), // 90-110
+    accentStrength: 90 + Math.floor(Math.random() * 20), // 90-110
     popIntensity: 100,
   };
 };
 
 /**
- * "Cranks" apocalypse mode (maxes out intensity)
+ * "Cranked" apocalypse mode (maxes out intensity)
  * @param {Object} currentState - Current palette spec
  * @returns {Object} Updated spec with apocalypse cranked
  */

@@ -3,35 +3,38 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
-}
-
-.dark {
   color-scheme: dark;
 }
 
+.light {
+  color-scheme: light;
+}
+
 html {
-  background-color: var(--page-background, #f8fafc);
+  /* Dark fallback matches default themeMode: 'dark' to prevent flash */
+  background-color: var(--page-background, #0f0d0d);
 }
 
 body {
   @apply antialiased;
-  background-color: var(--page-background, #f8fafc);
+  /* Dark fallback matches default themeMode: 'dark' to prevent flash */
+  background-color: var(--page-background, #0f0d0d);
   background-image: var(--page-background-image, none);
   background-size: var(--page-background-size, auto);
   background-position: var(--page-background-position, 0 0);
   background-repeat: no-repeat;
-  color: var(--panel-text, #0f172a);
-  transition: background-color 500ms ease, color 500ms ease;
+  color: var(--panel-text, #e8e5e5);
+  /* Delay transition until after initial hydration */
+  transition: background-color 300ms ease 100ms, color 300ms ease 100ms;
 }
 
 .app-theme {
-  background-color: var(--page-background, #f8fafc);
+  background-color: var(--page-background, #0f0d0d);
   background-image: var(--page-background-image, none);
   background-size: var(--page-background-size, auto);
   background-position: var(--page-background-position, 0 0);
   background-repeat: no-repeat;
-  color: var(--panel-text);
+  color: var(--panel-text, #e8e5e5);
 }
 
 .app-theme .panel-text {
