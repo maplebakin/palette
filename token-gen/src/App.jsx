@@ -2697,55 +2697,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Debug Overlay - Temporary for development */}
-      {isDev && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          color: 'white',
-          padding: '10px',
-          borderRadius: '4px',
-          fontSize: '12px',
-          zIndex: 9999,
-          fontFamily: 'monospace',
-          maxWidth: '300px',
-          maxHeight: '200px',
-          overflow: 'auto'
-        }}>
-          <h4 style={{ margin: '0 0 5px 0', color: '#6366f1' }}>DEBUG: Active Tokens</h4>
-          <ul style={{ margin: 0, padding: '0 0 0 15px' }}>
-            <li style={{ marginBottom: '3px' }}>
-              <span style={{ color: '#93c5fd' }}>primary:</span> {tokens?.brand?.primary || 'undefined'}
-            </li>
-            <li style={{ marginBottom: '3px' }}>
-              <span style={{ color: '#93c5fd' }}>secondary:</span> {tokens?.brand?.secondary || 'undefined'}
-            </li>
-            <li style={{ marginBottom: '3px' }}>
-              <span style={{ color: '#93c5fd' }}>accent:</span> {tokens?.brand?.accent || 'undefined'}
-            </li>
-            <li style={{ marginBottom: '3px' }}>
-              <span style={{ color: '#93c5fd' }}>cta:</span> {tokens?.brand?.cta || 'undefined'}
-            </li>
-            <li style={{ marginBottom: '3px' }}>
-              <span style={{ color: '#c4b5fd' }}>text-strong:</span> {tokens?.typography?.['text-strong'] || 'undefined'}
-            </li>
-            <li style={{ marginBottom: '3px' }}>
-              <span style={{ color: '#c4b5fd' }}>text-body:</span> {tokens?.typography?.['text-body'] || 'undefined'}
-            </li>
-            <li style={{ marginBottom: '3px' }}>
-              <span style={{ color: '#c4b5fd' }}>text-muted:</span> {tokens?.typography?.['text-muted'] || 'undefined'}
-            </li>
-            <li style={{ marginBottom: '3px' }}>
-              <span style={{ color: '#a78bfa' }}>background:</span> {tokens?.surfaces?.background || 'undefined'}
-            </li>
-            <li style={{ marginBottom: '3px' }}>
-              <span style={{ color: '#a78bfa' }}>card-panel:</span> {tokens?.cards?.['card-panel-surface'] || 'undefined'}
-            </li>
-          </ul>
-        </div>
-      )}
     </>
   </MoodBoardProvider>
   </div>
