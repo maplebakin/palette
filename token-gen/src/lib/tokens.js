@@ -190,13 +190,11 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   let ctaHoverLightness = isApocalypse ? (isDark ? 82 : 50) : (isDark ? 68 : 48);
 
   let satNormalizer = isApocalypse ? (isDark ? 1.35 : 1.5) : (isDark ? 0.92 : 0.86);
-  let primarySat = (isApocalypse ? 1.5 : 0.9) * accentScale;
   let secondarySat = secSat * satNormalizer * harmonyScale * accentScale;
   let accentSat = accSat * satNormalizer * harmonyScale * accentScale;
 
   if (isPop) {
     const satBoost = 1 + (popBoost * 1.3);
-    primarySat *= satBoost;
     secondarySat *= satBoost * 1.1;
     accentSat *= satBoost * 1.25;
     satNormalizer *= 1 + (popBoost * 0.55);
@@ -206,7 +204,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     ctaHoverLightness = clamp(ctaHoverLightness + (popBoost * 4) - 2, 44, 66);
   }
 
-  const primary = getColor(hsl, 0, primarySat, brandLightness); 
+  const primary = normalizedBase; // Always use the input hex as the primary color
   const secondary = getColor(hsl, secH, secondarySat * 0.96, brandLightness);
   const accent = getColor(hsl, accH, accentSat * 0.9, accentLightness);
   const accentStrong = getColor(hsl, accH, (accentSat * 0.9) + 0.04, accentLightness + 5);

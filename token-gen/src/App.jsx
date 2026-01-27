@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback, Suspense, useContext } from 'react';
-import { FileText, Image as ImageIcon, Shuffle, Settings } from 'lucide-react';
+import { FileText, Image as ImageIcon, Shuffle } from 'lucide-react';
 import ProjectView from './components/ProjectView';
 import { StageNav } from './components/stages/StageLayout';
 import IdentityStage from './components/stages/IdentityStage';
@@ -14,7 +14,7 @@ import useShareLink from './hooks/useShareLink';
 import { useNotification } from './context/NotificationContext.jsx';
 import { PaletteContext } from './context/PaletteContext.jsx';
 import { ProjectContext } from './context/ProjectContext.jsx';
-import { HistoryProvider, useHistory } from './context/HistoryContext.jsx';
+import { HistoryProvider } from './context/HistoryContext.jsx';
 import { MoodBoardProvider } from './context/MoodBoardContext.jsx';
 import {
   escapeXml,
@@ -35,7 +35,9 @@ import { buildThemeCss, getThemeClassName, THEME_CLASSNAMES } from './lib/themeS
 import { buildTheme } from './lib/theme/engine';
 import { buildCssVariables } from './lib/theme/styles';
 import { downloadFile, exportJson as exportJsonFile, exportAssets, exportThemePack, buildExportFilename, slugifyFilename } from './lib/export';
+import { generateDesignSpacePalette } from './lib/exports/designSpacePalette';
 import { buildSectionSnapshotFromPalette, toGeneratorMode } from './lib/projectUtils';
+import { exportSingleMoodBoard, exportMoodBoardCollection } from './lib/exportMoodBoards';
 
 const encoder = new TextEncoder();
 const encodeText = (str) => encoder.encode(str);
@@ -521,6 +523,11 @@ export default function App() {
   const [neutralCurve, setNeutralCurve] = useState(100);
   const [accentStrength, setAccentStrength] = useState(100);
   const [popIntensity, setPopIntensity] = useState(100);
+  const [harmonyInput, setHarmonyInput] = useState(100);
+  const [neutralInput, setNeutralInput] = useState(100);
+  const [accentInput, setAccentInput] = useState(100);
+  const [apocalypseInput, setApocalypseInput] = useState(100);
+  const [popInput, setPopInput] = useState(100);
   const [activeTab, setActiveTab] = useState('Quick view');
   const [tokenPrefix, setTokenPrefix] = useState('');
   const [savedPalettes, setSavedPalettes] = useState([]);
@@ -535,6 +542,11 @@ export default function App() {
   const [printMeta, setPrintMeta] = useState(() => getPrintTimestamps());
   const savedTitleRef = useRef('');
   const exportsSectionRef = useRef(null);
+  const harmonyDebounceRef = useRef(null);
+  const neutralDebounceRef = useRef(null);
+  const accentDebounceRef = useRef(null);
+  const apocalypseDebounceRef = useRef(null);
+  const popDebounceRef = useRef(null);
   const savedPaletteInputRef = useRef(null);
   const listingCoverRef = useRef(null);
   const listingSwatchRef = useRef(null);
@@ -1635,6 +1647,14 @@ export default function App() {
     downloadFile({ data: css, filename, mime: 'text/css' });
     setStatusMessage('UI theme CSS exported', 'success');
   };
+  const exportDesignSpacePalette = () => {
+    const palette = generateDesignSpacePalette(baseColor);
+    palette.name = displayThemeName || 'Apocapalette Theme';
+    const slug = slugifyFilename(displayThemeName || 'theme', 'theme');
+    const filename = buildExportFilename(slug, '-designspace', 'json');
+    downloadFile({ data: JSON.stringify(palette, null, 2), filename, mime: 'application/json' });
+    setStatusMessage('DesignSpace palette exported', 'success');
+  };
   const handleGenerateListingAssets = useCallback(async (options = {}) => {
     const {
       rootFolder = 'listing',
@@ -2105,6 +2125,59 @@ export default function App() {
     }
   }, [buildSpecFromSection, projectContext, projectPenpotExporting, setProjectPenpotStatus]);
 
+  const exportSingleMoodBoardFromProject = useCallback((moodBoard) => {
+    if (!projectContext) return;
+    exportSingleMoodBoard(moodBoard, projectContext.projectName || 'project');
+  }, [projectContext]);
+
+  const exportAllMoodBoardsFromProject = useCallback(() => {
+    if (!projectContext || !projectContext.moodBoards || projectContext.moodBoards.length === 0) return;
+    exportMoodBoardCollection(projectContext.moodBoards, projectContext.projectName || 'project');
+  }, [projectContext]);
+
+  const exportDesignSpacePalettes = useCallback(() => {
+    if (!projectContext || !projectContext.sections || projectContext.sections.length === 0) return;
+
+    // Import the design space palette generator
+    import('./lib/exports/designSpacePalette').then(({ generateDesignSpacePalette }) => {
+      const palettes = projectContext.sections.map((section, index) => {
+        // Generate a DesignSpace palette for each section
+        const designSpacePalette = generateDesignSpacePalette(section.baseHex || '#6366f1');
+        designSpacePalette.name = section.label || `Palette ${index + 1}`;
+        return designSpacePalette;
+      });
+
+      // Create a ZIP file with all palettes
+      import('jszip').then(({ default: JSZip }) => {
+        const zip = new JSZip();
+        const projectFolder = zip.folder(`${projectContext.projectName || 'project'}-designspace`);
+
+        // Add each palette as a separate JSON file
+        palettes.forEach((palette, index) => {
+          const fileName = buildExportFilename(
+            `${palette.name || `palette-${index + 1}`}`,
+            '',
+            'json',
+            { sanitize: true }
+          );
+          projectFolder.file(fileName, JSON.stringify(palette, null, 2));
+        });
+
+        // Generate the ZIP file
+        zip.generateAsync({ type: 'blob' }).then((content) => {
+          const url = URL.createObjectURL(content);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = buildExportFilename(`${projectContext.projectName || 'project'}-designspace-palettes`, '', 'zip', { sanitize: true });
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        });
+      });
+    });
+  }, [projectContext]);
+
   const handleDownloadThemePackWithPrint = useCallback(async () => {
     if (!import.meta.env.DEV) return;
     const themeLabel = sanitizeThemeName(displayThemeName || 'Theme', 'Theme');
@@ -2522,6 +2595,7 @@ export default function App() {
                   onOpenPalette={openProjectPalette}
                   onDownloadPrintAssets={exportProjectPrintAssets}
                   onExportPenpotPrintTokens={exportProjectPenpotPrintTokens}
+                  onExportDesignSpacePalettes={exportDesignSpacePalettes}
                   projectExportStatus={projectExportStatus}
                   projectExporting={projectExporting}
                   projectPenpotStatus={projectPenpotStatus}
@@ -2566,6 +2640,21 @@ export default function App() {
             setAccentStrength={setAccentStrength}
             setApocalypseIntensity={setApocalypseIntensity}
             setPopIntensity={setPopIntensity}
+            harmonyInput={harmonyInput}
+            neutralInput={neutralInput}
+            accentInput={accentInput}
+            apocalypseInput={apocalypseInput}
+            popInput={popInput}
+            setHarmonyInput={setHarmonyInput}
+            setNeutralInput={setNeutralInput}
+            setAccentInput={setAccentInput}
+            setApocalypseInput={setApocalypseInput}
+            setPopInput={setPopInput}
+            debouncedHarmonyChange={debouncedHarmonyChange}
+            debouncedNeutralChange={debouncedNeutralChange}
+            debouncedAccentChange={debouncedAccentChange}
+            debouncedApocalypseChange={debouncedApocalypseChange}
+            debouncedPopChange={debouncedPopChange}
             canUndo={canUndo}
             canRedo={canRedo}
             undo={undo}
@@ -2578,6 +2667,8 @@ export default function App() {
             onSaveDraft={saveMoodBoardDraft}
             copyHexValue={copyHexValue}
             canSaveDraft={Boolean(projectContext)}
+            onExportSingleMoodBoard={exportSingleMoodBoardFromProject}
+            onExportAllMoodBoards={exportAllMoodBoardsFromProject}
           />
 
           <ValidateStage
@@ -2645,6 +2736,7 @@ export default function App() {
               exportCssVars={exportCssVars}
               exportUiThemeCss={exportUiThemeCss}
               exportWitchcraftJson={exportWitchcraftJson}
+              exportDesignSpacePalette={exportDesignSpacePalette}
               onDownloadThemePack={handleDownloadThemePack}
               onDownloadThemePackWithPrint={handleDownloadThemePackWithPrint}
               onGenerateListingAssets={handleGenerateListingAssets}
@@ -2680,21 +2772,6 @@ export default function App() {
         >
           <Shuffle size={20} className="group-hover:rotate-180 transition-transform duration-500" />
         </button>
-
-        {/* Quick Actions Menu */}
-        {view !== 'project' && (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowFineTune(!showFineTune)}
-              className="w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center justify-center"
-              aria-label="Toggle fine-tune controls"
-              title="Fine-tune (F)"
-            >
-              <Settings size={18} />
-            </button>
-          </div>
-        )}
       </div>
 
     </>

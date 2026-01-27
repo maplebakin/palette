@@ -32,22 +32,25 @@ function ProjectView({
   onOpenPalette,
   onDownloadPrintAssets,
   onExportPenpotPrintTokens,
+  onExportDesignSpacePalettes,
   projectExportStatus,
   projectExporting,
   projectPenpotStatus,
   projectPenpotExporting,
 }) {
   const { notify } = useNotification();
-  const { 
-    project, 
-    projectName, 
-    settings, 
+  const {
+    project,
+    projectName,
+    settings,
     sections,
     setProjectName,
     addSection,
     updateSection,
     removeSection,
     capturePalette,
+    updateMoodBoard,
+    removeMoodBoard,
     loadProject,
     createNewProject
   } = useContext(ProjectContext);
@@ -320,6 +323,127 @@ function ProjectView({
           )}
         </ReviewPanel>
 
+        {/* Mood Boards Panel - Mirrors the Sections panel */}
+        {project.moodBoards && Array.isArray(project.moodBoards) && project.moodBoards.length > 0 && (
+          <div className="panel-surface-strong border rounded-lg p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Mood Boards</h3>
+                <p className="text-sm panel-muted">Visual representations of color themes in the project.</p>
+              </div>
+              <span className="text-xs panel-muted">{project.moodBoards.length} total</span>
+            </div>
+            {project.moodBoards.map((moodBoard) => {
+              const colorCount = moodBoard.clusters
+                ? moodBoard.clusters.flatMap(cluster =>
+                    cluster.slots ? cluster.slots.map(slot => slot.color) : []
+                  ).filter(Boolean).length
+                : 0;
+
+              const previewColors = moodBoard.clusters
+                ? moodBoard.clusters.flatMap(cluster =>
+                    cluster.slots ? cluster.slots.map(slot => slot.color) : []
+                  ).filter(Boolean).slice(0, 10)
+                : [];
+
+              return (
+                <div key={moodBoard.id} className="p-4 border panel-surface rounded-lg mb-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <input
+                        value={moodBoard.title}
+                        onBlur={(e) => {
+                          // Update the mood board title when focus is lost
+                          updateMoodBoard(moodBoard.id, { title: e.target.value });
+                        }}
+                        onKeyDown={(e) => {
+                          // Update on Enter key press
+                          if (e.key === 'Enter') {
+                            updateMoodBoard(moodBoard.id, { title: e.target.value });
+                            e.target.blur();
+                          }
+                          // Allow Tab key to move to next element
+                          if (e.key === 'Tab') {
+                            updateMoodBoard(moodBoard.id, { title: e.target.value });
+                          }
+                        }}
+                        className="font-semibold bg-transparent text-lg panel-text flex-1 min-w-[160px] border-b border-transparent focus:border-[var(--panel-accent)] focus:ring-0 outline-none"
+                        aria-label="Mood board title"
+                      />
+                      {previewColors.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          {previewColors.slice(0, 4).map((color, index) => (
+                            <span
+                              key={`moodboard-${moodBoard.id}-main-${index}`}
+                              className="h-6 w-6 rounded-full border shadow-inner"
+                              style={{ backgroundColor: color, borderColor: 'rgba(0,0,0,0.12)' }}
+                              title={color}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          // Apply the first cluster's palette spec as an example
+                          if (moodBoard.clusters && moodBoard.clusters[0]?.paletteSpec) {
+                            // Call the onOpenPalette function to apply the mood board to the palette editor
+                            onOpenPalette?.({
+                              label: moodBoard.title,
+                              paletteSpec: moodBoard.clusters[0].paletteSpec
+                            });
+                          }
+                        }}
+                        className="btn-sm"
+                      >
+                        Apply
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Export this specific mood board
+                          import('../lib/exportMoodBoards').then(({ exportSingleMoodBoard }) => {
+                            exportSingleMoodBoard(moodBoard, projectName || 'project');
+                          });
+                        }}
+                        className="btn-sm"
+                      >
+                        Export
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!window.confirm(`Remove "${moodBoard.title}" from the project?`)) return;
+                          // Remove mood board from project
+                          removeMoodBoard(moodBoard.id);
+                        }}
+                        className="btn-sm-danger"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3 text-xs panel-muted">
+                    <span>{colorCount} colors</span>
+                    <span>Created: {new Date(moodBoard.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  {previewColors.length > 0 && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-2">
+                      {previewColors.map((color, index) => (
+                        <span
+                          key={`moodboard-${moodBoard.id}-preview-${index}`}
+                          className="h-6 w-6 rounded-full border shadow-inner"
+                          style={{ backgroundColor: color, borderColor: 'rgba(0,0,0,0.12)' }}
+                          title={color}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <ExportPanel className="panel-surface-strong border rounded-lg p-4">
           <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
             <div>
@@ -361,6 +485,42 @@ function ProjectView({
                   {projectPenpotExporting ? 'Generating Penpot tokens…' : 'Export Project → Penpot (Print Tokens)'}
                 </button>
               </div>
+
+              {/* Mood Board Export Section */}
+              {Array.isArray(project.moodBoards) && project.moodBoards.length > 0 && (
+                <div className="w-full mt-4 pt-4 border-t border-panel-surface-soft">
+                  <h4 className="text-md font-semibold mb-2">Mood Board Exports</h4>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button
+                      onClick={() => {
+                        // Import the export function dynamically
+                        import('../lib/exportMoodBoards').then(({ exportMoodBoardCollection }) => {
+                          exportMoodBoardCollection(project.moodBoards, projectName || 'project');
+                        });
+                      }}
+                      className="btn-primary"
+                    >
+                      Export All Mood Boards
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* DesignSpace Export Section */}
+              {Array.isArray(project.sections) && project.sections.length > 0 && (
+                <div className="w-full mt-4 pt-4 border-t border-panel-surface-soft">
+                  <h4 className="text-md font-semibold mb-2">DesignSpace Exports</h4>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button
+                      onClick={onExportDesignSpacePalettes}
+                      className="btn-primary"
+                    >
+                      Export All Palettes as DesignSpace
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {(saveDisabledReason || socDisabledReason) && (
                 <div className="text-xs panel-muted text-right space-y-1">
                   {saveDisabledReason && <p>Save disabled: {saveDisabledReason}</p>}

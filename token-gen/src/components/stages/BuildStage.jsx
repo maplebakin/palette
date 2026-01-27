@@ -28,11 +28,21 @@ const BuildStage = ({
   accentStrength,
   apocalypseIntensity,
   popIntensity,
-  setHarmonyIntensity,
-  setNeutralCurve,
-  setAccentStrength,
-  setApocalypseIntensity,
-  setPopIntensity,
+  harmonyInput,
+  neutralInput,
+  accentInput,
+  apocalypseInput,
+  popInput,
+  setHarmonyInput,
+  setNeutralInput,
+  setAccentInput,
+  setApocalypseInput,
+  setPopInput,
+  debouncedHarmonyChange,
+  debouncedNeutralChange,
+  debouncedAccentChange,
+  debouncedApocalypseChange,
+  debouncedPopChange,
 }) => (
   <StageSection id="build" title="Build" subtitle="Base color, harmony, and generation controls.">
     {/* Quick Actions Bar */}
@@ -169,14 +179,23 @@ const BuildStage = ({
                     min="50"
                     max="160"
                     value={harmonyIntensity}
-                    onChange={(e) => setHarmonyIntensity(e.target.value)}
+                    onChange={(e) => debouncedHarmonyChange(e.target.value)}
                     className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
                     aria-label="Adjust harmony spread"
                     aria-valuemin={50}
                     aria-valuemax={160}
                     aria-valuenow={harmonyIntensity}
                   />
-                  <span className="text-xs w-10 text-right font-mono panel-muted">{harmonyIntensity}%</span>
+                  <input
+                    type="number"
+                    min="50"
+                    max="160"
+                    value={harmonyInput}
+                    onChange={(e) => setHarmonyInput(e.target.value)}
+                    className="w-16 text-xs text-center font-mono panel-surface-strong border rounded"
+                    aria-label="Enter harmony spread value"
+                  />
+                  <span className="text-xs w-6 text-right font-mono panel-muted">%</span>
                 </div>
 
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
@@ -186,14 +205,23 @@ const BuildStage = ({
                     min="60"
                     max="140"
                     value={neutralCurve}
-                    onChange={(e) => setNeutralCurve(e.target.value)}
+                    onChange={(e) => debouncedNeutralChange(e.target.value)}
                     className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
                     aria-label="Adjust neutral depth"
                     aria-valuemin={60}
                     aria-valuemax={140}
                     aria-valuenow={neutralCurve}
                   />
-                  <span className="text-xs w-10 text-right font-mono panel-muted">{neutralCurve}%</span>
+                  <input
+                    type="number"
+                    min="60"
+                    max="140"
+                    value={neutralInput}
+                    onChange={(e) => setNeutralInput(e.target.value)}
+                    className="w-16 text-xs text-center font-mono panel-surface-strong border rounded"
+                    aria-label="Enter neutral depth value"
+                  />
+                  <span className="text-xs w-6 text-right font-mono panel-muted">%</span>
                 </div>
 
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
@@ -203,14 +231,23 @@ const BuildStage = ({
                     min="60"
                     max="140"
                     value={accentStrength}
-                    onChange={(e) => setAccentStrength(e.target.value)}
+                    onChange={(e) => debouncedAccentChange(e.target.value)}
                     className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
                     aria-label="Adjust accent punch"
                     aria-valuemin={60}
                     aria-valuemax={140}
                     aria-valuenow={accentStrength}
                   />
-                  <span className="text-xs w-10 text-right font-mono panel-muted">{accentStrength}%</span>
+                  <input
+                    type="number"
+                    min="60"
+                    max="140"
+                    value={accentInput}
+                    onChange={(e) => setAccentInput(e.target.value)}
+                    className="w-16 text-xs text-center font-mono panel-surface-strong border rounded"
+                    aria-label="Enter accent punch value"
+                  />
+                  <span className="text-xs w-6 text-right font-mono panel-muted">%</span>
                 </div>
 
                 {mode === 'Apocalypse' && (
@@ -221,7 +258,7 @@ const BuildStage = ({
                       min="20"
                       max="150"
                       value={apocalypseIntensity}
-                      onChange={(e) => setApocalypseIntensity(e.target.value)}
+                      onChange={(e) => debouncedApocalypseChange(e.target.value)}
                       className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
                       style={{ accentColor: tokens.status.error }}
                       aria-label="Adjust apocalypse intensity"
@@ -229,7 +266,16 @@ const BuildStage = ({
                       aria-valuemax={150}
                       aria-valuenow={apocalypseIntensity}
                     />
-                    <span className="text-xs w-10 text-right font-mono panel-muted">{apocalypseIntensity}%</span>
+                    <input
+                      type="number"
+                      min="20"
+                      max="150"
+                      value={apocalypseInput}
+                      onChange={(e) => setApocalypseInput(e.target.value)}
+                      className="w-16 text-xs text-center font-mono panel-surface-strong border rounded"
+                      aria-label="Enter apocalypse intensity value"
+                    />
+                    <span className="text-xs w-6 text-right font-mono panel-muted">%</span>
                   </div>
                 )}
 
@@ -241,7 +287,7 @@ const BuildStage = ({
                       min="60"
                       max="140"
                       value={popIntensity}
-                      onChange={(e) => setPopIntensity(e.target.value)}
+                      onChange={(e) => debouncedPopChange(e.target.value)}
                       className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
                       style={{ accentColor: tokens.brand.accent }}
                       aria-label="Adjust pop intensity"
@@ -249,7 +295,16 @@ const BuildStage = ({
                       aria-valuemax={140}
                       aria-valuenow={popIntensity}
                     />
-                    <span className="text-xs w-10 text-right font-mono panel-muted">{popIntensity}%</span>
+                    <input
+                      type="number"
+                      min="60"
+                      max="140"
+                      value={popInput}
+                      onChange={(e) => setPopInput(e.target.value)}
+                      className="w-16 text-xs text-center font-mono panel-surface-strong border rounded"
+                      aria-label="Enter pop intensity value"
+                    />
+                    <span className="text-xs w-6 text-right font-mono panel-muted">%</span>
                   </div>
                 )}
                 <div className="relative">

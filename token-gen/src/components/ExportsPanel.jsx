@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, FileText, Printer, Wand2 } from 'lucide-react';
+import { Download, FileText, Printer, Wand2, Sparkles } from 'lucide-react';
 import ColorSwatch from './ColorSwatch';
 import { hexWithAlpha, pickReadableText } from '../lib/colorUtils';
 
@@ -22,6 +22,7 @@ export default function ExportsPanel({
   onExportStyleDictionary,
   onExportCssVars,
   onExportUiThemeCss,
+  onExportDesignSpace,
   onDownloadThemePack,
   onDownloadThemePackWithPrint,
   onGenerateListingAssets,
@@ -161,6 +162,18 @@ export default function ExportsPanel({
         >
           <FileText size={14} />
           UI Theme CSS
+        </button>
+        <button
+          onClick={onExportDesignSpace}
+          className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
+          style={{
+            backgroundColor: tokens.brand.secondary || tokens.cards['card-panel-surface'],
+            color: pickReadableText(tokens.brand.secondary || tokens.cards['card-panel-surface']),
+            borderColor: tokens.brand['cta-hover'] || tokens.cards['card-panel-border'],
+          }}
+        >
+          <Sparkles size={14} />
+          DesignSpace Palette
         </button>
         {import.meta.env.DEV && (
           <>

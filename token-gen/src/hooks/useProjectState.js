@@ -17,7 +17,7 @@ export function useProjectState() {
 
   const [project, setProject] = useState(initialLoad);
 
-  const { projectName, settings, sections } = project;
+  const { projectName, settings, sections, moodBoards } = project;
 
   const saveCurrentProjectState = storage.saveCurrentProjectState;
 
@@ -79,6 +79,48 @@ export function useProjectState() {
     notify('Palette captured into section', 'success');
   }, [updateSection, notify]);
 
+  const setMoodBoards = useCallback((newMoodBoards) => {
+    setProject(p => ({ ...p, moodBoards: newMoodBoards }));
+  }, []);
+
+  const addMoodBoard = useCallback((moodBoard) => {
+    const newMoodBoard = {
+      ...moodBoard,
+      id: moodBoard.id || `moodboard-${Date.now()}`,
+      createdAt: moodBoard.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setProject(p => ({
+      ...p,
+      moodBoards: [...p.moodBoards, newMoodBoard]
+    }));
+
+    notify('Mood board added to project', 'success');
+  }, [notify]);
+
+  const updateMoodBoard = useCallback((moodBoardId, updates) => {
+    setProject(p => ({
+      ...p,
+      moodBoards: p.moodBoards.map(mb =>
+        mb.id === moodBoardId
+          ? { ...mb, ...updates, updatedAt: new Date().toISOString() }
+          : mb
+      )
+    }));
+
+    notify('Mood board updated in project', 'success');
+  }, [notify]);
+
+  const removeMoodBoard = useCallback((moodBoardId) => {
+    setProject(p => ({
+      ...p,
+      moodBoards: p.moodBoards.filter(mb => mb.id !== moodBoardId)
+    }));
+
+    notify('Mood board removed from project', 'success');
+  }, [notify]);
+
   const loadProject = useCallback((projectData) => {
     if (projectData && projectData.schemaVersion === 1) {
       const normalized = normalizeProject(projectData);
@@ -88,7 +130,7 @@ export function useProjectState() {
       notify('Invalid project file format', 'error');
     }
   }, [notify]);
-  
+
   const createNewProject = useCallback(() => {
     setProject(createEmptyProject());
     notify('Created a new project', 'success');
@@ -99,14 +141,19 @@ export function useProjectState() {
     projectName,
     settings,
     sections,
+    moodBoards,
     setProject,
     setProjectName,
     setSettings,
     setSections,
+    setMoodBoards,
     addSection,
     updateSection,
     removeSection,
     capturePalette,
+    addMoodBoard,
+    updateMoodBoard,
+    removeMoodBoard,
     loadProject,
     createNewProject,
     storage,

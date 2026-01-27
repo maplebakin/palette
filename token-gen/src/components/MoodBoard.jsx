@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { Lock, Unlock, Wand2, Save, Palette, Trash2 } from 'lucide-react';
 import { StageSection } from './stages/StageLayout';
 import { createMoodCluster, regenerateMoodCluster, getMoodClusterTypes } from '../lib/theme/moodBoard';
 import { hexWithAlpha, pickReadableText, normalizeHex } from '../lib/colorUtils';
 import { useMoodBoard } from '../context/MoodBoardContext';
+import { ProjectContext } from '../context/ProjectContext';
 
 const sanitizeHexInput = (value, fallback = null) => {
   if (typeof value !== 'string') return fallback;
@@ -19,9 +20,12 @@ const MoodBoard = ({
   baseColor,
   onApplyPaletteSpec,
   onSaveDraft,
+  onExportSingleMoodBoard,
+  onExportAllMoodBoards,
   canSaveDraft = false,
 }) => {
   const { savedMoodBoards, saveMoodBoard, deleteMoodBoard } = useMoodBoard();
+  const projectContext = useContext(ProjectContext);
   const [clusters, setClusters] = useState([]);
   const [generatedAt, setGeneratedAt] = useState('');
   const [requiredHex, setRequiredHex] = useState(() => normalizeHex(baseColor || '#6366f1', '#6366f1'));
@@ -228,25 +232,125 @@ const MoodBoard = ({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Apply the first cluster's palette spec as an example
-                      if (moodBoard.clusters && moodBoard.clusters[0]?.paletteSpec) {
-                        onApplyPaletteSpec?.(moodBoard.clusters[0].paletteSpec);
-                      }
-                    }}
-                    className="w-full px-3 py-1.5 rounded text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
-                    style={{
-                      backgroundColor: tokens.brand.cta,
-                      color: pickReadableText(tokens.brand.cta),
-                      borderColor: hexWithAlpha(tokens.brand.cta, 0.4),
-                    }}
-                  >
-                    Apply First Cluster
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Apply the first cluster's palette spec as an example
+                        if (moodBoard.clusters && moodBoard.clusters[0]?.paletteSpec) {
+                          onApplyPaletteSpec?.(moodBoard.clusters[0].paletteSpec);
+                        }
+                      }}
+                      className="w-full px-3 py-1.5 rounded text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+                      style={{
+                        backgroundColor: tokens.brand.cta,
+                        color: pickReadableText(tokens.brand.cta),
+                        borderColor: hexWithAlpha(tokens.brand.cta, 0.4),
+                      }}
+                    >
+                      Apply First Cluster
+                    </button>
+
+                    {onExportSingleMoodBoard && (
+                      <button
+                        type="button"
+                        onClick={() => onExportSingleMoodBoard(moodBoard)}
+                        className="w-full px-3 py-1.5 rounded text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+                        style={{
+                          backgroundColor: tokens.brand.accent,
+                          color: pickReadableText(tokens.brand.accent),
+                          borderColor: hexWithAlpha(tokens.brand.accent, 0.4),
+                        }}
+                      >
+                        Export Mood Board
+                      </button>
+                    )}
+
+                    {onExportAllMoodBoards && projectContext && projectContext.moodBoards && projectContext.moodBoards.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => onExportAllMoodBoards()}
+                        className="w-full px-3 py-1.5 rounded text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+                        style={{
+                          backgroundColor: tokens.brand.primary,
+                          color: pickReadableText(tokens.brand.primary),
+                          borderColor: hexWithAlpha(tokens.brand.primary, 0.4),
+                        }}
+                      >
+                        Export All Project Mood Boards
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Display project mood boards if available */}
+          {projectContext && projectContext.moodBoards && projectContext.moodBoards.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold panel-text mb-4">Project Mood Boards</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {projectContext.moodBoards.map((moodBoard) => (
+                  <div key={moodBoard.id} className="panel-surface-strong border rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold panel-text">{moodBoard.title}</h4>
+                      <button
+                        type="button"
+                        onClick={() => projectContext.removeMoodBoard(moodBoard.id)}
+                        className="text-xs p-1 rounded-full hover:bg-red-500/20 hover:text-red-500"
+                        aria-label="Remove mood board from project"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <p className="text-xs panel-muted">
+                      Created: {new Date(moodBoard.createdAt).toLocaleDateString()}
+                    </p>
+
+                    {/* Display color swatches from the mood board */}
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold panel-muted mb-2">Colors:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {moodBoard.clusters && moodBoard.clusters.flatMap(cluster =>
+                          cluster.slots ? cluster.slots.map(slot => slot.color) : []
+                        ).filter(Boolean).slice(0, 12).map((color, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleGenerateThemeFromColor(color)}
+                            className="w-6 h-6 rounded border shadow-sm hover:scale-110 transition-transform"
+                            style={{
+                              backgroundColor: color,
+                              borderColor: hexWithAlpha('#000', 0.2),
+                            }}
+                            title={`Generate theme from ${color}`}
+                            aria-label={`Generate theme from ${color}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Apply the first cluster's palette spec as an example
+                        if (moodBoard.clusters && moodBoard.clusters[0]?.paletteSpec) {
+                          onApplyPaletteSpec?.(moodBoard.clusters[0].paletteSpec);
+                        }
+                      }}
+                      className="w-full px-3 py-1.5 rounded text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+                      style={{
+                        backgroundColor: tokens.brand.cta,
+                        color: pickReadableText(tokens.brand.cta),
+                        borderColor: hexWithAlpha(tokens.brand.cta, 0.4),
+                      }}
+                    >
+                      Apply First Cluster
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -343,6 +447,32 @@ const MoodBoard = ({
                     <Save size={12} />
                     Save {cluster.title}
                   </button>
+
+                  {projectContext && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const moodBoardData = {
+                          title: `${cluster.title} Palette - ${new Date().toLocaleDateString()}`,
+                          clusters: [cluster],
+                          baseColor,
+                          requiredHex,
+                          generatedAt: new Date().toISOString(),
+                          projectId: projectContext.projectName // Reference to the project
+                        };
+                        projectContext.addMoodBoard(moodBoardData);
+                      }}
+                      className="flex items-center gap-1 px-3 py-2 rounded-full text-[11px] font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+                      style={{
+                        backgroundColor: tokens.brand.primary,
+                        color: pickReadableText(tokens.brand.primary),
+                        borderColor: hexWithAlpha(tokens.brand.primary, 0.4),
+                      }}
+                    >
+                      <Save size={12} />
+                      Save to Project
+                    </button>
+                  )}
                   {canSaveDraft && (
                     <button
                       type="button"

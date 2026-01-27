@@ -16,6 +16,7 @@ export const createEmptyProject = () => ({
   projectName: 'New Project',
   settings: { ...DEFAULT_PROJECT_SETTINGS },
   sections: [],
+  moodBoards: [],
 });
 
 const normalizeModeValue = (mode) => {
@@ -136,11 +137,16 @@ export const normalizeProject = (project) => {
     ? project.palettes
     : [];
 
+  const moodBoards = Array.isArray(project.moodBoards)
+    ? project.moodBoards
+    : [];
+
   return {
     schemaVersion: PROJECT_SCHEMA_VERSION,
     projectName: String(project.projectName || 'New Project'),
     settings: normalizedSettings,
     sections: sections.map(normalizeSection),
+    moodBoards: moodBoards,
   };
 };
 
