@@ -1648,8 +1648,11 @@ export default function App() {
     setStatusMessage('UI theme CSS exported', 'success');
   };
   const exportDesignSpacePalette = () => {
-    const palette = generateDesignSpacePalette(baseColor);
-    palette.name = displayThemeName || 'Apocapalette Theme';
+    const palette = generateDesignSpacePalette(baseColor, {
+      name: displayThemeName || 'Apocapalette Theme',
+      mode,
+      themeMode,
+    });
     const slug = slugifyFilename(displayThemeName || 'theme', 'theme');
     const filename = buildExportFilename(slug, '-designspace', 'json');
     downloadFile({ data: JSON.stringify(palette, null, 2), filename, mime: 'application/json' });
