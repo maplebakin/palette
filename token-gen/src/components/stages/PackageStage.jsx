@@ -58,7 +58,7 @@ const PackageStage = ({
                         className="flex items-start gap-3 p-3 rounded-lg border panel-surface-soft shadow-sm"
                       >
                         <div className="mt-0.5" style={{ color: tokens.brand.accent }}>
-                          {item.icon}
+                          <item.icon size={14} />
                         </div>
                         <div className="space-y-1">
                           <div className="text-sm font-bold panel-text">{item.name}</div>
