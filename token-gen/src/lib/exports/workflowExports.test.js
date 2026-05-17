@@ -154,10 +154,22 @@ describe('workflow export helpers', () => {
     });
 
     const zip = zipInstances[0];
-    expect(zip.files['theme-pack/README.txt']).toContain('Print mode: on');
+    expect(Object.keys(zip.files)).toEqual(expect.arrayContaining([
+      'theme-pack/README.md',
+      'theme-pack/tokens.json',
+      'theme-pack/css/variables.css',
+      'theme-pack/figma/tokens.json',
+      'theme-pack/penpot/tokens.json',
+      'theme-pack/libreoffice/theme-pack.soc',
+      'theme-pack/preview/palette-card.svg',
+      'theme-pack/preview/swatch-strip.svg',
+    ]));
+    expect(zip.files['theme-pack/README.md']).toContain('- Print mode: on');
     expect(zip.files['theme-pack/tokens.json']).toContain('"schema": "generic-token-pack-v1"');
     expect(zip.files['theme-pack/css/variables.css']).toContain('--demo-brand-primary');
     expect(zip.files['theme-pack/figma/tokens.json']).toContain('"demo"');
+    expect(zip.files['theme-pack/penpot/tokens.json']).toContain('"brand"');
+    expect(zip.files['theme-pack/libreoffice/theme-pack.soc']).toContain('<ooo:color-table');
     expect(zip.files['theme-pack/preview/palette-card.svg']).toBe('<svg>palette</svg>');
     expect(zip.files['theme-pack/preview/swatch-strip.svg']).toBe('<svg>strip</svg>');
     expect(exportIndex.exportThemePack).toHaveBeenCalledWith(expect.objectContaining({

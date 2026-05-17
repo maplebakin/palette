@@ -209,6 +209,8 @@ export const renderStripPng = async (theme) => {
 
 export const buildPaletteCardSvg = (theme) => {
   const brand = theme.tokens.brand ?? {};
+  const cards = theme.tokens.cards ?? {};
+  const foundation = theme.tokens.foundation ?? {};
   const surfaces = theme.tokens.surfaces ?? {};
   const typography = theme.tokens.typography ?? {};
   const safeName = sanitizeThemeName(theme.name || 'Palette', 'Palette');
@@ -217,40 +219,93 @@ export const buildPaletteCardSvg = (theme) => {
   const secondary = normalizeHex(brand.secondary || '#8b5cf6');
   const accent = normalizeHex(brand.accent || '#22d3ee');
   const bg = normalizeHex(surfaces.background || '#0b1021');
-  const card = normalizeHex(surfaces['card-panel-surface'] || '#111827');
-  const text = normalizeHex(typography['text-strong'] || '#0f172a');
+  const panel = normalizeHex(cards['card-panel-surface'] || surfaces.surface || '#111827');
+  const panelStrong = normalizeHex(cards['card-panel-surface-strong'] || panel);
+  const text = normalizeHex(typography['text-strong'] || typography.heading || '#f8fafc');
   const muted = normalizeHex(typography['text-muted'] || '#64748b');
+  const bodyText = normalizeHex(typography['text-body'] || text);
+  const neutral = foundation.neutrals ?? {};
+  const themeLabel = theme.themeMode === 'pop' ? 'Pop' : (theme.isDark ? 'Dark' : 'Light');
+  const swatches = [
+    { label: 'Primary', color: primary },
+    { label: 'Secondary', color: secondary },
+    { label: 'Accent', color: accent },
+    { label: 'Base', color: base },
+    { label: 'Background', color: bg },
+    { label: 'Surface', color: panel },
+    { label: 'Text', color: bodyText },
+    { label: 'Muted', color: muted },
+  ];
+  const neutralSwatches = [
+    neutral['neutral-1'],
+    neutral['neutral-3'],
+    neutral['neutral-5'],
+    neutral['neutral-7'],
+    neutral['neutral-9'],
+  ].filter(Boolean).map((color) => normalizeHex(color));
+
+  const swatchGrid = swatches.map((swatch, index) => {
+    const col = index % 4;
+    const row = Math.floor(index / 4);
+    const x = 80 + col * 142;
+    const y = 528 + row * 98;
+    return `<g>
+      <rect x="${x}" y="${y}" width="112" height="54" rx="14" fill="${swatch.color}" stroke="${hexWithAlpha(text, 0.16)}" stroke-width="1"/>
+      <text x="${x}" y="${y + 78}" fill="${text}" font-family="Inter, system-ui" font-size="13" font-weight="800">${escapeXml(swatch.label)}</text>
+      <text x="${x}" y="${y + 96}" fill="${muted}" font-family="Inter, system-ui" font-size="12" font-weight="700">${swatch.color.toUpperCase()}</text>
+    </g>`;
+  }).join('\n');
+
+  const neutralStrip = neutralSwatches.map((color, index) => {
+    const x = 722 + index * 56;
+    return `<rect x="${x}" y="610" width="44" height="88" rx="14" fill="${color}" stroke="${hexWithAlpha(text, 0.12)}" stroke-width="1"/>`;
+  }).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="${primary}" stop-opacity="0.95"/>
       <stop offset="50%" stop-color="${secondary}" stop-opacity="0.9"/>
       <stop offset="100%" stop-color="${accent}" stop-opacity="0.85"/>
     </linearGradient>
+    <linearGradient id="pageGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${hexWithAlpha(primary, 0.28)}"/>
+      <stop offset="52%" stop-color="${hexWithAlpha(accent, 0.16)}"/>
+      <stop offset="100%" stop-color="${hexWithAlpha(bg, 0)}"/>
+    </linearGradient>
+    <filter id="softShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="28" stdDeviation="26" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
   </defs>
   <rect width="1200" height="800" rx="32" fill="${bg}" />
-  <rect x="60" y="60" width="1080" height="680" rx="28" fill="${card}" stroke="${hexWithAlpha(primary, 0.13)}" stroke-width="2"/>
-  <rect x="60" y="140" width="1080" height="18" rx="9" fill="${hexWithAlpha(primary, 0.13)}"/>
-  <rect x="60" y="100" width="360" height="28" rx="14" fill="${hexWithAlpha(primary, 0.2)}"/>
-  <text x="80" y="120" fill="${text}" font-family="Inter, system-ui" font-weight="700" font-size="18">${escapeXml(safeName)}</text>
-  <text x="80" y="170" fill="${muted}" font-family="Inter, system-ui" font-weight="500" font-size="14">Base ${base} • ${escapeXml(theme.mode)} • ${theme.themeMode === 'pop' ? 'Pop' : (theme.isDark ? 'Dark' : 'Light')}</text>
-  <rect x="720" y="200" width="360" height="320" rx="24" fill="url(#grad)" opacity="0.9"/>
-  <text x="760" y="250" fill="#fff" font-family="Inter, system-ui" font-size="32" font-weight="800">Primary</text>
-  <text x="760" y="290" fill="#fff" font-family="Inter, system-ui" font-size="18" font-weight="600">${primary}</text>
-  <text x="760" y="330" fill="#fff" font-family="Inter, system-ui" font-size="18" font-weight="600">${secondary}</text>
-  <text x="760" y="370" fill="#fff" font-family="Inter, system-ui" font-size="18" font-weight="600">${accent}</text>
-  <rect x="120" y="240" width="520" height="280" rx="24" fill="${card}" stroke="${primary}33" stroke-width="2"/>
-  <text x="150" y="280" fill="${text}" font-family="Inter, system-ui" font-size="24" font-weight="800">Surfaces & Typography</text>
-  <text x="150" y="320" fill="${muted}" font-family="Inter, system-ui" font-size="16" font-weight="500">Background ${bg}</text>
-  <text x="150" y="350" fill="${muted}" font-family="Inter, system-ui" font-size="16" font-weight="500">Surface ${card}</text>
-  <text x="150" y="380" fill="${muted}" font-family="Inter, system-ui" font-size="16" font-weight="500">Text ${text}</text>
-  <text x="150" y="410" fill="${muted}" font-family="Inter, system-ui" font-size="16" font-weight="500">Muted ${muted}</text>
-  <circle cx="220" cy="520" r="38" fill="${primary}" />
-  <circle cx="320" cy="520" r="38" fill="${secondary}" />
-  <circle cx="420" cy="520" r="38" fill="${accent}" />
-  <circle cx="520" cy="520" r="38" fill="${base}" />
+  <rect width="1200" height="800" rx="32" fill="url(#pageGlow)" />
+  <rect x="54" y="54" width="1092" height="692" rx="34" fill="${panel}" stroke="${hexWithAlpha(text, 0.11)}" stroke-width="1.5" filter="url(#softShadow)"/>
+  <rect x="80" y="80" width="1040" height="232" rx="28" fill="url(#heroGrad)" opacity="0.94"/>
+  <rect x="80" y="80" width="1040" height="232" rx="28" fill="#000000" opacity="0.08"/>
+  <text x="112" y="128" fill="#ffffff" font-family="Inter, system-ui" font-weight="800" font-size="16" letter-spacing="0.08em">APOCAPALETTE THEME PACK</text>
+  <text x="112" y="194" fill="#ffffff" font-family="Inter, system-ui" font-weight="900" font-size="62">${escapeXml(safeName)}</text>
+  <text x="114" y="238" fill="${hexWithAlpha('#ffffff', 0.88)}" font-family="Inter, system-ui" font-weight="650" font-size="22">Marketplace-ready color tokens for product, design, and document workflows.</text>
+  <text x="114" y="278" fill="${hexWithAlpha('#ffffff', 0.82)}" font-family="Inter, system-ui" font-weight="700" font-size="17">Base ${base.toUpperCase()} • ${escapeXml(theme.mode)} • ${themeLabel}</text>
+
+  <rect x="80" y="348" width="552" height="348" rx="26" fill="${panelStrong}" stroke="${hexWithAlpha(text, 0.1)}" stroke-width="1"/>
+  <text x="112" y="394" fill="${text}" font-family="Inter, system-ui" font-size="24" font-weight="900">Main palette</text>
+  <text x="112" y="424" fill="${muted}" font-family="Inter, system-ui" font-size="15" font-weight="650">Core brand, surface, and type tokens.</text>
+  ${swatchGrid}
+
+  <rect x="670" y="348" width="450" height="348" rx="26" fill="${panelStrong}" stroke="${hexWithAlpha(text, 0.1)}" stroke-width="1"/>
+  <text x="702" y="394" fill="${text}" font-family="Inter, system-ui" font-size="24" font-weight="900">Token categories</text>
+  <text x="702" y="424" fill="${muted}" font-family="Inter, system-ui" font-size="15" font-weight="650">CSS, JSON, Figma, Penpot, LibreOffice</text>
+  <rect x="704" y="462" width="180" height="68" rx="18" fill="${hexWithAlpha(primary, 0.18)}" stroke="${hexWithAlpha(primary, 0.42)}" stroke-width="1"/>
+  <text x="726" y="490" fill="${text}" font-family="Inter, system-ui" font-size="15" font-weight="900">Brand</text>
+  <text x="726" y="514" fill="${muted}" font-family="Inter, system-ui" font-size="13" font-weight="700">primary / accent</text>
+  <rect x="908" y="462" width="180" height="68" rx="18" fill="${hexWithAlpha(accent, 0.14)}" stroke="${hexWithAlpha(accent, 0.38)}" stroke-width="1"/>
+  <text x="930" y="490" fill="${text}" font-family="Inter, system-ui" font-size="15" font-weight="900">Typography</text>
+  <text x="930" y="514" fill="${muted}" font-family="Inter, system-ui" font-size="13" font-weight="700">body / muted</text>
+  <rect x="704" y="548" width="384" height="44" rx="16" fill="${hexWithAlpha(text, 0.07)}" stroke="${hexWithAlpha(text, 0.1)}" stroke-width="1"/>
+  <text x="726" y="576" fill="${muted}" font-family="Inter, system-ui" font-size="13" font-weight="800">Neutral scale</text>
+  ${neutralStrip}
+  <text x="704" y="722" fill="${muted}" font-family="Inter, system-ui" font-size="13" font-weight="700">Preview artwork • Token reference • Listing image source</text>
 </svg>`;
 };
 

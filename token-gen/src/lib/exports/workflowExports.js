@@ -4,6 +4,7 @@ import { toPenpotTokens } from '../penpotTokens.js';
 import { buildCssVariables } from '../theme/styles.js';
 import { buildExportFilename, downloadFile, exportAssets, exportThemePack, slugifyFilename } from '../export/index.js';
 import { buildPrintTokenTree, getThemePackGuidance, sanitizeThemeName } from '../appState.js';
+import { extractSocColorsFromTokens, generateSoc } from '../soc-exporter.js';
 import { generateDesignSpacePalette } from './designSpacePalette.js';
 import {
   buildPaletteCardSvg,
@@ -154,21 +155,73 @@ export const downloadThemePackArchive = async ({
   const { best, not: notFor } = getThemePackGuidance(mode);
   const themeModeLabel = themeMode || (isDark ? 'dark' : 'light');
   const readme = [
-    `Theme name: ${themeLabel}`,
-    `Base hex: ${baseHex}`,
-    `Harmony mode: ${mode}`,
-    `Theme mode: ${themeModeLabel}`,
-    `Best for: ${best}`,
-    `Not for: ${notFor}`,
-    'Usage:',
-    '- Use css/variables.css in your project',
-    '- tokens.json is the canonical source',
-    '- Import figma/tokens.json into Figma Tokens (if included)',
+    `# ${themeLabel}`,
+    '',
+    `${themeLabel} is an Apocapalette theme pack built from ${baseHex} with a ${mode} harmony in ${themeModeLabel} mode. It includes ready-to-use color tokens, app CSS variables, design-tool token files, a LibreOffice palette, and preview artwork for quick reference.`,
+    '',
+    '## Theme Details',
+    '',
+    `- Theme name: ${themeLabel}`,
+    `- Base color: ${baseHex}`,
+    `- Harmony: ${mode}`,
+    `- Mode: ${themeModeLabel}`,
+    `- Best for: ${best}`,
+    `- Not for: ${notFor}`,
+    ...(printMode ? ['- Print mode: on'] : []),
+    '',
+    '## Included Files',
+    '',
+    '- `tokens.json` - canonical Apocapalette token export with theme metadata.',
+    '- `css/variables.css` - CSS custom properties for web projects.',
+    '- `figma/tokens.json` - nested token JSON for Figma token workflows.',
+    '- `penpot/tokens.json` - Penpot-friendly token JSON.',
+    '- `libreoffice/*.soc` - LibreOffice/OpenOffice color palette.',
+    '- `preview/palette-card.svg` - visual summary of the theme.',
+    '- `preview/swatch-strip.svg` - quick swatch reference.',
+    '- `preview/*.png` - optional raster previews when your browser supports canvas export.',
+    '',
+    '## CSS Variables',
+    '',
+    'Add `css/variables.css` to your project and reference the generated custom properties in your styles.',
+    '',
+    '```css',
+    '@import "./css/variables.css";',
+    '',
+    '.button {',
+    `  background: var(--${tokenPrefix ? `${tokenPrefix}-` : ''}brand-primary);`,
+    `  color: var(--${tokenPrefix ? `${tokenPrefix}-` : ''}typography-text-body);`,
+    '}',
+    '```',
+    '',
+    '## JSON Tokens',
+    '',
+    'Use `tokens.json` as the canonical source for automation, documentation, or custom token transforms. It includes the full token set plus export metadata.',
+    '',
+    '## Figma Tokens',
+    '',
+    'Import `figma/tokens.json` into your preferred Figma token workflow. The file is nested and typed for token-plugin style usage.',
+    '',
+    '## Penpot Tokens',
+    '',
+    'Use `penpot/tokens.json` as the simplified Penpot-compatible token file. It is filtered into direct token groups for easier import and handoff.',
+    '',
+    '## LibreOffice Palette',
+    '',
+    'Import `libreoffice/*.soc` into LibreOffice or OpenOffice to use the theme colors in documents, drawings, and presentation assets.',
+    '',
+    '## Preview Files',
+    '',
+    'Use the files in `preview/` as a quick visual reference, listing image source, or QA check when sharing the pack.',
+    '',
+    '## Licensing and Usage',
+    '',
+    'License/usage terms: add your license terms here before selling or distributing this pack.',
+    '',
+    '---',
+    '',
+    'Made with Apocapalette.',
   ];
-  if (printMode) {
-    readme.splice(4, 0, 'Print mode: on');
-  }
-  root.file('README.txt', readme.join('\n'));
+  root.file('README.md', readme.join('\n'));
 
   const canonicalTokens = buildGenericPayload(finalTokens, {
     themeName: displayThemeName,
@@ -188,6 +241,25 @@ export const downloadThemePackArchive = async ({
   if (figmaPayload && Object.keys(figmaPayload).length > 0) {
     root.folder('figma')?.file('tokens.json', JSON.stringify(figmaPayload, null, 2));
   }
+
+  const penpotPayload = buildPenpotPayload(
+    finalTokens,
+    themeMaster?.orderedStack ?? [],
+    {
+      themeName: displayThemeName,
+      mode,
+      baseColor,
+      isDark,
+      printMode,
+      generatedAt: new Date().toISOString(),
+      tokenPrefix: tokenPrefix || undefined,
+    },
+    { namingPrefix: tokenPrefix || undefined }
+  );
+  root.folder('penpot')?.file('tokens.json', JSON.stringify(toPenpotTokens(penpotPayload), null, 2));
+
+  const socColors = extractSocColorsFromTokens(finalTokens);
+  root.folder('libreoffice')?.file(`${themeSlug}.soc`, generateSoc(themeLabel, socColors));
 
   let previewFolder = null;
   const addPreviewFile = (name, content) => {

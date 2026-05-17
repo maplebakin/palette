@@ -10,6 +10,61 @@ import { escapeXml } from './colorUtils.js';
 const labConverter = converter('lab');
 const lchConverter = converter('lch');
 
+const isTokenValueObject = (value) => (
+  value
+  && typeof value === 'object'
+  && !Array.isArray(value)
+  && Object.prototype.hasOwnProperty.call(value, 'value')
+);
+
+const normalizeColorValue = (value) => {
+  if (typeof value !== 'string') return null;
+  const parsed = parse(value.trim());
+  if (!parsed) return null;
+  try {
+    return formatHex(parsed);
+  } catch {
+    return null;
+  }
+};
+
+export function extractSocColorsFromTokens(finalTokens) {
+  if (!finalTokens || typeof finalTokens !== 'object') return [];
+
+  const colors = [];
+  const visit = (node, pathSegments = []) => {
+    if (node == null) return;
+
+    if (isTokenValueObject(node)) {
+      const hex = normalizeColorValue(node.value);
+      if (hex) {
+        colors.push({
+          name: pathSegments.join(' / ') || 'Color',
+          hex,
+        });
+      }
+      return;
+    }
+
+    const hex = normalizeColorValue(node);
+    if (hex) {
+      colors.push({
+        name: pathSegments.join(' / ') || 'Color',
+        hex,
+      });
+      return;
+    }
+
+    if (typeof node !== 'object' || Array.isArray(node)) return;
+    Object.entries(node).forEach(([key, value]) => {
+      visit(value, [...pathSegments, key]);
+    });
+  };
+
+  visit(finalTokens);
+  return colors;
+}
+
 export function processColors(rawColors, { deltaE, maxNeutrals, maxColors }) {
     const namedColors = Object.entries(rawColors)
     .map(([name, color]) => ({ name, value: parse(color) }))
