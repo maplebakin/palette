@@ -117,6 +117,7 @@ export default function PaletteWorkspace({ controller }) {
         primaryTextColor={controller.primaryTextColor}
         printAssetPack={controller.printAssetPack}
         canvaPrintHexes={controller.canvaPrintHexes}
+        onDownloadThemePack={controller.handleDownloadThemePack}
       />
 
       {controller.isDev && (

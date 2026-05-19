@@ -1417,7 +1417,6 @@ export default function useAppController() {
   }, [displayThemeName, isDev, notify, paletteState.baseColor, paletteState.mode, paletteState.themeMode, setStatusMessage, tokens]);
 
   const handleDownloadThemePack = useCallback(async () => {
-    if (!isDev) return;
     if (typeof Blob === 'undefined') {
       notify('File export is not supported in this browser', 'error');
       return;
@@ -1444,7 +1443,6 @@ export default function useAppController() {
     currentTheme,
     displayThemeName,
     finalTokens,
-    isDev,
     isDark,
     notify,
     paletteState.baseColor,

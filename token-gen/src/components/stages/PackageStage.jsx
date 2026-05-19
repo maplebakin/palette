@@ -1,5 +1,5 @@
 import React from 'react';
-import { Palette, Printer } from 'lucide-react';
+import { Download, Palette, Printer } from 'lucide-react';
 import ColorSwatch from '../ColorSwatch';
 import { StageSection } from './StageLayout';
 
@@ -11,6 +11,7 @@ const PackageStage = ({
   primaryTextColor,
   printAssetPack,
   canvaPrintHexes,
+  onDownloadThemePack,
 }) => (
   <StageSection id="package" title="Package" subtitle="Print mode gates the asset pack preview and CMYK-safe values." collapsible>
     <section
@@ -32,6 +33,21 @@ const PackageStage = ({
             />
             Print
           </label>
+          {onDownloadThemePack && (
+            <button
+              type="button"
+              onClick={onDownloadThemePack}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold hover:-translate-y-[1px] transition shadow"
+              style={{
+                backgroundColor: tokens.brand.primary,
+                color: primaryTextColor,
+                boxShadow: `0 12px 30px -20px ${tokens.brand.primary}`,
+              }}
+            >
+              <Download size={14} />
+              Download Theme Pack
+            </button>
+          )}
         </div>
         <div className="space-y-4">
           {printMode ? (
