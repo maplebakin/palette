@@ -326,6 +326,34 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     return blackRatio >= whiteRatio ? black : white;
   };
 
+  const ensureHueContrast = (fg, bg, target, { minL = 14, maxL = 88 } = {}) => {
+    const { h, s, l } = hexToHsl(fg);
+    const start = clamp(Math.round(l), minL, maxL);
+    let best = hslToHex(h, s, start);
+    let bestRatio = getContrastRatio(best, bg);
+    let bestDistance = Math.abs(start - l);
+    let meetsTarget = bestRatio >= target;
+
+    for (let lightness = minL; lightness <= maxL; lightness += 1) {
+      const candidate = hslToHex(h, s, lightness);
+      const ratio = getContrastRatio(candidate, bg);
+      const distance = Math.abs(lightness - l);
+      const candidateMeetsTarget = ratio >= target;
+      if (
+        (candidateMeetsTarget && !meetsTarget)
+        || (candidateMeetsTarget && meetsTarget && distance < bestDistance)
+        || (!candidateMeetsTarget && !meetsTarget && ratio > bestRatio)
+      ) {
+        best = candidate;
+        bestRatio = ratio;
+        bestDistance = distance;
+        meetsTarget = candidateMeetsTarget;
+      }
+    }
+
+    return best;
+  };
+
   const headerL = isDark
     ? bgL + 2
     : isPop
@@ -557,28 +585,21 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     const accentBg = tokens.surfaces.background;
     const accentSurface = tokens.cards['card-panel-surface'];
     const borderBg = tokens.surfaces['surface-plain'];
-    const accentTarget = 4.5;
+    const accentTarget = 3;
     const borderTarget = 3.2;
-    const bodyText = tokens.typography['text-body'];
-    const preferLightenAccent = hexToHsl(bodyText).l < 50;
 
-    tokens.brand.primary = ensureContrast(tokens.brand.primary, accentBg, accentTarget, false);
-    tokens.brand.secondary = ensureContrast(tokens.brand.secondary, accentBg, accentTarget, false);
-    tokens.brand.accent = ensureContrast(tokens.brand.accent, accentBg, accentTarget, false);
-    tokens.brand.cta = ensureContrast(tokens.brand.cta, accentBg, accentTarget, false);
-    tokens.brand['cta-hover'] = ensureContrast(tokens.brand['cta-hover'], accentBg, accentTarget, false);
-    tokens.brand['link-color'] = ensureContrast(tokens.brand['link-color'], accentBg, accentTarget, false);
-    tokens.brand['focus-ring'] = ensureContrast(tokens.brand['focus-ring'], accentSurface, 3.5, false);
+    tokens.brand.primary = ensureHueContrast(tokens.brand.primary, accentBg, accentTarget);
+    tokens.brand.secondary = ensureHueContrast(tokens.brand.secondary, accentBg, accentTarget);
+    tokens.brand.accent = ensureHueContrast(tokens.brand.accent, accentBg, accentTarget);
+    tokens.brand.cta = ensureHueContrast(tokens.brand.cta, accentBg, accentTarget);
+    tokens.brand['cta-hover'] = ensureHueContrast(tokens.brand['cta-hover'], accentBg, accentTarget);
+    tokens.brand['link-color'] = ensureHueContrast(tokens.brand['link-color'], accentBg, accentTarget);
+    tokens.brand['focus-ring'] = ensureHueContrast(tokens.brand['focus-ring'], accentSurface, 3.5);
     tokens.borders['border-accent-medium'] = ensureContrast(tokens.borders['border-accent-medium'], borderBg, borderTarget, false);
     tokens.borders['border-accent-strong'] = ensureContrast(tokens.borders['border-accent-strong'], borderBg, borderTarget, false);
     tokens.borders['border-accent-hover'] = ensureContrast(tokens.borders['border-accent-hover'], borderBg, borderTarget, false);
 
-    tokens.brand.primary = ensureContrast(tokens.brand.primary, bodyText, accentTarget, preferLightenAccent);
-    tokens.brand.secondary = ensureContrast(tokens.brand.secondary, bodyText, accentTarget, preferLightenAccent);
-    tokens.brand.accent = ensureContrast(tokens.brand.accent, bodyText, accentTarget, preferLightenAccent);
-    tokens.brand['accent-strong'] = ensureContrast(tokens.brand['accent-strong'], bodyText, accentTarget, preferLightenAccent);
-    tokens.brand.cta = ensureContrast(tokens.brand.cta, bodyText, accentTarget, preferLightenAccent);
-    tokens.brand['cta-hover'] = ensureContrast(tokens.brand['cta-hover'], bodyText, accentTarget, preferLightenAccent);
+    tokens.brand['accent-strong'] = ensureHueContrast(tokens.brand['accent-strong'], accentBg, accentTarget);
   }
 
   return tokens;
