@@ -1,0 +1,19 @@
+Cobalt Chapel - Usage and License Notes
+
+What you can use this theme pack for:
+- Personal and commercial finished projects
+- Websites, apps, prototypes, dashboards, dev tools, gallery pages, documents, decks, and client work
+- Figma, Penpot, CSS, JSON token, and LibreOffice/OpenOffice workflows
+- Modified designs and derivative finished work built with the colors or tokens
+
+What you may not do:
+- Resell the raw theme pack files
+- Redistribute the raw theme pack files
+- Repackage the files as a competing digital product
+- Upload the files to marketplaces, freebie sites, or asset libraries as your own
+- Claim the Cobalt Chapel theme pack files themselves as your original product
+
+Plain-language summary:
+Use the colors and tokens freely in finished personal and commercial work. Do not sell, share, repackage, or claim the raw theme pack files as your own.
+
+Final shop license terms should be reviewed before publication.
