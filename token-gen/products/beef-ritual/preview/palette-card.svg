@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b2f24" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="#80f2ff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#8ff4ff" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="pageGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(139,47,36,0.28)"/>
+      <stop offset="52%" stop-color="rgba(143,244,255,0.16)"/>
+      <stop offset="100%" stop-color="rgba(7,7,3,0)"/>
+    </linearGradient>
+    <filter id="softShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="28" stdDeviation="26" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="800" rx="32" fill="#070703" />
+  <rect width="1200" height="800" rx="32" fill="url(#pageGlow)" />
+  <rect x="54" y="54" width="1092" height="692" rx="34" fill="#121708" stroke="rgba(231,228,228,0.11)" stroke-width="1.5" filter="url(#softShadow)"/>
+  <rect x="80" y="80" width="1040" height="232" rx="28" fill="url(#heroGrad)" opacity="0.94"/>
+  <rect x="80" y="80" width="1040" height="232" rx="28" fill="#000000" opacity="0.08"/>
+  <text x="112" y="128" fill="#ffffff" font-family="Inter, system-ui" font-weight="800" font-size="16" letter-spacing="0.08em">APOCAPALETTE THEME PACK</text>
+  <text x="112" y="194" fill="#ffffff" font-family="Inter, system-ui" font-weight="900" font-size="62">Beef Ritual</text>
+  <text x="114" y="238" fill="rgba(255,255,255,0.88)" font-family="Inter, system-ui" font-weight="650" font-size="22">Marketplace-ready color tokens for product, design, and document workflows.</text>
+  <text x="114" y="278" fill="rgba(255,255,255,0.82)" font-family="Inter, system-ui" font-weight="700" font-size="17">Base #8B2F24 • Apocalypse • Dark</text>
+
+  <rect x="80" y="348" width="552" height="348" rx="26" fill="#21290f" stroke="rgba(231,228,228,0.1)" stroke-width="1"/>
+  <text x="112" y="394" fill="#e7e4e4" font-family="Inter, system-ui" font-size="24" font-weight="900">Main palette</text>
+  <text x="112" y="424" fill="#b7afae" font-family="Inter, system-ui" font-size="15" font-weight="650">Core brand, surface, and type tokens.</text>
+  <g>
+      <rect x="80" y="528" width="112" height="54" rx="14" fill="#8b2f24" stroke="rgba(231,228,228,0.16)" stroke-width="1"/>
+      <text x="80" y="606" fill="#e7e4e4" font-family="Inter, system-ui" font-size="13" font-weight="800">Primary</text>
+      <text x="80" y="624" fill="#b7afae" font-family="Inter, system-ui" font-size="12" font-weight="700">#8B2F24</text>
+    </g>
+<g>
+      <rect x="222" y="528" width="112" height="54" rx="14" fill="#80f2ff" stroke="rgba(231,228,228,0.16)" stroke-width="1"/>
+      <text x="222" y="606" fill="#e7e4e4" font-family="Inter, system-ui" font-size="13" font-weight="800">Secondary</text>
+      <text x="222" y="624" fill="#b7afae" font-family="Inter, system-ui" font-size="12" font-weight="700">#80F2FF</text>
+    </g>
+<g>
+      <rect x="364" y="528" width="112" height="54" rx="14" fill="#8ff4ff" stroke="rgba(231,228,228,0.16)" stroke-width="1"/>
+      <text x="364" y="606" fill="#e7e4e4" font-family="Inter, system-ui" font-size="13" font-weight="800">Accent</text>
+      <text x="364" y="624" fill="#b7afae" font-family="Inter, system-ui" font-size="12" font-weight="700">#8FF4FF</text>
+    </g>
+<g>
+      <rect x="506" y="528" width="112" height="54" rx="14" fill="#8b2f24" stroke="rgba(231,228,228,0.16)" stroke-width="1"/>
+      <text x="506" y="606" fill="#e7e4e4" font-family="Inter, system-ui" font-size="13" font-weight="800">Base</text>
+      <text x="506" y="624" fill="#b7afae" font-family="Inter, system-ui" font-size="12" font-weight="700">#8B2F24</text>
+    </g>
+<g>
+      <rect x="80" y="626" width="112" height="54" rx="14" fill="#070703" stroke="rgba(231,228,228,0.16)" stroke-width="1"/>
+      <text x="80" y="704" fill="#e7e4e4" font-family="Inter, system-ui" font-size="13" font-weight="800">Background</text>
+      <text x="80" y="722" fill="#b7afae" font-family="Inter, system-ui" font-size="12" font-weight="700">#070703</text>
+    </g>
+<g>
+      <rect x="222" y="626" width="112" height="54" rx="14" fill="#121708" stroke="rgba(231,228,228,0.16)" stroke-width="1"/>
+      <text x="222" y="704" fill="#e7e4e4" font-family="Inter, system-ui" font-size="13" font-weight="800">Surface</text>
+      <text x="222" y="722" fill="#b7afae" font-family="Inter, system-ui" font-size="12" font-weight="700">#121708</text>
+    </g>
+<g>
+      <rect x="364" y="626" width="112" height="54" rx="14" fill="#cfcac9" stroke="rgba(231,228,228,0.16)" stroke-width="1"/>
+      <text x="364" y="704" fill="#e7e4e4" font-family="Inter, system-ui" font-size="13" font-weight="800">Text</text>
+      <text x="364" y="722" fill="#b7afae" font-family="Inter, system-ui" font-size="12" font-weight="700">#CFCAC9</text>
+    </g>
+<g>
+      <rect x="506" y="626" width="112" height="54" rx="14" fill="#b7afae" stroke="rgba(231,228,228,0.16)" stroke-width="1"/>
+      <text x="506" y="704" fill="#e7e4e4" font-family="Inter, system-ui" font-size="13" font-weight="800">Muted</text>
+      <text x="506" y="722" fill="#b7afae" font-family="Inter, system-ui" font-size="12" font-weight="700">#B7AFAE</text>
+    </g>
+
+  <rect x="670" y="348" width="450" height="348" rx="26" fill="#21290f" stroke="rgba(231,228,228,0.1)" stroke-width="1"/>
+  <text x="702" y="394" fill="#e7e4e4" font-family="Inter, system-ui" font-size="24" font-weight="900">Token categories</text>
+  <text x="702" y="424" fill="#b7afae" font-family="Inter, system-ui" font-size="15" font-weight="650">CSS, JSON, Figma, Penpot, LibreOffice</text>
+  <rect x="704" y="462" width="180" height="68" rx="18" fill="rgba(139,47,36,0.18)" stroke="rgba(139,47,36,0.42)" stroke-width="1"/>
+  <text x="726" y="490" fill="#e7e4e4" font-family="Inter, system-ui" font-size="15" font-weight="900">Brand</text>
+  <text x="726" y="514" fill="#b7afae" font-family="Inter, system-ui" font-size="13" font-weight="700">primary / accent</text>
+  <rect x="908" y="462" width="180" height="68" rx="18" fill="rgba(143,244,255,0.14)" stroke="rgba(143,244,255,0.38)" stroke-width="1"/>
+  <text x="930" y="490" fill="#e7e4e4" font-family="Inter, system-ui" font-size="15" font-weight="900">Typography</text>
+  <text x="930" y="514" fill="#b7afae" font-family="Inter, system-ui" font-size="13" font-weight="700">body / muted</text>
+  <rect x="704" y="548" width="384" height="44" rx="16" fill="rgba(231,228,228,0.07)" stroke="rgba(231,228,228,0.1)" stroke-width="1"/>
+  <text x="726" y="576" fill="#b7afae" font-family="Inter, system-ui" font-size="13" font-weight="800">Neutral scale</text>
+  <rect x="722" y="610" width="44" height="88" rx="14" fill="#d0d0c8" stroke="rgba(231,228,228,0.12)" stroke-width="1"/>
+<rect x="778" y="610" width="44" height="88" rx="14" fill="#8d8b72" stroke="rgba(231,228,228,0.12)" stroke-width="1"/>
+<rect x="834" y="610" width="44" height="88" rx="14" fill="#565443" stroke="rgba(231,228,228,0.12)" stroke-width="1"/>
+<rect x="890" y="610" width="44" height="88" rx="14" fill="#1d1d16" stroke="rgba(231,228,228,0.12)" stroke-width="1"/>
+<rect x="946" y="610" width="44" height="88" rx="14" fill="#090906" stroke="rgba(231,228,228,0.12)" stroke-width="1"/>
+  <text x="704" y="722" fill="#b7afae" font-family="Inter, system-ui" font-size="13" font-weight="700">Preview artwork • Token reference • Listing image source</text>
+</svg>

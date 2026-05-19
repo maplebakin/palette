@@ -1,0 +1,20 @@
+Apocapalette
+dark theme
+design tokens
+CSS variables
+Figma tokens
+Penpot tokens
+LibreOffice palette
+OpenOffice palette
+game UI
+horror UI
+fantasy interface
+apocalypse palette
+red and cyan palette
+marketplace theme
+design system
+UI color palette
+dark UI
+TTRPG tools
+dashboard design
+web design
