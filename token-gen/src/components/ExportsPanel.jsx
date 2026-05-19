@@ -34,8 +34,8 @@ export default function ExportsPanel({
       aria-busy={isExporting}
     >
       <div>
-        <p className="text-xs uppercase font-semibold panel-muted tracking-wider">Exports</p>
-        <p className="text-sm panel-muted">Asset pack, PDF, and JSON exports.</p>
+        <p className="text-xs uppercase font-semibold panel-muted tracking-wider">Dev/internal exports</p>
+        <p className="text-sm panel-muted">Development tools for asset checks, PDF output, and individual JSON/CSS files. Use Package for the customer theme pack.</p>
         {exportError && (
           <p className="text-xs mt-1" role="alert" style={{ color: tokens.status.warning }}>
             {exportError}
@@ -188,7 +188,7 @@ export default function ExportsPanel({
               }}
             >
               <Download size={14} />
-              Download Theme Pack
+              Download Theme Pack (Dev)
             </button>
             <button
               type="button"
@@ -201,7 +201,7 @@ export default function ExportsPanel({
               }}
             >
               <Download size={14} />
-              Theme Pack + CMYK Print Pack
+              Theme Pack + CMYK Print Pack (Dev)
             </button>
             <div className="flex flex-col items-start gap-1">
               <button
@@ -215,7 +215,7 @@ export default function ExportsPanel({
                 }}
               >
                 <Download size={14} />
-                Generate Listing Assets
+                Generate Listing Assets (Dev)
               </button>
               <span className="text-[10px] font-semibold uppercase panel-muted">DEV ONLY</span>
             </div>

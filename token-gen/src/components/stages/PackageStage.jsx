@@ -13,7 +13,7 @@ const PackageStage = ({
   canvaPrintHexes,
   onDownloadThemePack,
 }) => (
-  <StageSection id="package" title="Package" subtitle="Print mode gates the asset pack preview and CMYK-safe values." collapsible>
+  <StageSection id="package" title="Package" subtitle="Download the customer-ready theme pack or prepare optional print assets." collapsible>
     <section
       id="tab-panel-2"
       role="tabpanel"
@@ -21,7 +21,7 @@ const PackageStage = ({
       className="space-y-4"
     >
       <>
-        <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
+        <div className="flex flex-wrap items-start gap-3 px-3 py-2 rounded-lg panel-surface-strong border">
           <label className="flex items-center gap-2 text-xs font-semibold panel-muted">
             <input
               type="checkbox"
@@ -34,19 +34,24 @@ const PackageStage = ({
             Print
           </label>
           {onDownloadThemePack && (
-            <button
-              type="button"
-              onClick={onDownloadThemePack}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold hover:-translate-y-[1px] transition shadow"
-              style={{
-                backgroundColor: tokens.brand.primary,
-                color: primaryTextColor,
-                boxShadow: `0 12px 30px -20px ${tokens.brand.primary}`,
-              }}
-            >
-              <Download size={14} />
-              Download Theme Pack
-            </button>
+            <div className="flex min-w-[240px] flex-1 flex-col gap-1">
+              <button
+                type="button"
+                onClick={onDownloadThemePack}
+                className="flex w-fit items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold hover:-translate-y-[1px] transition shadow"
+                style={{
+                  backgroundColor: tokens.brand.primary,
+                  color: primaryTextColor,
+                  boxShadow: `0 12px 30px -20px ${tokens.brand.primary}`,
+                }}
+              >
+                <Download size={14} />
+                Download Theme Pack
+              </button>
+              <p className="max-w-2xl text-xs panel-muted">
+                Main product export. Creates a customer-ready ZIP with CSS variables, JSON tokens, Figma, Penpot, LibreOffice palette files, README, and previews.
+              </p>
+            </div>
           )}
         </div>
         <div className="space-y-4">

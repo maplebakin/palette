@@ -34,6 +34,8 @@ describe('PackageStage', () => {
     fireEvent.click(screen.getByRole('button', { name: /download theme pack/i }));
 
     expect(onDownloadThemePack).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/main product export/i)).toBeInTheDocument();
+    expect(screen.getByText(/customer-ready ZIP with CSS variables, JSON tokens, Figma, Penpot, LibreOffice palette files, README, and previews/i)).toBeInTheDocument();
   });
 
   it('does not render the theme pack button without a handler', () => {
