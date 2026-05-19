@@ -1,0 +1,16 @@
+Strange Systems Starter Pair
+
+1. Unzip Strange-Systems-Starter-Pair.zip.
+2. Unzip Beef-Ritual-Theme-Pack.zip and/or Cobalt-Chapel-Theme-Pack.zip.
+3. Choose the format your tool needs:
+   - CSS variables for web projects
+   - JSON tokens for design and build pipelines
+   - Figma token JSON for Figma token workflows
+   - Penpot-compatible JSON for Penpot
+   - .soc palette for LibreOffice/OpenOffice
+   - SVG previews for visual reference
+
+Each included theme pack has its own README with theme-specific details.
+
+License note:
+Personal and commercial use is allowed for finished designs, prototypes, websites, apps, documents, and client work. Do not resell, redistribute, repackage, or claim the raw theme pack files as your own.
