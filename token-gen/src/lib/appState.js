@@ -12,13 +12,20 @@ export const STORAGE_KEYS = {
   saved: 'token-gen/saved-palettes',
 };
 
-export const STAGE_DEFS = [
+const BASE_STAGE_DEFS = [
   { id: 'identity', label: 'Identity' },
   { id: 'build', label: 'Build' },
   { id: 'validate', label: 'Validate' },
   { id: 'package', label: 'Package', tab: 'Print assets' },
-  { id: 'export', label: 'Export', tab: 'Exports' },
 ];
+
+export const STAGE_DEFS = import.meta.env.DEV
+  ? [
+    ...BASE_STAGE_DEFS,
+    { id: 'product-forge', label: 'Product Forge' },
+    { id: 'export', label: 'Export', tab: 'Exports' },
+  ]
+  : BASE_STAGE_DEFS;
 
 export const PRESETS = [
   { name: 'Midnight Indigo', base: '#6366f1', mode: 'Monochromatic', dark: true },

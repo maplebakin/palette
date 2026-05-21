@@ -43,21 +43,4 @@ describe('PackageStage', () => {
 
     expect(screen.queryByRole('button', { name: /download theme pack/i })).not.toBeInTheDocument();
   });
-
-  it('keeps the product export builder dev-only', () => {
-    renderPackageStage({ isDev: false });
-
-    expect(screen.queryByTestId('product-export-builder')).not.toBeInTheDocument();
-  });
-
-  it('renders the product export builder in dev mode', async () => {
-    renderPackageStage({
-      isDev: true,
-      productExportThemes: [{ id: 'current', label: 'Current Theme', miniPalette: {} }],
-      onExportProductPackage: vi.fn(),
-    });
-
-    expect(await screen.findByTestId('product-export-builder')).toBeInTheDocument();
-    expect(await screen.findByText(/product packaging/i)).toBeInTheDocument();
-  });
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import MoodBoard from '../MoodBoard.jsx';
 import ListingAssetsCanvas from '../ListingAssetsCanvas.jsx';
 import ValidateStage from '../stages/ValidateStage.jsx';
@@ -7,6 +7,10 @@ import PackageStage from '../stages/PackageStage.jsx';
 import ExportStage from '../stages/ExportStage.jsx';
 import IdentityStage from '../stages/IdentityStage.jsx';
 import { StageNav } from '../stages/StageLayout.jsx';
+
+const ProductForgeStage = import.meta.env.DEV
+  ? lazy(() => import('../stages/ProductForgeStage.jsx'))
+  : null;
 
 export default function PaletteWorkspace({ controller }) {
   return (
@@ -118,10 +122,20 @@ export default function PaletteWorkspace({ controller }) {
         printAssetPack={controller.printAssetPack}
         canvaPrintHexes={controller.canvaPrintHexes}
         onDownloadThemePack={controller.handleDownloadThemePack}
-        isDev={controller.isDev}
-        productExportThemes={controller.productExportThemes}
-        onExportProductPackage={controller.handleExportProductPackage}
       />
+
+      {ProductForgeStage && controller.isDev && (
+        <Suspense fallback={null}>
+          <ProductForgeStage
+            isDev={controller.isDev}
+            tokens={controller.tokens}
+            primaryTextColor={controller.primaryTextColor}
+            productExportThemes={controller.productExportThemes}
+            onExportProductPackage={controller.handleExportProductPackage}
+            onDownloadThemePack={controller.handleDownloadThemePack}
+          />
+        </Suspense>
+      )}
 
       {controller.isDev && (
         <ExportStage
