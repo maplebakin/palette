@@ -118,6 +118,9 @@ export default function PaletteWorkspace({ controller }) {
         printAssetPack={controller.printAssetPack}
         canvaPrintHexes={controller.canvaPrintHexes}
         onDownloadThemePack={controller.handleDownloadThemePack}
+        isDev={controller.isDev}
+        productExportThemes={controller.productExportThemes}
+        onExportProductPackage={controller.handleExportProductPackage}
       />
 
       {controller.isDev && (

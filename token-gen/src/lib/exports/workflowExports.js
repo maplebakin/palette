@@ -131,7 +131,7 @@ export const generateListingAssetsArchive = async ({
   exportAssets({ data: blob, filename: zipName || defaultName, mime: 'application/zip' });
 };
 
-export const downloadThemePackArchive = async ({
+export const buildThemePackArchive = async ({
   finalTokens,
   themeMaster,
   currentTheme,
@@ -293,7 +293,12 @@ export const downloadThemePackArchive = async ({
   }
 
   const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
-  exportThemePack({ data: blob, filename: zipName, mime: 'application/zip' });
+  return { blob, filename: zipName, themeSlug };
+};
+
+export const downloadThemePackArchive = async (options) => {
+  const { blob, filename } = await buildThemePackArchive(options);
+  exportThemePack({ data: blob, filename, mime: 'application/zip' });
 };
 
 export const downloadThemePackWithPrintArchive = async ({

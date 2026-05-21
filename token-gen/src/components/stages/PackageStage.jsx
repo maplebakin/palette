@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Download, Palette, Printer } from 'lucide-react';
 import ColorSwatch from '../ColorSwatch';
 import { StageSection } from './StageLayout';
+
+const ProductExportBuilder = import.meta.env.DEV
+  ? lazy(() => import('../ProductExportBuilder.jsx'))
+  : null;
 
 const PackageStage = ({
   getTabId,
@@ -12,6 +16,9 @@ const PackageStage = ({
   printAssetPack,
   canvaPrintHexes,
   onDownloadThemePack,
+  isDev = false,
+  productExportThemes = [],
+  onExportProductPackage,
 }) => (
   <StageSection id="package" title="Package" subtitle="Download the customer-ready theme pack or prepare optional print assets." collapsible>
     <section
@@ -125,6 +132,17 @@ const PackageStage = ({
             </div>
           )}
         </div>
+        {ProductExportBuilder && isDev && (
+          <Suspense fallback={null}>
+            <ProductExportBuilder
+              isDev={isDev}
+              themes={productExportThemes}
+              onExport={onExportProductPackage}
+              tokens={tokens}
+              primaryTextColor={primaryTextColor}
+            />
+          </Suspense>
+        )}
       </>
     </section>
   </StageSection>

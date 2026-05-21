@@ -525,6 +525,102 @@ export default function useAppController() {
     tokens,
   ]);
 
+  const createProductThemeDescriptor = useCallback((id, label, spec) => {
+    const safeBase = normalizeHex(spec.baseColor || '#6366f1', '#6366f1');
+    const safeName = sanitizeThemeName(spec.customThemeName || spec.name || label || 'Theme', 'Theme');
+    const generatedTheme = buildTheme({
+      name: safeName,
+      baseColor: safeBase,
+      mode: spec.mode || 'Monochromatic',
+      themeMode: spec.themeMode || (spec.isDark ? 'dark' : 'light'),
+      isDark: spec.isDark ?? spec.themeMode === 'dark',
+      printMode: Boolean(spec.printMode),
+      apocalypseIntensity: spec.apocalypseIntensity ?? 100,
+      harmonyIntensity: spec.harmonyIntensity ?? 100,
+      neutralCurve: spec.neutralCurve ?? 100,
+      accentStrength: spec.accentStrength ?? 100,
+      popIntensity: spec.popIntensity ?? 100,
+      importedOverrides: spec.importedOverrides ?? null,
+    });
+    const exportTheme = {
+      id,
+      label: safeName,
+      displayThemeName: safeName,
+      finalTokens: generatedTheme.finalTokens,
+      themeMaster: generatedTheme,
+      currentTheme: generatedTheme.currentTheme,
+      mode: spec.mode || 'Monochromatic',
+      baseColor: safeBase.toUpperCase(),
+      isDark: spec.isDark ?? spec.themeMode === 'dark',
+      printMode: Boolean(spec.printMode),
+      themeMode: spec.themeMode || (spec.isDark ? 'dark' : 'light'),
+      tokenPrefix: sanitizePrefix(spec.tokenPrefix || ''),
+    };
+    const themeTokens = generatedTheme.currentTheme.tokens;
+    exportTheme.miniPalette = {
+      background: normalizeHex(themeTokens.surfaces?.background || '#ffffff', '#ffffff'),
+      text: normalizeHex(themeTokens.typography?.['text-body'] || themeTokens.typography?.['text-strong'] || '#111827', '#111827'),
+      primary: normalizeHex(themeTokens.brand?.primary || safeBase, safeBase),
+      accent: normalizeHex(themeTokens.brand?.accent || themeTokens.brand?.secondary || '#22d3ee', '#22d3ee'),
+      surface: normalizeHex(themeTokens.cards?.['card-panel-surface'] || themeTokens.surfaces?.surface || '#f8fafc', '#f8fafc'),
+    };
+    return exportTheme;
+  }, []);
+
+  const productExportThemes = useMemo(() => {
+    const current = {
+      id: 'current',
+      label: displayThemeName,
+      displayThemeName,
+      finalTokens,
+      themeMaster,
+      currentTheme,
+      mode: paletteState.mode,
+      baseColor: normalizeHex(paletteState.baseColor || '#000000', '#000000').toUpperCase(),
+      isDark,
+      printMode: paletteState.printMode,
+      themeMode: paletteState.themeMode,
+      tokenPrefix: sanitizePrefix(paletteState.tokenPrefix),
+      miniPalette: {
+        background: normalizeHex(tokens.surfaces?.background || '#ffffff', '#ffffff'),
+        text: normalizeHex(tokens.typography?.['text-body'] || tokens.typography?.['text-strong'] || '#111827', '#111827'),
+        primary: normalizeHex(tokens.brand?.primary || paletteState.baseColor, paletteState.baseColor),
+        accent: normalizeHex(tokens.brand?.accent || tokens.brand?.secondary || '#22d3ee', '#22d3ee'),
+        surface: normalizeHex(tokens.cards?.['card-panel-surface'] || tokens.surfaces?.surface || '#f8fafc', '#f8fafc'),
+      },
+    };
+    const saved = paletteState.savedPalettes.map((palette, index) => createProductThemeDescriptor(
+      `saved-${palette.id ?? index}`,
+      palette.name || `Saved ${index + 1}`,
+      palette
+    ));
+    const project = (projectContext?.sections || []).map((section, index) => {
+      const spec = section.paletteSpec || buildSpecFromSection(section);
+      return createProductThemeDescriptor(
+        `project-${section.id || index}`,
+        section.label || `Project ${index + 1}`,
+        { ...spec, name: section.label || spec?.customThemeName }
+      );
+    });
+    return [current, ...saved, ...project];
+  }, [
+    buildSpecFromSection,
+    createProductThemeDescriptor,
+    currentTheme,
+    displayThemeName,
+    finalTokens,
+    isDark,
+    paletteState.baseColor,
+    paletteState.mode,
+    paletteState.printMode,
+    paletteState.savedPalettes,
+    paletteState.themeMode,
+    paletteState.tokenPrefix,
+    projectContext?.sections,
+    themeMaster,
+    tokens,
+  ]);
+
   const serializePalette = useCallback(() => ({
     id: Date.now(),
     name: displayThemeName,
@@ -1454,6 +1550,31 @@ export default function useAppController() {
     themeMaster,
   ]);
 
+  const handleExportProductPackage = useCallback(async ({ offering, product, selectedThemeIds }) => {
+    if (!import.meta.env.DEV) return;
+    if (typeof Blob === 'undefined') {
+      notify('File export is not supported in this browser', 'error');
+      return;
+    }
+    const selected = productExportThemes.filter((theme) => selectedThemeIds?.includes(theme.id));
+    if (!selected.length) {
+      notify('Select at least one theme kit for product export', 'warn');
+      return;
+    }
+    try {
+      const { downloadProductPackageArchive } = await import('../lib/exports/productExports.js');
+      await downloadProductPackageArchive({
+        offering,
+        product,
+        themes: selected,
+      });
+      setStatusMessage('Product package downloaded', 'success');
+    } catch (error) {
+      console.error('Product package export failed', error);
+      notify('Product package export failed. Check console for details.', 'error');
+    }
+  }, [isDev, notify, productExportThemes, setStatusMessage]);
+
   const copyShareLink = useCallback(async () => {
     try {
       if (!shareUrl) throw new Error('Share link unavailable');
@@ -1729,6 +1850,7 @@ export default function useAppController() {
     listingSwatchRef,
     listingSnippetRef,
     paletteSnapshot,
+    productExportThemes,
     presets: PRESETS,
     stageDefs,
     tabOptions,
@@ -1772,6 +1894,7 @@ export default function useAppController() {
     exportDesignSpacePalette,
     handleGenerateListingAssets,
     handleDownloadThemePack,
+    handleExportProductPackage,
     copyShareLink,
     exportAllAssets,
     exportProjectPrintAssets,
