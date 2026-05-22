@@ -22,14 +22,18 @@ const renderProductForgeStage = (props = {}) => render(
 );
 
 describe('ProductForgeStage', () => {
-  it('renders the dev-only product forge page with product builder controls', async () => {
+  it('renders the dev-only project manager product forge panel with product builder controls', async () => {
     renderProductForgeStage();
 
     expect(screen.getByTestId('product-forge-stage')).toBeInTheDocument();
-    expect(screen.getByText('Product Forge')).toBeInTheDocument();
+    expect(screen.getByText('Project Manager')).toBeInTheDocument();
+    expect(screen.getAllByText('Product Forge')).toHaveLength(2);
     expect(screen.getByText('Individual Theme Kit')).toBeInTheDocument();
     expect(screen.getByText('Multi-Kit Bundle')).toBeInTheDocument();
     expect(screen.getByText('Mini Website Palette / Freebie')).toBeInTheDocument();
+    expect(screen.getByText('Bundle Builder')).toBeInTheDocument();
+    expect(screen.getByText('Mini Palette Freebie')).toBeInTheDocument();
+    expect(screen.getByText('Product Packages')).toBeInTheDocument();
     expect(await screen.findByTestId('product-export-builder')).toBeInTheDocument();
   });
 

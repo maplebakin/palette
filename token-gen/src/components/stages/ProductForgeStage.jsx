@@ -38,11 +38,19 @@ export default function ProductForgeStage({
     <StageSection
       id="product-forge"
       title="Product Forge"
-      subtitle="Dev-only product packaging for sale-ready kits, bundles, freebies, and listing materials."
+      eyebrow="Project Manager"
+      subtitle="Dev-only product packaging hub for sale-ready kits, bundles, freebies, and future listing materials."
       collapsible
       data-testid="product-forge-stage"
     >
       <div className="space-y-4">
+        <div className="flex flex-wrap gap-2 text-[11px] font-bold panel-muted">
+          {['Product Forge', 'Bundle Builder', 'Mini Palette Freebie', 'Product Packages'].map((label) => (
+            <span key={label} className="rounded-full border panel-surface-strong px-3 py-1">
+              {label}
+            </span>
+          ))}
+        </div>
         <div className="grid gap-3 lg:grid-cols-3">
           {forgeSections.map((section) => (
             <div key={section.title} className="rounded-lg border panel-surface-soft p-4">

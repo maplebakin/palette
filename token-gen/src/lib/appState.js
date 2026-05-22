@@ -22,7 +22,6 @@ const BASE_STAGE_DEFS = [
 export const STAGE_DEFS = import.meta.env.DEV
   ? [
     ...BASE_STAGE_DEFS,
-    { id: 'product-forge', label: 'Product Forge' },
     { id: 'export', label: 'Export', tab: 'Exports' },
   ]
   : BASE_STAGE_DEFS;

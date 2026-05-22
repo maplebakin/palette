@@ -51,6 +51,7 @@ export const StageNav = ({ stages, currentStage, onNavigate }) => {
 export const StageSection = ({
   id,
   title,
+  eyebrow,
   subtitle,
   children,
   className = '',
@@ -74,7 +75,7 @@ export const StageSection = ({
   return (
     <section id={id} className={`space-y-4 scroll-mt-24 ${className}`} {...rest}>
       <div className="flex flex-col gap-1 pointer-events-auto">
-        <p className="text-[10px] uppercase tracking-[0.3em] panel-muted">{title} Stage</p>
+        <p className="text-[10px] uppercase tracking-[0.3em] panel-muted">{eyebrow || `${title} Stage`}</p>
         {collapsible ? (
           <button
             type="button"

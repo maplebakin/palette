@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { lazy, Suspense, useContext } from 'react';
 import { ProjectContext } from '../context/ProjectContext';
 import { PaletteContext } from '../context/PaletteContext';
 import { useNotification } from '../context/NotificationContext';
@@ -6,6 +6,10 @@ import { mergeProjectColors } from '../lib/projectMerge';
 import { flattenTokens } from '../lib/theme/paths';
 import { generateSoc } from '../lib/soc-exporter';
 import { buildExportFilename, downloadFile, exportJson } from '../lib/export';
+
+const ProductForgeStage = import.meta.env.DEV
+  ? lazy(() => import('./stages/ProductForgeStage.jsx'))
+  : null;
 
 const StartPanel = ({ children, className }) => (
   <div className={className}>{children}</div>
@@ -37,6 +41,12 @@ function ProjectView({
   projectExporting,
   projectPenpotStatus,
   projectPenpotExporting,
+  isDev = false,
+  tokens,
+  primaryTextColor,
+  productExportThemes = [],
+  onExportProductPackage,
+  onDownloadThemePack,
 }) {
   const { notify } = useNotification();
   const {
@@ -209,8 +219,8 @@ function ProjectView({
         <ReviewPanel className="panel-surface-strong border rounded-lg p-4">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <div>
-              <h3 className="text-lg font-semibold">Sections</h3>
-              <p className="text-sm panel-muted">Capture the live palette into each section as needed.</p>
+              <h3 className="text-lg font-semibold">Saved Kits</h3>
+              <p className="text-sm panel-muted">Manage captured project theme kits and reopen them in Palette Creator.</p>
             </div>
             <span className="text-xs panel-muted">{sectionCount} total</span>
           </div>
@@ -322,6 +332,19 @@ function ProjectView({
             })
           )}
         </ReviewPanel>
+
+        {isDev && ProductForgeStage && (
+          <Suspense fallback={null}>
+            <ProductForgeStage
+              isDev={isDev}
+              tokens={tokens}
+              primaryTextColor={primaryTextColor}
+              productExportThemes={productExportThemes}
+              onExportProductPackage={onExportProductPackage}
+              onDownloadThemePack={onDownloadThemePack}
+            />
+          </Suspense>
+        )}
 
         {/* Mood Boards Panel - Mirrors the Sections panel */}
         {project.moodBoards && Array.isArray(project.moodBoards) && project.moodBoards.length > 0 && (
