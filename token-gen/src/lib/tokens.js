@@ -596,19 +596,21 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     const borderBg = tokens.surfaces['surface-plain'];
     const accentTarget = 3;
     const borderTarget = 3.2;
+    const brandContrastRange = { minL: 38, maxL: 78 };
+    const ctaContrastRange = { minL: 34, maxL: 76 };
 
-    tokens.brand.primary = ensureHueContrast(tokens.brand.primary, accentBg, accentTarget);
-    tokens.brand.secondary = ensureHueContrast(tokens.brand.secondary, accentBg, accentTarget);
-    tokens.brand.accent = ensureHueContrast(tokens.brand.accent, accentBg, accentTarget);
-    tokens.brand.cta = ensureHueContrast(tokens.brand.cta, accentBg, accentTarget);
-    tokens.brand['cta-hover'] = ensureHueContrast(tokens.brand['cta-hover'], accentBg, accentTarget);
-    tokens.brand['link-color'] = ensureHueContrast(tokens.brand['link-color'], accentBg, accentTarget);
+    tokens.brand.primary = ensureHueContrast(tokens.brand.primary, accentBg, accentTarget, brandContrastRange);
+    tokens.brand.secondary = ensureHueContrast(tokens.brand.secondary, accentBg, accentTarget, brandContrastRange);
+    tokens.brand.accent = ensureHueContrast(tokens.brand.accent, accentBg, accentTarget, brandContrastRange);
+    tokens.brand.cta = ensureHueContrast(tokens.brand.cta, accentBg, accentTarget, ctaContrastRange);
+    tokens.brand['cta-hover'] = ensureHueContrast(tokens.brand['cta-hover'], accentBg, accentTarget, ctaContrastRange);
+    tokens.brand['link-color'] = ensureHueContrast(tokens.brand['link-color'], accentBg, accentTarget, ctaContrastRange);
     tokens.brand['focus-ring'] = ensureHueContrast(tokens.brand['focus-ring'], accentSurface, 3.5);
     tokens.borders['border-accent-medium'] = ensureContrast(tokens.borders['border-accent-medium'], borderBg, borderTarget, false);
     tokens.borders['border-accent-strong'] = ensureContrast(tokens.borders['border-accent-strong'], borderBg, borderTarget, false);
     tokens.borders['border-accent-hover'] = ensureContrast(tokens.borders['border-accent-hover'], borderBg, borderTarget, false);
 
-    tokens.brand['accent-strong'] = ensureHueContrast(tokens.brand['accent-strong'], accentBg, accentTarget);
+    tokens.brand['accent-strong'] = ensureHueContrast(tokens.brand['accent-strong'], accentBg, accentTarget, brandContrastRange);
   }
 
   return tokens;

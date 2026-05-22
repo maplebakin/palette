@@ -116,8 +116,7 @@ describe('generateTokens', () => {
     expect(hueDistance(hexToHsl(tokens.brand.primary).h, baseHue)).toBeLessThanOrEqual(8);
   });
 
-  it('makes soft cool pop palettes more chromatic while preserving hue DNA', () => {
-    const base = '#afc7d8';
+  it.each(['#afc7d8', '#c4e6d5'])('makes soft cool pop palettes bright and chromatic while preserving hue DNA', (base) => {
     const baseHue = hexToHsl(base).h;
     const light = generateTokens(base, 'Analogous', 'light', 100, { popIntensity: 130 });
     const pop = generateTokens(base, 'Analogous', 'pop', 100, { popIntensity: 130 });
@@ -129,6 +128,8 @@ describe('generateTokens', () => {
 
     expect(popPrimary.s).toBeGreaterThan(lightPrimary.s + 25);
     expect(popAccent.s).toBeGreaterThan(lightAccent.s + 20);
+    expect(popPrimary.l).toBeGreaterThanOrEqual(35);
+    expect(popAccent.l).toBeGreaterThanOrEqual(35);
     expect(hueDistance(popPrimary.h, baseHue)).toBeLessThanOrEqual(8);
     expect(hueDistance(popAccent.h, baseHue)).toBeLessThanOrEqual(45);
     expect(['#000000', '#ffffff']).not.toContain(pop.brand.primary.toLowerCase());
