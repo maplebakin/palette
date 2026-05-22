@@ -198,13 +198,22 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     secondarySat *= satBoost * 1.1;
     accentSat *= satBoost * 1.25;
     satNormalizer *= 1 + (popBoost * 0.55);
+    const softSeedBoost = hsl.s < 48 ? (48 - hsl.s) * 0.45 : 0;
+    const popSatFloor = clamp(66 + softSeedBoost + ((popScale - 1) * 10), 64, 88);
+    const secondarySatFloor = clamp(popSatFloor + 4, 68, 92);
+    const accentSatFloor = clamp(popSatFloor + 10, 74, 96);
+    satNormalizer = Math.max(satNormalizer, popSatFloor / Math.max(hsl.s, 1));
+    secondarySat = Math.max(secondarySat, secondarySatFloor / Math.max(hsl.s, 1));
+    accentSat = Math.max(accentSat, accentSatFloor / Math.max(hsl.s, 1));
     brandLightness = clamp(brandLightness + (popBoost * 6) - 2, 46, 70);
     accentLightness = clamp(accentLightness + (popBoost * 6) - 2, 48, 72);
     ctaLightness = clamp(ctaLightness + (popBoost * 5) - 2, 46, 68);
     ctaHoverLightness = clamp(ctaHoverLightness + (popBoost * 4) - 2, 44, 66);
   }
 
-  const primary = normalizedBase; // Always use the input hex as the primary color
+  const primary = isPop
+    ? getColor(hsl, 0, Math.max(satNormalizer, 1), brandLightness)
+    : normalizedBase;
   const secondary = getColor(hsl, secH, secondarySat * 0.96, brandLightness);
   const accent = getColor(hsl, accH, accentSat * 0.9, accentLightness);
   const accentStrong = getColor(hsl, accH, (accentSat * 0.9) + 0.04, accentLightness + 5);

@@ -116,6 +116,56 @@ describe('generateTokens', () => {
     expect(hueDistance(hexToHsl(tokens.brand.primary).h, baseHue)).toBeLessThanOrEqual(8);
   });
 
+  it('makes soft cool pop palettes more chromatic while preserving hue DNA', () => {
+    const base = '#afc7d8';
+    const baseHue = hexToHsl(base).h;
+    const light = generateTokens(base, 'Analogous', 'light', 100, { popIntensity: 130 });
+    const pop = generateTokens(base, 'Analogous', 'pop', 100, { popIntensity: 130 });
+
+    const lightPrimary = hexToHsl(light.brand.primary);
+    const popPrimary = hexToHsl(pop.brand.primary);
+    const lightAccent = hexToHsl(light.brand.accent);
+    const popAccent = hexToHsl(pop.brand.accent);
+
+    expect(popPrimary.s).toBeGreaterThan(lightPrimary.s + 25);
+    expect(popAccent.s).toBeGreaterThan(lightAccent.s + 20);
+    expect(hueDistance(popPrimary.h, baseHue)).toBeLessThanOrEqual(8);
+    expect(hueDistance(popAccent.h, baseHue)).toBeLessThanOrEqual(45);
+    expect(['#000000', '#ffffff']).not.toContain(pop.brand.primary.toLowerCase());
+    expect(['#000000', '#ffffff']).not.toContain(pop.brand.accent.toLowerCase());
+    expect(getContrastRatio(pop.typography['text-body'], pop.surfaces.background)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ['warm red brown', '#7b241c', 'Monochromatic'],
+    ['cobalt blue', '#3366ff', 'Analogous'],
+    ['gold green', '#c89b1f', 'Complementary'],
+    ['leaf green', '#22c55e', 'Analogous'],
+    ['magenta', '#d946ef', 'Tertiary'],
+    ['acid lime', '#a7f432', 'Apocalypse'],
+  ])('keeps %s pop mode distinct, usable, and hue-related', (_label, base, mode) => {
+    const baseHue = hexToHsl(base).h;
+    const light = generateTokens(base, mode, 'light', 100, { popIntensity: 130 });
+    const dark = generateTokens(base, mode, 'dark', 100, { popIntensity: 130 });
+    const pop = generateTokens(base, mode, 'pop', 100, { popIntensity: 130 });
+
+    const popPrimary = hexToHsl(pop.brand.primary);
+    const lightPrimary = hexToHsl(light.brand.primary);
+    const popBg = hexToHsl(pop.surfaces.background);
+    const lightBg = hexToHsl(light.surfaces.background);
+    const darkBg = hexToHsl(dark.surfaces.background);
+
+    expect(pop.brand.primary).not.toBe(light.brand.primary);
+    expect(pop.surfaces.background).not.toBe(light.surfaces.background);
+    expect(pop.surfaces.background).not.toBe(dark.surfaces.background);
+    expect(popPrimary.s).toBeGreaterThanOrEqual(Math.min(64, lightPrimary.s));
+    expect(hueDistance(popPrimary.h, baseHue)).toBeLessThanOrEqual(8);
+    expect(popBg.l).toBeGreaterThan(darkBg.l + 20);
+    expect(lightBg.l).toBeGreaterThan(popBg.l + 20);
+    expect(getContrastRatio(pop.typography['text-body'], pop.surfaces.background)).toBeGreaterThanOrEqual(4.5);
+    expect(getContrastRatio(pop.typography['text-muted'], pop.cards['card-panel-surface'])).toBeGreaterThanOrEqual(3.2);
+  });
+
   it('keeps generation deterministic for the same inputs', () => {
     const first = generateTokens('#3366ff', 'Complementary', 'pop', 100, {
       harmonyIntensity: 120,
