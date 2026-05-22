@@ -555,6 +555,12 @@ export default function useAppController() {
       printMode: Boolean(spec.printMode),
       themeMode: spec.themeMode || (spec.isDark ? 'dark' : 'light'),
       tokenPrefix: sanitizePrefix(spec.tokenPrefix || ''),
+      apocalypseIntensity: spec.apocalypseIntensity ?? 100,
+      harmonyIntensity: spec.harmonyIntensity ?? 100,
+      neutralCurve: spec.neutralCurve ?? 100,
+      accentStrength: spec.accentStrength ?? 100,
+      popIntensity: spec.popIntensity ?? 100,
+      importedOverrides: spec.importedOverrides ?? null,
     };
     const themeTokens = generatedTheme.currentTheme.tokens;
     exportTheme.miniPalette = {
@@ -581,6 +587,12 @@ export default function useAppController() {
       printMode: paletteState.printMode,
       themeMode: paletteState.themeMode,
       tokenPrefix: sanitizePrefix(paletteState.tokenPrefix),
+      apocalypseIntensity: paletteState.apocalypseIntensity,
+      harmonyIntensity: paletteState.harmonyIntensity,
+      neutralCurve: paletteState.neutralCurve,
+      accentStrength: paletteState.accentStrength,
+      popIntensity: paletteState.popIntensity,
+      importedOverrides: paletteState.importedOverrides ?? null,
       miniPalette: {
         background: normalizeHex(tokens.surfaces?.background || '#ffffff', '#ffffff'),
         text: normalizeHex(tokens.typography?.['text-body'] || tokens.typography?.['text-strong'] || '#111827', '#111827'),
@@ -612,6 +624,12 @@ export default function useAppController() {
     isDark,
     paletteState.baseColor,
     paletteState.mode,
+    paletteState.apocalypseIntensity,
+    paletteState.harmonyIntensity,
+    paletteState.neutralCurve,
+    paletteState.accentStrength,
+    paletteState.popIntensity,
+    paletteState.importedOverrides,
     paletteState.printMode,
     paletteState.savedPalettes,
     paletteState.themeMode,

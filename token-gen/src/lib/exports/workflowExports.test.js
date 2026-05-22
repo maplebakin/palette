@@ -178,6 +178,77 @@ describe('workflow export helpers', () => {
     }));
   });
 
+  it('builds all-mode theme packs from one selected theme seed', async () => {
+    const theme = buildSampleTheme();
+
+    await workflowExports.buildAllModeThemePackArchive({
+      ...theme,
+      displayThemeName: 'Adaptive Cobalt',
+      mode: 'Monochromatic',
+      baseColor: '#6633ff',
+      printMode: false,
+      tokenPrefix: 'cobalt',
+      harmonyIntensity: 117,
+      neutralCurve: 91,
+      accentStrength: 123,
+      popIntensity: 136,
+    });
+
+    const zip = zipInstances[0];
+    expect(Object.keys(zip.files)).toEqual(expect.arrayContaining([
+      'adaptive-cobalt/modes/dark/tokens.json',
+      'adaptive-cobalt/modes/dark/css/variables.css',
+      'adaptive-cobalt/modes/dark/figma/tokens.json',
+      'adaptive-cobalt/modes/dark/penpot/tokens.json',
+      'adaptive-cobalt/modes/dark/libreoffice/adaptive-cobalt-dark.soc',
+      'adaptive-cobalt/modes/dark/preview/palette-card.svg',
+      'adaptive-cobalt/modes/dark/preview/swatch-strip.svg',
+      'adaptive-cobalt/modes/light/tokens.json',
+      'adaptive-cobalt/modes/light/css/variables.css',
+      'adaptive-cobalt/modes/light/figma/tokens.json',
+      'adaptive-cobalt/modes/light/penpot/tokens.json',
+      'adaptive-cobalt/modes/light/libreoffice/adaptive-cobalt-light.soc',
+      'adaptive-cobalt/modes/light/preview/palette-card.svg',
+      'adaptive-cobalt/modes/light/preview/swatch-strip.svg',
+      'adaptive-cobalt/modes/pop/tokens.json',
+      'adaptive-cobalt/modes/pop/css/variables.css',
+      'adaptive-cobalt/modes/pop/figma/tokens.json',
+      'adaptive-cobalt/modes/pop/penpot/tokens.json',
+      'adaptive-cobalt/modes/pop/libreoffice/adaptive-cobalt-pop.soc',
+      'adaptive-cobalt/modes/pop/preview/palette-card.svg',
+      'adaptive-cobalt/modes/pop/preview/swatch-strip.svg',
+      'adaptive-cobalt/combined/tokens.all-modes.json',
+      'adaptive-cobalt/combined/css/variables.all-modes.css',
+    ]));
+
+    const darkTokens = JSON.parse(zip.files['adaptive-cobalt/modes/dark/tokens.json']);
+    const lightTokens = JSON.parse(zip.files['adaptive-cobalt/modes/light/tokens.json']);
+    const popTokens = JSON.parse(zip.files['adaptive-cobalt/modes/pop/tokens.json']);
+
+    expect(darkTokens.meta).toEqual(expect.objectContaining({
+      themeName: 'Adaptive Cobalt',
+      baseColor: '#6633ff',
+      mode: 'Monochromatic',
+      themeMode: 'dark',
+    }));
+    expect(lightTokens.meta).toEqual(expect.objectContaining({
+      themeName: 'Adaptive Cobalt',
+      baseColor: '#6633ff',
+      mode: 'Monochromatic',
+      themeMode: 'light',
+    }));
+    expect(popTokens.meta).toEqual(expect.objectContaining({
+      themeName: 'Adaptive Cobalt',
+      baseColor: '#6633ff',
+      mode: 'Monochromatic',
+      themeMode: 'pop',
+    }));
+    expect(darkTokens.brand).not.toEqual(lightTokens.brand);
+    expect(popTokens.brand).not.toEqual(lightTokens.brand);
+    expect(zip.files['adaptive-cobalt/combined/tokens.all-modes.json']).toContain('"dark"');
+    expect(zip.files['adaptive-cobalt/combined/css/variables.all-modes.css']).toContain('adaptive-cobalt-pop');
+  });
+
   it('exports project print assets and reports skipped sections', async () => {
     const theme = buildSampleTheme();
     const onProgress = vi.fn();

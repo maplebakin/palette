@@ -296,6 +296,158 @@ export const buildThemePackArchive = async ({
   return { blob, filename: zipName, themeSlug };
 };
 
+export const THEME_PACK_MODES = ['dark', 'light', 'pop'];
+
+const resolveAllModeThemeSpec = (theme = {}) => {
+  const current = theme.currentTheme || {};
+  const master = theme.themeMaster || {};
+  return {
+    name: sanitizeThemeName(theme.displayThemeName || current.name || theme.name || 'Theme', 'Theme'),
+    baseColor: theme.baseColor || current.baseColor || '#6366f1',
+    mode: theme.mode || current.mode || 'Monochromatic',
+    printMode: Boolean(theme.printMode ?? current.printMode),
+    tokenPrefix: theme.tokenPrefix || '',
+    apocalypseIntensity: theme.apocalypseIntensity ?? master.apocalypseIntensity ?? 100,
+    harmonyIntensity: theme.harmonyIntensity ?? master.harmonyIntensity ?? 100,
+    neutralCurve: theme.neutralCurve ?? master.neutralCurve ?? 100,
+    accentStrength: theme.accentStrength ?? master.accentStrength ?? 100,
+    popIntensity: theme.popIntensity ?? master.popIntensity ?? 100,
+    importedOverrides: theme.importedOverrides ?? null,
+  };
+};
+
+const buildModeTheme = (spec, themeMode) => buildTheme({
+  name: spec.name,
+  baseColor: spec.baseColor,
+  mode: spec.mode,
+  themeMode,
+  isDark: themeMode === 'dark',
+  printMode: spec.printMode,
+  apocalypseIntensity: spec.apocalypseIntensity,
+  harmonyIntensity: spec.harmonyIntensity,
+  neutralCurve: spec.neutralCurve,
+  accentStrength: spec.accentStrength,
+  popIntensity: spec.popIntensity,
+  importedOverrides: spec.importedOverrides,
+});
+
+const buildModeCanonicalTokens = ({ finalTokens, spec, themeMode }) => buildGenericPayload(finalTokens, {
+  themeName: spec.name,
+  mode: spec.mode,
+  baseColor: spec.baseColor,
+  isDark: themeMode === 'dark',
+  printMode: spec.printMode,
+  generatedAt: new Date().toISOString(),
+  tokenPrefix: spec.tokenPrefix || undefined,
+  themeMode,
+});
+
+export const addAllModeThemePackFiles = async (root, theme, options = {}) => {
+  const spec = resolveAllModeThemeSpec(theme);
+  const themeSlug = slugifyFilename(options.slug || spec.name, 'theme');
+  const combinedTokens = {};
+  const combinedCss = [];
+
+  for (const themeMode of THEME_PACK_MODES) {
+    const themeMaster = buildModeTheme(spec, themeMode);
+    const { finalTokens, currentTheme } = themeMaster;
+    const modeFolder = root.folder(`modes/${themeMode}`);
+    if (!modeFolder) throw new Error(`Failed to create ${themeMode} mode folder`);
+    const tokenPrefix = spec.tokenPrefix || '';
+
+    const canonicalTokens = buildModeCanonicalTokens({ finalTokens, spec, themeMode });
+    modeFolder.file('tokens.json', JSON.stringify(canonicalTokens, null, 2));
+    modeFolder.folder('css')?.file('variables.css', buildCssVariables(themeMaster, tokenPrefix));
+
+    const figmaPayload = buildFigmaTokensPayload(finalTokens, {
+      namingPrefix: tokenPrefix || undefined,
+    });
+    if (figmaPayload && Object.keys(figmaPayload).length > 0) {
+      modeFolder.folder('figma')?.file('tokens.json', JSON.stringify(figmaPayload, null, 2));
+    }
+
+    const penpotPayload = buildPenpotPayload(
+      finalTokens,
+      themeMaster.orderedStack ?? [],
+      {
+        themeName: spec.name,
+        mode: spec.mode,
+        baseColor: spec.baseColor,
+        isDark: themeMode === 'dark',
+        printMode: spec.printMode,
+        generatedAt: new Date().toISOString(),
+        tokenPrefix: tokenPrefix || undefined,
+        themeMode,
+      },
+      { namingPrefix: tokenPrefix || undefined }
+    );
+    modeFolder.folder('penpot')?.file('tokens.json', JSON.stringify(toPenpotTokens(penpotPayload), null, 2));
+
+    const socColors = extractSocColorsFromTokens(finalTokens);
+    modeFolder.folder('libreoffice')?.file(`${themeSlug}-${themeMode}.soc`, generateSoc(`${spec.name} ${themeMode}`, socColors));
+
+    const previewFolder = modeFolder.folder('preview');
+    try {
+      previewFolder?.file('palette-card.svg', buildPaletteCardSvg(currentTheme));
+    } catch (error) {
+      console.warn(`All-mode ${themeMode} palette SVG failed`, error);
+    }
+    try {
+      previewFolder?.file('swatch-strip.svg', buildStripSvg(currentTheme));
+    } catch (error) {
+      console.warn(`All-mode ${themeMode} strip SVG failed`, error);
+    }
+    const [palettePng, stripPng] = await Promise.allSettled([
+      renderPaletteCardPng(currentTheme),
+      renderStripPng(currentTheme),
+    ]);
+    if (palettePng.status === 'fulfilled') {
+      previewFolder?.file('palette-card.png', palettePng.value);
+    }
+    if (stripPng.status === 'fulfilled') {
+      previewFolder?.file('swatch-strip.png', stripPng.value);
+    }
+
+    combinedTokens[themeMode] = canonicalTokens;
+    combinedCss.push(`/* ${spec.name} - ${themeMode} mode */`);
+    combinedCss.push(`.${themeSlug}-${themeMode}, [data-theme="${themeSlug}-${themeMode}"] {`);
+    combinedCss.push(buildCssVariables(themeMaster, tokenPrefix)
+      .split('\n')
+      .filter((line) => line.trim() && !line.includes(':root') && line.trim() !== '}')
+      .join('\n'));
+    combinedCss.push('}');
+    combinedCss.push('');
+  }
+
+  root.folder('combined')?.file('tokens.all-modes.json', JSON.stringify({
+    themeName: spec.name,
+    baseColor: spec.baseColor,
+    harmony: spec.mode,
+    modes: combinedTokens,
+  }, null, 2));
+  root.folder('combined')?.file('css/variables.all-modes.css', combinedCss.join('\n'));
+
+  return { themeSlug, modes: THEME_PACK_MODES };
+};
+
+export const buildAllModeThemePackArchive = async (theme, options = {}) => {
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+  const spec = resolveAllModeThemeSpec(theme);
+  const themeSlug = slugifyFilename(options.slug || spec.name, 'theme');
+  const root = zip.folder(themeSlug);
+  if (!root) throw new Error('Failed to create all-mode theme pack folder');
+
+  await addAllModeThemePackFiles(root, theme, { slug: themeSlug });
+
+  const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
+  return {
+    blob,
+    filename: buildExportFilename(themeSlug, '-theme-pack-v1', 'zip'),
+    themeSlug,
+  };
+};
+
 export const downloadThemePackArchive = async (options) => {
   const { blob, filename } = await buildThemePackArchive(options);
   exportThemePack({ data: blob, filename, mime: 'application/zip' });

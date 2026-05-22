@@ -1,11 +1,11 @@
 import { sanitizeThemeName } from '../appState.js';
 import { escapeXml, normalizeHex } from '../colorUtils.js';
-import { buildThemePackArchive } from './workflowExports.js';
+import { addAllModeThemePackFiles, buildAllModeThemePackArchive } from './workflowExports.js';
 import { buildPaletteCardSvg, buildStripSvg } from './previewAssets.js';
 import { buildExportFilename, exportThemePack, slugifyFilename } from '../export/index.js';
 
 export const PRODUCT_OFFERINGS = {
-  individual: 'Individual Theme Kit',
+  individual: 'Website & Brand Color Kit',
   bundle: 'Multi-Kit Bundle',
   mini: 'Mini Website Palette / Freebie',
 };
@@ -21,6 +21,16 @@ const normalizeLines = (value) => String(value || '')
   .map((line) => line.trim())
   .filter(Boolean);
 
+const humanizeName = (value, fallback = 'Theme') => {
+  const clean = sanitizeThemeName(value || fallback, fallback)
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return clean || fallback;
+};
+
 const productSlug = (product) => (
   slugifyFilename(product?.slug || product?.title || 'product', 'product')
 );
@@ -30,28 +40,45 @@ const themeSlug = (theme, fallback = 'theme') => (
 );
 
 const themeLabel = (theme, fallback = 'Theme') => (
-  sanitizeThemeName(theme?.displayThemeName || theme?.currentTheme?.name || theme?.name || fallback, fallback)
+  humanizeName(theme?.displayThemeName || theme?.currentTheme?.name || theme?.name || fallback, fallback)
 );
 
 const buildReadme = ({ product, themes, offering }) => {
-  const title = sanitizeThemeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
+  const title = humanizeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
   const themeNames = themes.map((theme) => themeLabel(theme));
+  const intro = offering === 'individual'
+    ? product.shortDescription || `${title} is a premium adaptive Website & Brand Color Kit with dark, light, and pop modes for production-ready web, brand, and design-token workflows.`
+    : product.shortDescription || `${title} packaged from Apocapalette.`;
   const themePackLines = offering === 'mini'
     ? [
       '- `mini-palette.css` - lightweight CSS variables for the sample palette.',
       '- `mini-palette.json` - five-color JSON reference for the sample palette.',
       '- `preview/mini-palette-preview.svg` - preview artwork.',
     ]
-    : themes.map((theme) => `- \`${themeSlug(theme)}-theme-pack-v1.zip\` - included full theme pack ZIP`);
+    : offering === 'individual'
+    ? [
+      '- `modes/dark/` - dark mode tokens, CSS, design-tool files, LibreOffice palette, and previews.',
+      '- `modes/light/` - light mode tokens, CSS, design-tool files, LibreOffice palette, and previews.',
+      '- `modes/pop/` - pop mode tokens, CSS, design-tool files, LibreOffice palette, and previews.',
+      '- `combined/tokens.all-modes.json` - all included modes in one JSON reference.',
+      '- `combined/css/variables.all-modes.css` - scoped CSS variables for all included modes.',
+    ]
+    : themes.map((theme) => `- \`${themeSlug(theme)}-theme-pack-v1.zip\` - included full dark, light, and pop theme pack ZIP`);
 
   return [
     `# ${title}`,
     '',
-    product.shortDescription || `${title} packaged from Apocapalette.`,
+    intro,
     '',
     '## Product Type',
     '',
     PRODUCT_OFFERINGS[offering],
+    ...(offering === 'individual' ? [
+      '',
+      '## Included Modes',
+      '',
+      'This Website & Brand Color Kit includes dark, light, and pop modes generated from the same selected theme seed, so the system can adapt across editorial pages, app UI, launch sections, and high-emphasis brand moments without losing its core color identity.',
+    ] : []),
     '',
     '## Source Theme Kit(s)',
     '',
@@ -70,13 +97,22 @@ const buildReadme = ({ product, themes, offering }) => {
 };
 
 const buildUsage = (product) => [
-  `${sanitizeThemeName(product.title || 'Apocapalette Product', 'Apocapalette Product')} - Usage and License Notes`,
+  `${humanizeName(product.title || 'Apocapalette Product', 'Apocapalette Product')} - Usage and License Notes`,
   '',
   product.usageLicense || DEFAULT_USAGE_LICENSE,
 ].join('\n');
 
 const buildShopListing = ({ product, offering }) => {
-  const title = sanitizeThemeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
+  const title = humanizeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
+  const individualShort = `${title} is a Website & Brand Color Kit with dark, light, and pop modes for polished digital products, landing pages, and brand systems.`;
+  const individualLong = [
+    `${title} is a ready-to-use adaptive color kit for websites, product UI, launch pages, and brand systems.`,
+    '',
+    'Includes dark, light, and pop modes generated from the same theme seed, plus CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes.',
+    '',
+    'Use the mode folders for implementation, the combined files for system-wide references, and the preview assets for quick QA or shop listing visuals.',
+  ].join('\n');
+  const defaultLongDescription = product.longDescription || product.shortDescription || `${title} includes sale-ready Apocapalette files and preview assets.`;
   return [
     `# ${title}`,
     '',
@@ -86,11 +122,15 @@ const buildShopListing = ({ product, offering }) => {
     '',
     '## Short Description',
     '',
-    product.shortDescription || `${title} is an Apocapalette color product.`,
+    offering === 'individual'
+      ? product.shortDescription || individualShort
+      : product.shortDescription || `${title} is an Apocapalette color product.`,
     '',
     '## Long Description',
     '',
-    product.longDescription || product.shortDescription || `${title} includes sale-ready Apocapalette files and preview assets.`,
+    offering === 'individual'
+      ? `${product.longDescription ? `${product.longDescription}\n\n` : ''}${individualLong}`
+      : defaultLongDescription,
     '',
     '## Suggested Price',
     '',
@@ -103,10 +143,24 @@ const buildShopListing = ({ product, offering }) => {
 };
 
 const buildTags = (product) => {
-  const tags = normalizeLines(product.tags).length
-    ? normalizeLines(product.tags)
-    : ['color palette', 'design tokens', 'css variables', 'figma tokens', 'penpot'];
-  return `${tags.join('\n')}\n`;
+  const baseTags = normalizeLines(product.tags);
+  const tags = [
+    ...baseTags,
+    'website color kit',
+    'brand color kit',
+    'adaptive color system',
+    'dark mode palette',
+    'light mode palette',
+    'pop mode palette',
+    'design tokens',
+    'css variables',
+    'figma tokens',
+    'penpot tokens',
+    'libreoffice palette',
+    'web design palette',
+    'brand kit',
+  ];
+  return `${Array.from(new Set(tags.map((tag) => tag.toLowerCase()))).join('\n')}\n`;
 };
 
 const deriveMiniPalette = (theme) => {
@@ -166,7 +220,7 @@ const addThemePreviewAssets = (root, theme, options = {}) => {
 };
 
 const addThemePackZip = async (root, theme) => {
-  const { blob, filename } = await buildThemePackArchive(theme);
+  const { blob, filename } = await buildAllModeThemePackArchive(theme);
   root.file(filename, blob);
 };
 
@@ -211,8 +265,7 @@ export const buildProductPackageArchive = async ({
     }
   } else {
     const theme = selectedThemes[0];
-    addThemePreviewAssets(root, theme);
-    await addThemePackZip(root, theme);
+    await addAllModeThemePackFiles(root, theme, { slug });
   }
 
   const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });

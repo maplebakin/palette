@@ -32,8 +32,25 @@ class JSZipMock {
 
 vi.mock('jszip', () => ({ default: JSZipMock }));
 vi.mock('./workflowExports.js', () => ({
-  buildThemePackArchive: vi.fn(async (theme) => ({
-    blob: new Blob([`theme-pack:${theme.displayThemeName}`], { type: 'application/zip' }),
+  addAllModeThemePackFiles: vi.fn(async (root, theme, options = {}) => {
+    const slug = options.slug || String(theme.displayThemeName).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    ['dark', 'light', 'pop'].forEach((mode) => {
+      root.folder(`modes/${mode}`)?.file('tokens.json', JSON.stringify({
+        themeName: theme.displayThemeName,
+        themeMode: mode,
+      }));
+      root.folder(`modes/${mode}`)?.file('css/variables.css', `.${mode} { --brand-primary: #6633ff; }`);
+      root.folder(`modes/${mode}`)?.file('figma/tokens.json', '{}');
+      root.folder(`modes/${mode}`)?.file('penpot/tokens.json', '{}');
+      root.folder(`modes/${mode}`)?.file(`libreoffice/${slug}-${mode}.soc`, '<ooo:color-table/>');
+      root.folder(`modes/${mode}`)?.file('preview/palette-card.svg', '<svg>palette</svg>');
+      root.folder(`modes/${mode}`)?.file('preview/swatch-strip.svg', '<svg>strip</svg>');
+    });
+    root.folder('combined')?.file('tokens.all-modes.json', '{}');
+    root.folder('combined/css')?.file('variables.all-modes.css', ':root {}');
+  }),
+  buildAllModeThemePackArchive: vi.fn(async (theme) => ({
+    blob: new Blob([`all-mode-theme-pack:${theme.displayThemeName}`], { type: 'application/zip' }),
     filename: `${String(theme.displayThemeName).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-theme-pack-v1.zip`,
   })),
 }));
@@ -85,25 +102,64 @@ describe('product export helpers', () => {
     vi.clearAllMocks();
   });
 
-  it('builds an individual product package with docs, previews, and one theme pack zip', async () => {
+  it('builds an individual product package with dark, light, and pop mode folders', async () => {
+    const theme = makeTheme('HollysLightBlue');
+    const individualProduct = {
+      ...product,
+      title: 'HollysLightBlue',
+      slug: 'hollys-light-blue',
+      shortDescription: '',
+      longDescription: '',
+    };
+
     await productExports.buildProductPackageArchive({
       offering: 'individual',
-      product,
-      themes: [makeTheme('Cobalt Chapel')],
+      product: individualProduct,
+      themes: [theme],
     });
 
     const zip = zipInstances[0];
     expect(Object.keys(zip.files)).toEqual(expect.arrayContaining([
-      'cobalt-chapel/README.md',
-      'cobalt-chapel/USAGE.txt',
-      'cobalt-chapel/shop-listing.md',
-      'cobalt-chapel/tags.txt',
-      'cobalt-chapel/preview/palette-card.svg',
-      'cobalt-chapel/preview/swatch-strip.svg',
-      'cobalt-chapel/cobalt-chapel-theme-pack-v1.zip',
+      'hollys-light-blue/README.md',
+      'hollys-light-blue/USAGE.txt',
+      'hollys-light-blue/shop-listing.md',
+      'hollys-light-blue/tags.txt',
+      'hollys-light-blue/modes/dark/tokens.json',
+      'hollys-light-blue/modes/dark/css/variables.css',
+      'hollys-light-blue/modes/dark/figma/tokens.json',
+      'hollys-light-blue/modes/dark/penpot/tokens.json',
+      'hollys-light-blue/modes/dark/libreoffice/hollys-light-blue-dark.soc',
+      'hollys-light-blue/modes/dark/preview/palette-card.svg',
+      'hollys-light-blue/modes/dark/preview/swatch-strip.svg',
+      'hollys-light-blue/modes/light/tokens.json',
+      'hollys-light-blue/modes/light/css/variables.css',
+      'hollys-light-blue/modes/light/figma/tokens.json',
+      'hollys-light-blue/modes/light/penpot/tokens.json',
+      'hollys-light-blue/modes/light/libreoffice/hollys-light-blue-light.soc',
+      'hollys-light-blue/modes/light/preview/palette-card.svg',
+      'hollys-light-blue/modes/light/preview/swatch-strip.svg',
+      'hollys-light-blue/modes/pop/tokens.json',
+      'hollys-light-blue/modes/pop/css/variables.css',
+      'hollys-light-blue/modes/pop/figma/tokens.json',
+      'hollys-light-blue/modes/pop/penpot/tokens.json',
+      'hollys-light-blue/modes/pop/libreoffice/hollys-light-blue-pop.soc',
+      'hollys-light-blue/modes/pop/preview/palette-card.svg',
+      'hollys-light-blue/modes/pop/preview/swatch-strip.svg',
+      'hollys-light-blue/combined/tokens.all-modes.json',
+      'hollys-light-blue/combined/css/variables.all-modes.css',
     ]));
-    expect(zip.files['cobalt-chapel/README.md']).toContain('Individual Theme Kit');
-    expect(workflowExports.buildThemePackArchive).toHaveBeenCalledTimes(1);
+    expect(zip.files['hollys-light-blue/README.md']).toContain('# Hollys Light Blue');
+    expect(zip.files['hollys-light-blue/README.md']).toContain('premium adaptive Website & Brand Color Kit');
+    expect(zip.files['hollys-light-blue/README.md']).toContain('dark, light, and pop modes');
+    expect(zip.files['hollys-light-blue/README.md']).toContain('- Hollys Light Blue');
+    expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('Website & Brand Color Kit');
+    expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('dark, light, and pop modes');
+    expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes');
+    expect(zip.files['hollys-light-blue/tags.txt']).toContain('adaptive color system');
+    expect(zip.files['hollys-light-blue/tags.txt']).toContain('dark mode palette');
+    expect(zip.files['hollys-light-blue/tags.txt']).toContain('website color kit');
+    expect(workflowExports.addAllModeThemePackFiles).toHaveBeenCalledWith(expect.any(FolderMock), theme, { slug: 'hollys-light-blue' });
+    expect(workflowExports.buildAllModeThemePackArchive).not.toHaveBeenCalled();
   });
 
   it('builds a bundle package with per-theme previews and theme pack zips', async () => {
@@ -129,9 +185,9 @@ describe('product export helpers', () => {
     expect(zip.files['starter-pair/README.md']).toContain('Multi-Kit Bundle');
     expect(zip.files['starter-pair/README.md']).toContain('- Beef Ritual');
     expect(zip.files['starter-pair/README.md']).toContain('- Cobalt Chapel');
-    expect(workflowExports.buildThemePackArchive).toHaveBeenCalledTimes(2);
-    expect(workflowExports.buildThemePackArchive).toHaveBeenNthCalledWith(1, beef);
-    expect(workflowExports.buildThemePackArchive).toHaveBeenNthCalledWith(2, cobalt);
+    expect(workflowExports.buildAllModeThemePackArchive).toHaveBeenCalledTimes(2);
+    expect(workflowExports.buildAllModeThemePackArchive).toHaveBeenNthCalledWith(1, beef);
+    expect(workflowExports.buildAllModeThemePackArchive).toHaveBeenNthCalledWith(2, cobalt);
   });
 
   it('builds a mini palette package without paid token files or theme pack zips', async () => {
@@ -165,6 +221,9 @@ describe('product export helpers', () => {
     expect(zip.files['mini-cobalt/mini-palette.json']).toContain('"cta"');
     expect(zip.files['mini-cobalt/mini-palette.json']).toContain('"primary": "#112233"');
     expect(zip.files['mini-cobalt/shop-listing.md']).toContain('See the full paid Apocapalette theme kit or bundle');
-    expect(workflowExports.buildThemePackArchive).not.toHaveBeenCalled();
+    expect(files.some((file) => file.includes('/modes/'))).toBe(false);
+    expect(files.some((file) => file.includes('all-modes'))).toBe(false);
+    expect(workflowExports.addAllModeThemePackFiles).not.toHaveBeenCalled();
+    expect(workflowExports.buildAllModeThemePackArchive).not.toHaveBeenCalled();
   });
 });
