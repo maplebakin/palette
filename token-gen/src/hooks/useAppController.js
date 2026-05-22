@@ -809,8 +809,7 @@ export default function useAppController() {
     try {
       const payload = serializePalette();
       paletteState.setSavedPalettes((prev) => {
-        const filtered = prev.filter((item) => item.name !== payload.name);
-        const next = [payload, ...filtered].slice(0, 20);
+        const next = [payload, ...prev].slice(0, 20);
         localStorage.setItem(STORAGE_KEYS.saved, JSON.stringify(next));
         return next;
       });

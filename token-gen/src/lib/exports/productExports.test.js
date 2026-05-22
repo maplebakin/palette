@@ -107,10 +107,13 @@ describe('product export helpers', () => {
   });
 
   it('builds a bundle package with per-theme previews and theme pack zips', async () => {
+    const beef = makeTheme('Beef Ritual');
+    const cobalt = makeTheme('Cobalt Chapel');
+
     await productExports.buildProductPackageArchive({
       offering: 'bundle',
       product: { ...product, title: 'Starter Pair', slug: 'starter-pair' },
-      themes: [makeTheme('Beef Ritual'), makeTheme('Cobalt Chapel')],
+      themes: [beef, cobalt],
     });
 
     const zip = zipInstances[0];
@@ -124,13 +127,25 @@ describe('product export helpers', () => {
       'starter-pair/cobalt-chapel-theme-pack-v1.zip',
     ]));
     expect(zip.files['starter-pair/README.md']).toContain('Multi-Kit Bundle');
+    expect(zip.files['starter-pair/README.md']).toContain('- Beef Ritual');
+    expect(zip.files['starter-pair/README.md']).toContain('- Cobalt Chapel');
     expect(workflowExports.buildThemePackArchive).toHaveBeenCalledTimes(2);
+    expect(workflowExports.buildThemePackArchive).toHaveBeenNthCalledWith(1, beef);
+    expect(workflowExports.buildThemePackArchive).toHaveBeenNthCalledWith(2, cobalt);
   });
 
   it('builds a mini palette package without paid token files or theme pack zips', async () => {
+    const miniPalette = {
+      background: '#010203',
+      text: '#f8fafc',
+      primary: '#112233',
+      accent: '#445566',
+      surface: '#0f172a',
+    };
+
     await productExports.buildProductPackageArchive({
       offering: 'mini',
-      product: { ...product, title: 'Mini Cobalt', slug: 'mini-cobalt' },
+      product: { ...product, title: 'Mini Cobalt', slug: 'mini-cobalt', miniPalette },
       themes: [makeTheme('Cobalt Chapel')],
     });
 
@@ -148,6 +163,8 @@ describe('product export helpers', () => {
     expect(files.some((file) => file.endsWith('tokens.json'))).toBe(false);
     expect(files.some((file) => file.includes('theme-pack-v1.zip'))).toBe(false);
     expect(zip.files['mini-cobalt/mini-palette.json']).toContain('"cta"');
+    expect(zip.files['mini-cobalt/mini-palette.json']).toContain('"primary": "#112233"');
+    expect(zip.files['mini-cobalt/shop-listing.md']).toContain('See the full paid Apocapalette theme kit or bundle');
     expect(workflowExports.buildThemePackArchive).not.toHaveBeenCalled();
   });
 });
