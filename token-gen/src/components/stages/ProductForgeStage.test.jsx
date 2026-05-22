@@ -28,12 +28,16 @@ describe('ProductForgeStage', () => {
     expect(screen.getByTestId('product-forge-stage')).toBeInTheDocument();
     expect(screen.getByText('Project Manager')).toBeInTheDocument();
     expect(screen.getAllByText('Product Forge')).toHaveLength(2);
+    expect(screen.getByText('Saved Kits')).toBeInTheDocument();
     expect(screen.getByText('Individual Theme Kit')).toBeInTheDocument();
-    expect(screen.getByText('Multi-Kit Bundle')).toBeInTheDocument();
-    expect(screen.getByText('Mini Website Palette / Freebie')).toBeInTheDocument();
+    expect(screen.getByText('Creator Trio / Multi-Kit Bundle')).toBeInTheDocument();
+    expect(screen.getByText('Mini Website Palette')).toBeInTheDocument();
+    expect(screen.getByText('Available Export Kits')).toBeInTheDocument();
+    expect(screen.getByText('Current Theme')).toBeInTheDocument();
     expect(screen.getByText('Bundle Builder')).toBeInTheDocument();
-    expect(screen.getByText('Mini Palette Freebie')).toBeInTheDocument();
-    expect(screen.getByText('Product Packages')).toBeInTheDocument();
+    expect(screen.getByText('Mini Palette Freebies')).toBeInTheDocument();
+    expect(screen.getByText('Product Library / Ready to Upload')).toBeInTheDocument();
+    expect(screen.getByText(/products\/<product-slug>\//i)).toBeInTheDocument();
     expect(await screen.findByTestId('product-export-builder')).toBeInTheDocument();
   });
 

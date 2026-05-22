@@ -152,7 +152,7 @@ function ProjectView({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-bold">Project Manager</h2>
-              <p className="text-sm panel-muted">Start a new project or load an existing build file.</p>
+              <p className="text-sm panel-muted">Manage captured color kits, project files, and batch exports.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button onClick={createNewProject} className="btn-primary">New Project</button>
@@ -202,8 +202,8 @@ function ProjectView({
         <BuildPanel className="panel-surface-strong border rounded-lg p-4 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
             <div>
-              <h3 className="text-lg font-semibold">Build Sections</h3>
-              <p className="text-sm panel-muted">Create sections before capturing palettes.</p>
+              <h3 className="text-lg font-semibold">Kit Capture Setup</h3>
+              <p className="text-sm panel-muted">Create kit slots before capturing palettes from Palette Creator.</p>
             </div>
             <button onClick={addSection} className="btn-primary">Add Section</button>
           </div>
@@ -314,6 +314,7 @@ function ProjectView({
                     <span>{tokenCount} tokens</span>
                     <span>{swatchCount} colors</span>
                     <span>{section.locked ? 'Locked' : 'Unlocked'}</span>
+                    <span>{captured ? 'Export-ready kit' : 'Capture needed'}</span>
                   </div>
                   {previewColors.length > 0 && (
                     <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-2">
