@@ -78,10 +78,10 @@ describe('ProjectView export capability gating', () => {
     expect(screen.queryByText('Product Forge')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /save project/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /export project/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /download all print assets/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /build print pack/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /export project .* penpot/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /export all mood boards/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /export all palettes as designspace/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /build design palette files/i })).not.toBeInTheDocument();
   });
 
   it('renders private forge product and export controls when enabled', async () => {
@@ -95,6 +95,6 @@ describe('ProjectView export capability gating', () => {
 
     expect(await screen.findByTestId('product-forge-stage')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save project/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /download all print assets/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /build print pack/i })).toBeInTheDocument();
   });
 });

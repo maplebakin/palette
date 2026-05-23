@@ -47,9 +47,11 @@ describe('PackageStage', () => {
   it('hides theme pack downloads when export capability is disabled', () => {
     const onDownloadThemePack = vi.fn();
 
-    renderPackageStage({ canExport: false, onDownloadThemePack });
+    const { container } = renderPackageStage({ canExport: false, onDownloadThemePack });
 
+    expect(container).toBeEmptyDOMElement();
     expect(screen.queryByRole('button', { name: /download theme pack/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/without generating files/i)).toBeInTheDocument();
+    expect(screen.queryByText(/print asset pack preview/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/turn on print mode/i)).not.toBeInTheDocument();
   });
 });

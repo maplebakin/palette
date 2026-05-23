@@ -13,11 +13,14 @@ const PackageStage = ({
   canvaPrintHexes,
   onDownloadThemePack,
   canExport = Boolean(onDownloadThemePack),
-}) => (
+}) => {
+  if (!canExport) return null;
+
+  return (
   <StageSection
     id="package"
     title="Package"
-    subtitle={canExport ? 'Download the customer-ready theme pack or prepare optional print assets.' : 'Preview optional print-oriented color sets without generating files.'}
+    subtitle="Download the customer-ready theme pack or prepare optional print assets."
     collapsible
   >
     <section
@@ -39,7 +42,7 @@ const PackageStage = ({
             />
             Print
           </label>
-          {canExport && onDownloadThemePack && (
+          {onDownloadThemePack && (
             <div className="flex min-w-[240px] flex-1 flex-col gap-1">
               <button
                 type="button"
@@ -78,9 +81,7 @@ const PackageStage = ({
                     <span>Print asset pack preview</span>
                   </div>
                   <p className="text-sm panel-muted">
-                    {canExport
-                      ? 'With Print Mode enabled, exports stay CMYK-safe and add foil + ink tokens. The tarball will include:'
-                      : 'With Print Mode enabled, preview CMYK-safe values plus foil and ink color roles.'}
+                    With Print Mode enabled, exports stay CMYK-safe and add foil + ink tokens. The tarball will include:
                   </p>
                   <div className="space-y-2">
                     {printAssetPack.map((item) => (
@@ -120,9 +121,7 @@ const PackageStage = ({
             <div className="p-6 rounded-2xl border shadow-sm panel-surface-soft text-sm">
               <p className="font-semibold mb-2">Enable Print Mode to unlock the asset pack preview.</p>
               <p className="panel-muted mb-4">
-                {canExport
-                  ? 'We’ll tune tokens for CMYK-safe values and add foil + ink layers before exporting.'
-                  : 'We’ll tune preview tokens for CMYK-safe values and add foil + ink layers for exploration.'}
+                We’ll tune tokens for CMYK-safe values and add foil + ink layers before exporting.
               </p>
               <button
                 type="button"
@@ -142,6 +141,7 @@ const PackageStage = ({
       </>
     </section>
   </StageSection>
-);
+  );
+};
 
 export default PackageStage;

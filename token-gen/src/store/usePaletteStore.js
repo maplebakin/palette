@@ -5,7 +5,7 @@ import { persist } from 'zustand/middleware';
 // 1. paletteSlice    - baseColor, mode, themeMode, intensities
 // 2. storageSlice    - savedPalettes, saveStatus, storage flags
 // 3. exportSlice     - export state, asset generation state
-// 4. projectSlice    - projectEdit, project export state
+// 4. projectSlice    - projectEdit, project file state
 
 const createPaletteSlice = (set, get) => ({
   // Core palette state
@@ -164,14 +164,14 @@ const createProjectSlice = (set) => ({
   projectEdit: null,
   projectExportStatus: '',
   projectExporting: false,
-  projectPenpotStatus: '',
-  projectPenpotExporting: false,
+  projectTokenStatus: '',
+  projectTokenExporting: false,
 
   setProjectEdit: (edit) => set({ projectEdit: edit }),
   setProjectExportStatus: (status) => set({ projectExportStatus: status }),
   setProjectExporting: (exporting) => set({ projectExporting: exporting }),
-  setProjectPenpotStatus: (status) => set({ projectPenpotStatus: status }),
-  setProjectPenpotExporting: (exporting) => set({ projectPenpotExporting: exporting }),
+  setProjectTokenStatus: (status) => set({ projectTokenStatus: status }),
+  setProjectTokenExporting: (exporting) => set({ projectTokenExporting: exporting }),
 });
 
 // Combine slices

@@ -33,7 +33,7 @@ const ExportStage = ({
   exportCssVars,
   exportUiThemeCss,
   exportWitchcraftJson,
-  exportDesignSpacePalette,
+  exportDesignPalette,
   onDownloadThemePack,
   onDownloadThemePackWithPrint,
   onGenerateListingAssets,
@@ -130,7 +130,7 @@ const ExportStage = ({
               onExportCssVars={exportCssVars}
               onExportUiThemeCss={exportUiThemeCss}
               onExportWitchcraft={exportWitchcraftJson}
-              onExportDesignSpace={exportDesignSpacePalette}
+              onExportDesignSpace={exportDesignPalette}
               onDownloadThemePack={onDownloadThemePack}
               onDownloadThemePackWithPrint={onDownloadThemePackWithPrint}
               onGenerateListingAssets={onGenerateListingAssets}

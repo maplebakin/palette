@@ -10,12 +10,12 @@ export default function ProjectWorkspace({ controller }) {
           onImportCss={controller.handleCssImport}
           onOpenPalette={controller.openProjectPalette}
           onDownloadPrintAssets={controller.exportProjectPrintAssets}
-          onExportPenpotPrintTokens={controller.exportProjectPenpotPrintTokens}
-          onExportDesignSpacePalettes={controller.exportDesignSpacePalettes}
+          onExportTokenPrintTokens={controller.exportProjectTokenPrintTokens}
+          onExportDesignPalettes={controller.exportDesignPalettes}
           projectExportStatus={controller.projectState.projectExportStatus}
           projectExporting={controller.projectState.projectExporting}
-          projectPenpotStatus={controller.projectState.projectPenpotStatus}
-          projectPenpotExporting={controller.projectState.projectPenpotExporting}
+          projectTokenStatus={controller.projectState.projectTokenStatus}
+          projectTokenExporting={controller.projectState.projectTokenExporting}
           isDev={controller.isDev}
           canExport={controller.canExport}
           tokens={controller.tokens}

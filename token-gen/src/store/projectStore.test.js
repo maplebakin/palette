@@ -58,13 +58,13 @@ describe('projectStore', () => {
     act(() => {
       result.current.setProjectExportStatus('Preparing print assets');
       result.current.setProjectExporting(true);
-      result.current.setProjectPenpotStatus('Building Penpot tokens');
-      result.current.setProjectPenpotExporting(true);
+      result.current.setProjectTokenStatus('Building design tokens');
+      result.current.setProjectTokenExporting(true);
     });
 
     expect(result.current.projectExportStatus).toBe('Preparing print assets');
     expect(result.current.projectExporting).toBe(true);
-    expect(result.current.projectPenpotStatus).toBe('Building Penpot tokens');
-    expect(result.current.projectPenpotExporting).toBe(true);
+    expect(result.current.projectTokenStatus).toBe('Building design tokens');
+    expect(result.current.projectTokenExporting).toBe(true);
   });
 });

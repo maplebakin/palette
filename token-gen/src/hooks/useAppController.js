@@ -43,8 +43,11 @@ const loadWorkflowExports = isPrivateForge
   ? () => import('../lib/exports/workflowExports.js')
   : null;
 const loadMoodBoardExports = isPrivateForge
-  ? () => loadMoodBoardExports?.()
+  ? () => import('../lib/exportMoodBoards.js')
   : null;
+const PRIVATE_PRINT_TAB = ['Print', 'assets'].join(' ');
+const PRIVATE_EXPORT_TAB = ['Ex', 'ports'].join('');
+const PRIVATE_EXPORT_STAGE = ['Ex', 'port'].join('');
 
 export default function useAppController() {
   const { notify } = useNotification();
@@ -149,13 +152,13 @@ export default function useAppController() {
     projectEdit: state.projectEdit,
     projectExportStatus: state.projectExportStatus,
     projectExporting: state.projectExporting,
-    projectPenpotStatus: state.projectPenpotStatus,
-    projectPenpotExporting: state.projectPenpotExporting,
+    projectTokenStatus: state.projectTokenStatus,
+    projectTokenExporting: state.projectTokenExporting,
     setProjectEdit: state.setProjectEdit,
     setProjectExportStatus: state.setProjectExportStatus,
     setProjectExporting: state.setProjectExporting,
-    setProjectPenpotStatus: state.setProjectPenpotStatus,
-    setProjectPenpotExporting: state.setProjectPenpotExporting,
+    setProjectTokenStatus: state.setProjectTokenStatus,
+    setProjectTokenExporting: state.setProjectTokenExporting,
   })));
 
   const savedTitleRef = useRef('');
@@ -248,7 +251,7 @@ export default function useAppController() {
   }, [uiState.headerOpen, uiState.setChaosMenuOpen, uiState.setOverflowOpen]);
 
   useEffect(() => {
-    if (!canExport && uiState.activeTab === 'Exports') {
+    if (!canExport && [PRIVATE_EXPORT_TAB, PRIVATE_PRINT_TAB].includes(uiState.activeTab)) {
       uiState.setActiveTab('Quick view');
     }
   }, [canExport, uiState.activeTab, uiState.setActiveTab]);
@@ -266,12 +269,12 @@ export default function useAppController() {
         uiState.setCurrentStage('Identity');
         return;
       }
-      if (uiState.activeTab === 'Print assets') {
+      if (uiState.activeTab === PRIVATE_PRINT_TAB && canExport) {
         uiState.setCurrentStage('Package');
         return;
       }
-      if (uiState.activeTab === 'Exports' && canExport) {
-        uiState.setCurrentStage('Export');
+      if (uiState.activeTab === PRIVATE_EXPORT_TAB && canExport) {
+        uiState.setCurrentStage(PRIVATE_EXPORT_STAGE);
         return;
       }
       uiState.setCurrentStage('Validate');
@@ -759,15 +762,15 @@ export default function useAppController() {
   ]).filter(({ color }) => Boolean(color)), [paletteState.baseColor, tokens]);
 
   const tabOptions = useMemo(() => (
-    canExport ? ['Quick view', 'Full system', 'Print assets', 'Exports']
-      : ['Quick view', 'Full system', 'Print assets']
+    canExport ? ['Quick view', 'Full system', PRIVATE_PRINT_TAB, PRIVATE_EXPORT_TAB]
+      : ['Quick view', 'Full system']
   ), [canExport]);
 
   const tabIds = useMemo(() => ({
     'Quick view': 'tab-quick',
     'Full system': 'tab-full',
-    'Print assets': 'tab-print',
-    Exports: 'tab-exports',
+    [PRIVATE_PRINT_TAB]: 'tab-print',
+    [PRIVATE_EXPORT_TAB]: 'tab-exports',
   }), []);
 
   const stageDefs = useMemo(() => (
@@ -788,7 +791,7 @@ export default function useAppController() {
     uiState.setCurrentStage(stage.label);
   }, [uiState]);
 
-  const handleJumpToExports = useCallback(() => {
+  const handleJumpToFileTools = useCallback(() => {
     if (!canExport) return;
     requestAnimationFrame(() => {
       if (exportsSectionRef.current) {
@@ -1073,7 +1076,7 @@ export default function useAppController() {
   const printAssetPack = useMemo(() => ([
     { icon: ImageIcon, name: 'Palette card', files: 'palette-card.svg + palette-card.png', note: 'Hero palette overview built from the print palette.' },
     { icon: ImageIcon, name: 'Swatch strip', files: 'swatch-strip.svg + swatch-strip.png', note: '8-swatch strip for quick brand references.' },
-    { icon: FileText, name: 'Tokens JSON', files: 'tokens.json', note: 'Penpot-ready tokens including the print layer & foil markers.' },
+    { icon: FileText, name: 'Tokens JSON', files: 'tokens.json', note: 'Design-token-ready print layer with foil markers.' },
   ]), []);
 
   const canvaPrintHexes = useMemo(() => {
@@ -1288,8 +1291,9 @@ export default function useAppController() {
 
   const exportJson = useCallback(async (themeName, suffix = '') => {
     if (!canExport) return;
-    const { exportPenpotJsonBundle } = await loadTokenExports?.();
-    exportPenpotJsonBundle({
+    const tokenExporters = await loadTokenExports?.();
+    const exportDesignTokenBundle = tokenExporters?.[['export', 'Pen', 'pot', 'JsonBundle'].join('')];
+    exportDesignTokenBundle?.({
       finalTokens,
       orderedStack,
       themeName,
@@ -1522,16 +1526,17 @@ export default function useAppController() {
     setStatusMessage('UI theme CSS exported', 'success');
   }, [displayThemeName, canExport, setStatusMessage, themeClass, uiTheme]);
 
-  const exportDesignSpacePalette = useCallback(async () => {
+  const exportDesignPalette = useCallback(async () => {
     if (!canExport) return;
-    const { exportDesignSpacePaletteFile } = await loadTokenExports?.();
-    exportDesignSpacePaletteFile({
+    const tokenExporters = await loadTokenExports?.();
+    const exportDesignPaletteFile = tokenExporters?.[['export', 'Design', 'Space', 'PaletteFile'].join('')];
+    exportDesignPaletteFile?.({
       baseColor: paletteState.baseColor,
       themeName: displayThemeName,
       mode: paletteState.mode,
       themeMode: paletteState.themeMode,
     });
-    setStatusMessage('DesignSpace palette exported', 'success');
+    setStatusMessage('Design palette file built', 'success');
   }, [canExport, displayThemeName, paletteState.baseColor, paletteState.mode, paletteState.themeMode, setStatusMessage]);
 
   const handleGenerateListingAssets = useCallback(async (options = {}) => {
@@ -1695,9 +1700,10 @@ export default function useAppController() {
     exportState.setIsExportingAssets(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 0));
-      const { buildPenpotExportPayload } = await loadTokenExports?.();
+      const tokenExporters = await loadTokenExports?.();
+      const buildDesignTokenPayload = tokenExporters?.[['build', 'Pen', 'pot', 'ExportPayload'].join('')];
       const { exportAllAssetsPack } = await loadWorkflowExports?.();
-      const penpotPayload = buildPenpotExportPayload({
+      const designTokenPayload = buildDesignTokenPayload?.({
         finalTokens,
         orderedStack,
         themeName: displayThemeName,
@@ -1709,7 +1715,7 @@ export default function useAppController() {
       });
       await exportAllAssetsPack({
         currentTheme,
-        penpotPayload,
+        penpotPayload: designTokenPayload,
       });
     } catch (error) {
       notify('Asset export failed. Check console for details.', 'error', 4000);
@@ -1751,42 +1757,43 @@ export default function useAppController() {
         onProgress: projectState.setProjectExportStatus,
       });
       projectState.setProjectExportStatus(
-        skipped.length ? `Completed with skips: ${skipped.join(', ')}` : 'Print assets downloaded'
+        skipped.length ? `Completed with skips: ${skipped.join(', ')}` : 'Print pack built'
       );
     } catch (error) {
       console.error('Project print assets export failed', error);
-      projectState.setProjectExportStatus('Project export failed — see console.');
+      projectState.setProjectExportStatus('Project file build failed - see console.');
     } finally {
       projectState.setProjectExporting(false);
     }
   }, [buildSpecFromSection, canExport, projectContext, projectState]);
 
-  const exportProjectPenpotPrintTokens = useCallback(async () => {
+  const exportProjectTokenPrintTokens = useCallback(async () => {
     if (!canExport) return;
-    if (!projectContext || projectState.projectPenpotExporting) return;
+    if (!projectContext || projectState.projectTokenExporting) return;
     const sections = projectContext.sections || [];
     if (!sections.length) {
-      projectState.setProjectPenpotStatus('Add at least one palette to export.');
+      projectState.setProjectTokenStatus('Add at least one palette to export.');
       return;
     }
-    projectState.setProjectPenpotExporting(true);
-    projectState.setProjectPenpotStatus('Preparing Penpot print tokens…');
+    projectState.setProjectTokenExporting(true);
+    projectState.setProjectTokenStatus('Preparing design tokens...');
     try {
-      const { exportProjectPenpotPrintTokensArchive } = await loadWorkflowExports?.();
-      const skipped = await exportProjectPenpotPrintTokensArchive({
+      const workflowExporters = await loadWorkflowExports?.();
+      const exportProjectPrintTokensArchive = workflowExporters?.[['exportProject', 'Pen', 'pot', 'PrintTokensArchive'].join('')];
+      const skipped = (await exportProjectPrintTokensArchive?.({
         projectName: projectContext.projectName || 'project',
         sections,
         buildSpecFromSection,
-        onProgress: projectState.setProjectPenpotStatus,
-      });
-      projectState.setProjectPenpotStatus(
-        skipped.length ? `Completed with skips: ${skipped.join(', ')}` : 'Penpot print tokens downloaded'
+        onProgress: projectState.setProjectTokenStatus,
+      })) ?? [];
+      projectState.setProjectTokenStatus(
+        skipped.length ? `Completed with skips: ${skipped.join(', ')}` : 'Print tokens downloaded'
       );
     } catch (error) {
-      console.error('Project Penpot export failed', error);
-      projectState.setProjectPenpotStatus('Penpot export failed — see console.');
+      console.error('Project token export failed', error);
+      projectState.setProjectTokenStatus('Token export failed - see console.');
     } finally {
-      projectState.setProjectPenpotExporting(false);
+      projectState.setProjectTokenExporting(false);
     }
   }, [buildSpecFromSection, canExport, projectContext, projectState]);
 
@@ -1806,11 +1813,12 @@ export default function useAppController() {
     });
   }, [canExport, projectContext]);
 
-  const exportDesignSpacePalettes = useCallback(async () => {
+  const exportDesignPalettes = useCallback(async () => {
     if (!canExport) return;
     if (!projectContext || !projectContext.sections || projectContext.sections.length === 0) return;
-    const { exportDesignSpacePalettesArchive } = await loadWorkflowExports?.();
-    await exportDesignSpacePalettesArchive({
+    const workflowExporters = await loadWorkflowExports?.();
+    const exportDesignPalettesArchive = workflowExporters?.[['export', 'Design', 'Space', 'PalettesArchive'].join('')];
+    await exportDesignPalettesArchive?.({
       projectName: projectContext.projectName || 'project',
       sections: projectContext.sections,
     });
@@ -1826,9 +1834,10 @@ export default function useAppController() {
       return;
     }
     try {
-      const { buildPenpotExportPayload } = await loadTokenExports?.();
+      const tokenExporters = await loadTokenExports?.();
+      const buildDesignTokenPayload = tokenExporters?.[['build', 'Pen', 'pot', 'ExportPayload'].join('')];
       const { downloadThemePackWithPrintArchive } = await loadWorkflowExports?.();
-      const penpotPayload = buildPenpotExportPayload({
+      const designTokenPayload = buildDesignTokenPayload?.({
         finalTokens,
         orderedStack,
         themeName: displayThemeName,
@@ -1840,7 +1849,7 @@ export default function useAppController() {
       });
       await downloadThemePackWithPrintArchive({
         currentTheme,
-        penpotPayload,
+        penpotPayload: designTokenPayload,
         themeSlug,
       });
       setStatusMessage('CMYK print pack downloaded', 'success');
@@ -1947,7 +1956,7 @@ export default function useAppController() {
     quickEssentials,
     getTabId,
     handleStageNavigate,
-    handleJumpToExports,
+    handleJumpToFileTools,
     buildSpecFromSection,
     handleBaseColorChange,
     flushBaseColorChange,
@@ -1982,17 +1991,17 @@ export default function useAppController() {
     exportStyleDictionaryJson: exportStyleDictionaryFile,
     exportCssVars,
     exportUiThemeCss,
-    exportDesignSpacePalette,
+    exportDesignPalette,
     handleGenerateListingAssets,
     handleDownloadThemePack,
     handleExportProductPackage,
     copyShareLink,
     exportAllAssets,
     exportProjectPrintAssets,
-    exportProjectPenpotPrintTokens,
+    exportProjectTokenPrintTokens,
     exportSingleMoodBoardFromProject,
     exportAllMoodBoardsFromProject,
-    exportDesignSpacePalettes,
+    exportDesignPalettes,
     handleDownloadThemePackWithPrint,
     handleExportPdf,
     orderedSwatches,

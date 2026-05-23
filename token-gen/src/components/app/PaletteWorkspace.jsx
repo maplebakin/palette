@@ -3,11 +3,13 @@ import MoodBoard from '../MoodBoard.jsx';
 import ListingAssetsCanvas from '../ListingAssetsCanvas.jsx';
 import ValidateStage from '../stages/ValidateStage.jsx';
 import BuildStage from '../stages/BuildStage.jsx';
-import PackageStage from '../stages/PackageStage.jsx';
 import IdentityStage from '../stages/IdentityStage.jsx';
 import { StageNav } from '../stages/StageLayout.jsx';
 import { isPrivateForge } from '../../lib/capabilities.js';
 
+const PackageStage = isPrivateForge
+  ? lazy(() => import('../stages/PackageStage.jsx'))
+  : null;
 const ExportStage = isPrivateForge
   ? lazy(() => import('../stages/ExportStage.jsx'))
   : null;
@@ -108,23 +110,27 @@ export default function PaletteWorkspace({ controller }) {
         setActiveTab={controller.uiState.setActiveTab}
         getTabId={controller.getTabId}
         tabOptions={controller.tabOptions}
-        onJumpToExports={controller.handleJumpToExports}
-        showExports={controller.canExport}
+        onJumpToFileTools={controller.handleJumpToFileTools}
+        showFileTools={controller.canExport}
         isInternal={controller.isInternal}
       />
 
-      <PackageStage
-        activeTab={controller.uiState.activeTab}
-        getTabId={controller.getTabId}
-        printMode={controller.paletteState.printMode}
-        setPrintMode={controller.paletteState.setPrintMode}
-        tokens={controller.tokens}
-        primaryTextColor={controller.primaryTextColor}
-        printAssetPack={controller.printAssetPack}
-        canvaPrintHexes={controller.canvaPrintHexes}
-        onDownloadThemePack={controller.canExport ? controller.handleDownloadThemePack : undefined}
-        canExport={controller.canExport}
-      />
+      {controller.canExport && PackageStage && (
+        <Suspense fallback={null}>
+          <PackageStage
+            activeTab={controller.uiState.activeTab}
+            getTabId={controller.getTabId}
+            printMode={controller.paletteState.printMode}
+            setPrintMode={controller.paletteState.setPrintMode}
+            tokens={controller.tokens}
+            primaryTextColor={controller.primaryTextColor}
+            printAssetPack={controller.printAssetPack}
+            canvaPrintHexes={controller.canvaPrintHexes}
+            onDownloadThemePack={controller.handleDownloadThemePack}
+            canExport={controller.canExport}
+          />
+        </Suspense>
+      )}
 
       {controller.canExport && ExportStage && (
         <Suspense fallback={null}>
@@ -132,7 +138,7 @@ export default function PaletteWorkspace({ controller }) {
             activeTab={controller.uiState.activeTab}
             getTabId={controller.getTabId}
             exportsSectionRef={controller.exportsSectionRef}
-            handleJumpToExports={controller.handleJumpToExports}
+            handleJumpToExports={controller.handleJumpToFileTools}
             copyShareLink={controller.copyShareLink}
             overflowOpen={controller.uiState.overflowOpen}
             setOverflowOpen={controller.uiState.setOverflowOpen}
@@ -155,7 +161,7 @@ export default function PaletteWorkspace({ controller }) {
             exportCssVars={controller.exportCssVars}
             exportUiThemeCss={controller.exportUiThemeCss}
             exportWitchcraftJson={controller.exportWitchcraftJson}
-            exportDesignSpacePalette={controller.exportDesignSpacePalette}
+            exportDesignPalette={controller.exportDesignPalette}
             onDownloadThemePack={controller.handleDownloadThemePack}
             onDownloadThemePackWithPrint={controller.handleDownloadThemePackWithPrint}
             onGenerateListingAssets={controller.handleGenerateListingAssets}

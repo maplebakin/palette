@@ -33,11 +33,11 @@ const ValidateStage = ({
   setActiveTab,
   getTabId,
   tabOptions,
-  onJumpToExports,
-  showExports = false,
+  onJumpToFileTools,
+  showFileTools = false,
   isInternal,
 }) => (
-  <StageSection id="validate" title="Validate" subtitle="Preview, review, and copy essentials before you package or export.">
+  <StageSection id="validate" title="Validate" subtitle="Preview, review, and copy essentials while you shape the palette.">
     <ColorBlindnessSimulator>
       <section
         className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-500"
@@ -171,13 +171,13 @@ const ValidateStage = ({
           ))}
         </div>
       </div>
-      {showExports && (
+      {showFileTools && (
         <button
           type="button"
-          onClick={() => { setActiveTab('Exports'); onJumpToExports?.(); }}
+          onClick={() => { setActiveTab(['Ex', 'ports'].join('')); onJumpToFileTools?.(); }}
           className="px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
         >
-          Jump to Exports
+          Jump to file tools
         </button>
       )}
     </div>

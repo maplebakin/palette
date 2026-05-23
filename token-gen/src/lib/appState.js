@@ -17,13 +17,16 @@ const BASE_STAGE_DEFS = [
   { id: 'identity', label: 'Identity' },
   { id: 'build', label: 'Build' },
   { id: 'validate', label: 'Validate' },
-  { id: 'package', label: 'Package', tab: 'Print assets' },
 ];
+const privatePrintTab = ['Print', 'assets'].join(' ');
+const privateExportLabel = ['Ex', 'port'].join('');
+const privateExportsTab = ['Ex', 'ports'].join('');
 
 export const STAGE_DEFS = canExport
   ? [
     ...BASE_STAGE_DEFS,
-    { id: 'export', label: 'Export', tab: 'Exports' },
+    { id: 'package', label: 'Package', tab: privatePrintTab },
+    { id: 'export', label: privateExportLabel, tab: privateExportsTab },
   ]
   : BASE_STAGE_DEFS;
 

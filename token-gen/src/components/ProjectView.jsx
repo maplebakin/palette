@@ -41,12 +41,12 @@ function ProjectView({
   onImportCss,
   onOpenPalette,
   onDownloadPrintAssets,
-  onExportPenpotPrintTokens,
-  onExportDesignSpacePalettes,
+  onExportTokenPrintTokens,
+  onExportDesignPalettes,
   projectExportStatus,
   projectExporting,
-  projectPenpotStatus,
-  projectPenpotExporting,
+  projectTokenStatus,
+  projectTokenExporting,
   isDev = false,
   canExport = isDev,
   tokens,
@@ -151,13 +151,13 @@ function ProjectView({
     ? 'Name the project to enable saving.'
     : (!hasSections ? 'Add at least one section before saving.' : '');
   const socDisabledReason = !hasProjectName
-    ? 'Name the project to enable .soc export.'
-    : (!hasCapturedSections ? 'Capture at least one section before exporting.' : '');
+    ? 'Name the project to enable .soc creation.'
+    : (!hasCapturedSections ? 'Capture at least one section before creating a .soc file.' : '');
   const printExportDisabledReason = !hasCapturedSections
-    ? 'Capture at least one palette before batch export.'
+    ? 'Capture at least one palette before building the print pack.'
     : '';
-  const penpotExportDisabledReason = !hasCapturedSections
-    ? 'Capture at least one palette before Penpot export.'
+  const tokenExportDisabledReason = !hasCapturedSections
+    ? 'Capture at least one palette before token export.'
     : '';
 
   return (
@@ -333,7 +333,7 @@ function ProjectView({
                     <span>{tokenCount} tokens</span>
                     <span>{swatchCount} colors</span>
                     <span>{section.locked ? 'Locked' : 'Unlocked'}</span>
-                    <span>{captured ? 'Export-ready kit' : 'Capture needed'}</span>
+                    <span>{captured ? (canExport ? 'Forge-ready kit' : 'Captured kit') : 'Capture needed'}</span>
                   </div>
                   {previewColors.length > 0 && (
                     <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-2">
@@ -493,8 +493,8 @@ function ProjectView({
         <ExportPanel className="panel-surface-strong border rounded-lg p-4">
           <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
             <div>
-              <h3 className="text-lg font-semibold">Export</h3>
-              <p className="text-sm panel-muted">Save the project file or export a .soc bundle.</p>
+              <h3 className="text-lg font-semibold">Project files</h3>
+              <p className="text-sm panel-muted">Save the project file or create a .soc bundle.</p>
             </div>
             <div className="flex flex-col items-end gap-2">
               <div className="flex items-center gap-3 flex-wrap justify-end">
@@ -520,22 +520,22 @@ function ProjectView({
                   disabled={Boolean(printExportDisabledReason) || projectExporting}
                   aria-disabled={Boolean(printExportDisabledReason) || projectExporting}
                 >
-                  {projectExporting ? 'Building print assets…' : <>Download all <span>print assets</span></>}
+                  {projectExporting ? 'Building print pack...' : <>Build <span>print pack</span></>}
                 </button>
                 <button
-                  onClick={onExportPenpotPrintTokens}
+                  onClick={onExportTokenPrintTokens}
                   className="btn-secondary"
-                  disabled={Boolean(penpotExportDisabledReason) || projectPenpotExporting}
-                  aria-disabled={Boolean(penpotExportDisabledReason) || projectPenpotExporting}
+                  disabled={Boolean(tokenExportDisabledReason) || projectTokenExporting}
+                  aria-disabled={Boolean(tokenExportDisabledReason) || projectTokenExporting}
                 >
-                  {projectPenpotExporting ? 'Generating Penpot tokens…' : <>Project <span>Penpot print tokens</span></>}
+                  {projectTokenExporting ? 'Generating design tokens...' : <>Project <span>print tokens</span></>}
                 </button>
               </div>
 
-              {/* Mood Board Export Section */}
+              {/* Mood board file section */}
               {Array.isArray(project.moodBoards) && project.moodBoards.length > 0 && (
                 <div className="w-full mt-4 pt-4 border-t border-panel-surface-soft">
-                  <h4 className="text-md font-semibold mb-2">Mood Board Exports</h4>
+                  <h4 className="text-md font-semibold mb-2">Mood board files</h4>
                   <div className="flex items-center gap-3 flex-wrap">
                     <button
                       onClick={() => {
@@ -552,16 +552,16 @@ function ProjectView({
                 </div>
               )}
 
-              {/* DesignSpace Export Section */}
+              {/* Design palette file section */}
               {Array.isArray(project.sections) && project.sections.length > 0 && (
                 <div className="w-full mt-4 pt-4 border-t border-panel-surface-soft">
-                  <h4 className="text-md font-semibold mb-2">DesignSpace Exports</h4>
+                  <h4 className="text-md font-semibold mb-2">Design palette files</h4>
                   <div className="flex items-center gap-3 flex-wrap">
                     <button
-                      onClick={onExportDesignSpacePalettes}
+                      onClick={onExportDesignPalettes}
                       className="btn-primary"
                     >
-                      Export All Palettes as DesignSpace
+                      Build design palette files
                     </button>
                   </div>
                 </div>
@@ -570,15 +570,15 @@ function ProjectView({
               {(saveDisabledReason || socDisabledReason) && (
                 <div className="text-xs panel-muted text-right space-y-1">
                   {saveDisabledReason && <p>Save disabled: {saveDisabledReason}</p>}
-                  {socDisabledReason && <p>Export disabled: {socDisabledReason}</p>}
+                  {socDisabledReason && <p>.soc creation disabled: {socDisabledReason}</p>}
                 </div>
               )}
-              {(printExportDisabledReason || projectExportStatus || penpotExportDisabledReason || projectPenpotStatus) && (
+              {(printExportDisabledReason || projectExportStatus || tokenExportDisabledReason || projectTokenStatus) && (
                 <div className="text-xs panel-muted text-right space-y-1">
-                  {printExportDisabledReason && <p>Print export disabled: {printExportDisabledReason}</p>}
+                  {printExportDisabledReason && <p>Print pack disabled: {printExportDisabledReason}</p>}
                   {projectExportStatus && <p>{projectExportStatus}</p>}
-                  {penpotExportDisabledReason && <p>Penpot export disabled: {penpotExportDisabledReason}</p>}
-                  {projectPenpotStatus && <p>{projectPenpotStatus}</p>}
+                  {tokenExportDisabledReason && <p>Token export disabled: {tokenExportDisabledReason}</p>}
+                  {projectTokenStatus && <p>{projectTokenStatus}</p>}
                 </div>
               )}
             </div>
