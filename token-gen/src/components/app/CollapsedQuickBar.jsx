@@ -5,6 +5,7 @@ export default function CollapsedQuickBar({
   quickBarBottom,
   pickerColor,
   handleBaseColorChange,
+  flushBaseColorChange,
   baseInput,
   baseError,
   tokens,
@@ -26,7 +27,11 @@ export default function CollapsedQuickBar({
             <input
               type="color"
               value={pickerColor}
-              onChange={(event) => handleBaseColorChange(event.target.value)}
+              onChange={(event) => handleBaseColorChange(event.target.value, { deferInput: true })}
+              onBlur={flushBaseColorChange}
+              onMouseUp={flushBaseColorChange}
+              onPointerUp={flushBaseColorChange}
+              onTouchEnd={flushBaseColorChange}
               className="w-9 h-9 rounded cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
               aria-label="Choose base color"
             />
@@ -34,6 +39,7 @@ export default function CollapsedQuickBar({
               type="text"
               value={baseInput}
               onChange={(event) => handleBaseColorChange(event.target.value)}
+              onBlur={flushBaseColorChange}
               className="w-full bg-transparent text-sm font-mono panel-text outline-none uppercase border-b border-transparent"
               style={{ borderColor: baseError ? tokens.status.error : 'transparent' }}
               aria-label="Base color hex value"

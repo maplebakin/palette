@@ -19,6 +19,7 @@ const BuildStage = ({
   baseInput,
   baseError,
   handleBaseColorChange,
+  flushBaseColorChange,
   presets,
   applyPreset,
   showFineTune,
@@ -104,7 +105,11 @@ const BuildStage = ({
             <input
               type="color"
               value={pickerColor}
-              onChange={(e) => handleBaseColorChange(e.target.value)}
+              onChange={(e) => handleBaseColorChange(e.target.value, { deferInput: true })}
+              onBlur={flushBaseColorChange}
+              onMouseUp={flushBaseColorChange}
+              onPointerUp={flushBaseColorChange}
+              onTouchEnd={flushBaseColorChange}
               className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
               aria-label="Choose base color"
             />
@@ -112,6 +117,7 @@ const BuildStage = ({
               type="text"
               value={baseInput}
               onChange={(e) => handleBaseColorChange(e.target.value)}
+              onBlur={flushBaseColorChange}
               className="w-24 bg-transparent text-sm font-mono panel-text outline-none uppercase border-b border-transparent"
               style={{ borderColor: baseError ? tokens.status.error : 'transparent' }}
               aria-label="Base color hex value"
