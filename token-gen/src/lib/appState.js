@@ -6,6 +6,7 @@ import {
 } from './colorUtils.js';
 import { orderedSwatchSpec } from './tokens.js';
 import { nestTokens } from './theme/paths.js';
+import { canExport } from './capabilities.js';
 
 export const STORAGE_KEYS = {
   current: 'token-gen/current-palette',
@@ -19,7 +20,7 @@ const BASE_STAGE_DEFS = [
   { id: 'package', label: 'Package', tab: 'Print assets' },
 ];
 
-export const STAGE_DEFS = import.meta.env.DEV
+export const STAGE_DEFS = canExport
   ? [
     ...BASE_STAGE_DEFS,
     { id: 'export', label: 'Export', tab: 'Exports' },

@@ -61,6 +61,7 @@ export default function AppShell() {
             sanitizeThemeName={controller.sanitizeThemeName}
             sanitizePrefix={controller.sanitizePrefix}
             projectEdit={controller.projectState.projectEdit}
+            canExport={controller.canExport}
             onSaveProjectPalette={() => controller.saveProjectPalette()}
             onSaveProjectPaletteAsNew={() => controller.saveProjectPalette({ asNew: true })}
             onCancelProjectEdit={controller.cancelProjectEdit}
@@ -71,6 +72,7 @@ export default function AppShell() {
             quickBarBottom={controller.quickBarBottom}
             pickerColor={controller.pickerColor}
             handleBaseColorChange={controller.handleBaseColorChange}
+            flushBaseColorChange={controller.flushBaseColorChange}
             baseInput={controller.paletteState.baseInput}
             baseError={controller.paletteState.baseError}
             tokens={controller.tokens}

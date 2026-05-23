@@ -1,8 +1,9 @@
 import React, { lazy, Suspense } from 'react';
 import { CheckCircle2, Download, FolderOpen, Layers, PackageCheck, PackageOpen, Sparkles } from 'lucide-react';
 import { StageSection } from './StageLayout.jsx';
+import { isPrivateForge } from '../../lib/capabilities.js';
 
-const ProductExportBuilder = import.meta.env.DEV
+const ProductExportBuilder = isPrivateForge
   ? lazy(() => import('../ProductExportBuilder.jsx'))
   : null;
 

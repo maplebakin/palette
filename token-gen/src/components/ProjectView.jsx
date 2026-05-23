@@ -5,10 +5,16 @@ import { useNotification } from '../context/NotificationContext';
 import { mergeProjectColors } from '../lib/projectMerge';
 import { flattenTokens } from '../lib/theme/paths';
 import { generateSoc } from '../lib/soc-exporter';
-import { buildExportFilename, downloadFile, exportJson } from '../lib/export';
+import { isPrivateForge } from '../lib/capabilities.js';
 
-const ProductForgeStage = import.meta.env.DEV
+const ProductForgeStage = isPrivateForge
   ? lazy(() => import('./stages/ProductForgeStage.jsx'))
+  : null;
+const loadMoodBoardExports = isPrivateForge
+  ? () => import('../lib/exportMoodBoards')
+  : null;
+const loadBasicExports = isPrivateForge
+  ? () => import('../lib/export')
   : null;
 
 const StartPanel = ({ children, className }) => (
@@ -42,6 +48,7 @@ function ProjectView({
   projectPenpotStatus,
   projectPenpotExporting,
   isDev = false,
+  canExport = isDev,
   tokens,
   primaryTextColor,
   productExportThemes = [],
@@ -84,11 +91,19 @@ function ProjectView({
     }
   };
 
-  const handleFileSave = () => {
+  const handleFileSave = async () => {
+    if (!canExport) return;
+    const exports = await loadBasicExports?.();
+    if (!exports) return;
+    const { exportJson } = exports;
     exportJson(projectName || 'project', '.apocaproject', project, { sanitize: false });
   };
 
-  const handleExportSoc = () => {
+  const handleExportSoc = async () => {
+    if (!canExport) return;
+    const exports = await loadBasicExports?.();
+    if (!exports) return;
+    const { buildExportFilename, downloadFile } = exports;
     const mergedColors = mergeProjectColors(project);
     const socContent = generateSoc(projectName, mergedColors);
     const filename = buildExportFilename(projectName || 'project', '', 'soc', { sanitize: false });
@@ -152,7 +167,11 @@ function ProjectView({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-bold">Project Manager</h2>
-              <p className="text-sm panel-muted">Manage captured color kits, project files, and batch exports.</p>
+              <p className="text-sm panel-muted">
+                {canExport
+                  ? 'Manage captured color kits, project files, and batch exports.'
+                  : 'Manage captured color kits and reopen them for palette exploration.'}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button onClick={createNewProject} className="btn-primary">New Project</button>
@@ -334,10 +353,10 @@ function ProjectView({
           )}
         </ReviewPanel>
 
-        {isDev && ProductForgeStage && (
+        {canExport && ProductForgeStage && (
           <Suspense fallback={null}>
             <ProductForgeStage
-              isDev={isDev}
+              isDev={canExport}
               tokens={tokens}
               primaryTextColor={primaryTextColor}
               productExportThemes={productExportThemes}
@@ -423,17 +442,19 @@ function ProjectView({
                       >
                         Apply
                       </button>
-                      <button
-                        onClick={() => {
-                          // Export this specific mood board
-                          import('../lib/exportMoodBoards').then(({ exportSingleMoodBoard }) => {
-                            exportSingleMoodBoard(moodBoard, projectName || 'project');
-                          });
-                        }}
-                        className="btn-sm"
-                      >
-                        Export
-                      </button>
+                      {canExport && (
+                        <button
+                          onClick={() => {
+                            // Export this specific mood board
+                            loadMoodBoardExports?.().then(({ exportSingleMoodBoard }) => {
+                              exportSingleMoodBoard(moodBoard, projectName || 'project');
+                            });
+                          }}
+                          className="btn-sm"
+                        >
+                          Export
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           if (!window.confirm(`Remove "${moodBoard.title}" from the project?`)) return;
@@ -468,6 +489,7 @@ function ProjectView({
           </div>
         )}
 
+        {canExport && (
         <ExportPanel className="panel-surface-strong border rounded-lg p-4">
           <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
             <div>
@@ -490,7 +512,7 @@ function ProjectView({
                   disabled={Boolean(socDisabledReason)}
                   aria-disabled={Boolean(socDisabledReason)}
                 >
-                  Export Project .soc
+                  Project .soc
                 </button>
                 <button
                   onClick={onDownloadPrintAssets}
@@ -498,7 +520,7 @@ function ProjectView({
                   disabled={Boolean(printExportDisabledReason) || projectExporting}
                   aria-disabled={Boolean(printExportDisabledReason) || projectExporting}
                 >
-                  {projectExporting ? 'Building print assets…' : 'Download all print assets'}
+                  {projectExporting ? 'Building print assets…' : <>Download all <span>print assets</span></>}
                 </button>
                 <button
                   onClick={onExportPenpotPrintTokens}
@@ -506,7 +528,7 @@ function ProjectView({
                   disabled={Boolean(penpotExportDisabledReason) || projectPenpotExporting}
                   aria-disabled={Boolean(penpotExportDisabledReason) || projectPenpotExporting}
                 >
-                  {projectPenpotExporting ? 'Generating Penpot tokens…' : 'Export Project → Penpot (Print Tokens)'}
+                  {projectPenpotExporting ? 'Generating Penpot tokens…' : <>Project <span>Penpot print tokens</span></>}
                 </button>
               </div>
 
@@ -518,7 +540,7 @@ function ProjectView({
                     <button
                       onClick={() => {
                         // Import the export function dynamically
-                        import('../lib/exportMoodBoards').then(({ exportMoodBoardCollection }) => {
+                        loadMoodBoardExports?.().then(({ exportMoodBoardCollection }) => {
                           exportMoodBoardCollection(project.moodBoards, projectName || 'project');
                         });
                       }}
@@ -562,6 +584,7 @@ function ProjectView({
             </div>
           </div>
         </ExportPanel>
+        )}
       </div>
     </div>
   );

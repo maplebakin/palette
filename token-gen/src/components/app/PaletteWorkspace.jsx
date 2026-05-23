@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import MoodBoard from '../MoodBoard.jsx';
 import ListingAssetsCanvas from '../ListingAssetsCanvas.jsx';
 import ValidateStage from '../stages/ValidateStage.jsx';
 import BuildStage from '../stages/BuildStage.jsx';
 import PackageStage from '../stages/PackageStage.jsx';
-import ExportStage from '../stages/ExportStage.jsx';
 import IdentityStage from '../stages/IdentityStage.jsx';
 import { StageNav } from '../stages/StageLayout.jsx';
+import { isPrivateForge } from '../../lib/capabilities.js';
+
+const ExportStage = isPrivateForge
+  ? lazy(() => import('../stages/ExportStage.jsx'))
+  : null;
 
 export default function PaletteWorkspace({ controller }) {
   return (
@@ -36,6 +40,7 @@ export default function PaletteWorkspace({ controller }) {
         baseInput={controller.paletteState.baseInput}
         baseError={controller.paletteState.baseError}
         handleBaseColorChange={controller.handleBaseColorChange}
+        flushBaseColorChange={controller.flushBaseColorChange}
         presets={controller.presets}
         applyPreset={controller.applyPreset}
         showFineTune={controller.uiState.showFineTune}
@@ -78,8 +83,8 @@ export default function PaletteWorkspace({ controller }) {
         onSaveDraft={controller.saveMoodBoardDraft}
         copyHexValue={controller.copyHexValue}
         canSaveDraft={Boolean(controller.projectContext)}
-        onExportSingleMoodBoard={controller.exportSingleMoodBoardFromProject}
-        onExportAllMoodBoards={controller.exportAllMoodBoardsFromProject}
+        onExportSingleMoodBoard={controller.canExport ? controller.exportSingleMoodBoardFromProject : undefined}
+        onExportAllMoodBoards={controller.canExport ? controller.exportAllMoodBoardsFromProject : undefined}
       />
 
       <ValidateStage
@@ -104,7 +109,7 @@ export default function PaletteWorkspace({ controller }) {
         getTabId={controller.getTabId}
         tabOptions={controller.tabOptions}
         onJumpToExports={controller.handleJumpToExports}
-        showExports={controller.isDev}
+        showExports={controller.canExport}
         isInternal={controller.isInternal}
       />
 
@@ -117,47 +122,50 @@ export default function PaletteWorkspace({ controller }) {
         primaryTextColor={controller.primaryTextColor}
         printAssetPack={controller.printAssetPack}
         canvaPrintHexes={controller.canvaPrintHexes}
-        onDownloadThemePack={controller.handleDownloadThemePack}
+        onDownloadThemePack={controller.canExport ? controller.handleDownloadThemePack : undefined}
+        canExport={controller.canExport}
       />
 
-      {controller.isDev && (
-        <ExportStage
-          activeTab={controller.uiState.activeTab}
-          getTabId={controller.getTabId}
-          exportsSectionRef={controller.exportsSectionRef}
-          handleJumpToExports={controller.handleJumpToExports}
-          copyShareLink={controller.copyShareLink}
-          overflowOpen={controller.uiState.overflowOpen}
-          setOverflowOpen={controller.uiState.setOverflowOpen}
-          tokens={controller.tokens}
-          ctaTextColor={controller.ctaTextColor}
-          primaryTextColor={controller.primaryTextColor}
-          finalTokens={controller.finalTokens}
-          printMode={controller.paletteState.printMode}
-          isExportingAssets={controller.exportState.isExportingAssets}
-          exportError={controller.exportState.exportError}
-          exportBlocked={controller.exportState.exportBlocked}
-          printSupported={controller.exportState.printSupported}
-          neutralButtonText={controller.neutralButtonText}
-          exportAllAssets={controller.exportAllAssets}
-          handleExportPdf={controller.handleExportPdf}
-          exportJson={controller.exportJson}
-          exportGenericJson={controller.exportGenericJson}
-          exportFigmaTokensJson={controller.exportFigmaTokensJson}
-          exportStyleDictionaryJson={controller.exportStyleDictionaryJson}
-          exportCssVars={controller.exportCssVars}
-          exportUiThemeCss={controller.exportUiThemeCss}
-          exportWitchcraftJson={controller.exportWitchcraftJson}
-          exportDesignSpacePalette={controller.exportDesignSpacePalette}
-          onDownloadThemePack={controller.handleDownloadThemePack}
-          onDownloadThemePackWithPrint={controller.handleDownloadThemePackWithPrint}
-          onGenerateListingAssets={controller.handleGenerateListingAssets}
-          displayThemeName={controller.displayThemeName}
-          isInternal={controller.isInternal}
-        />
+      {controller.canExport && ExportStage && (
+        <Suspense fallback={null}>
+          <ExportStage
+            activeTab={controller.uiState.activeTab}
+            getTabId={controller.getTabId}
+            exportsSectionRef={controller.exportsSectionRef}
+            handleJumpToExports={controller.handleJumpToExports}
+            copyShareLink={controller.copyShareLink}
+            overflowOpen={controller.uiState.overflowOpen}
+            setOverflowOpen={controller.uiState.setOverflowOpen}
+            tokens={controller.tokens}
+            ctaTextColor={controller.ctaTextColor}
+            primaryTextColor={controller.primaryTextColor}
+            finalTokens={controller.finalTokens}
+            printMode={controller.paletteState.printMode}
+            isExportingAssets={controller.exportState.isExportingAssets}
+            exportError={controller.exportState.exportError}
+            exportBlocked={controller.exportState.exportBlocked}
+            printSupported={controller.exportState.printSupported}
+            neutralButtonText={controller.neutralButtonText}
+            exportAllAssets={controller.exportAllAssets}
+            handleExportPdf={controller.handleExportPdf}
+            exportJson={controller.exportJson}
+            exportGenericJson={controller.exportGenericJson}
+            exportFigmaTokensJson={controller.exportFigmaTokensJson}
+            exportStyleDictionaryJson={controller.exportStyleDictionaryJson}
+            exportCssVars={controller.exportCssVars}
+            exportUiThemeCss={controller.exportUiThemeCss}
+            exportWitchcraftJson={controller.exportWitchcraftJson}
+            exportDesignSpacePalette={controller.exportDesignSpacePalette}
+            onDownloadThemePack={controller.handleDownloadThemePack}
+            onDownloadThemePackWithPrint={controller.handleDownloadThemePackWithPrint}
+            onGenerateListingAssets={controller.handleGenerateListingAssets}
+            displayThemeName={controller.displayThemeName}
+            isInternal={controller.isInternal}
+          />
+        </Suspense>
       )}
 
-      {controller.isDev && (
+      {controller.canExport && (
         <ListingAssetsCanvas
           tokens={controller.tokens}
           baseColor={controller.paletteState.baseColor}

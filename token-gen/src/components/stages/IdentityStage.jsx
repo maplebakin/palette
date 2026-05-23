@@ -34,6 +34,7 @@ const IdentityStage = ({
   sanitizeThemeName,
   sanitizePrefix,
   projectEdit,
+  canExport = false,
   onSaveProjectPalette,
   onSaveProjectPaletteAsNew,
   onCancelProjectEdit,
@@ -149,16 +150,18 @@ const IdentityStage = ({
                         ))}
                       </select>
                     </div>
-                    <button
-                      type="button"
-                      onClick={exportSavedPalettes}
-                      className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border shrink-0 whitespace-nowrap hover:opacity-90 disabled:opacity-60"
-                      disabled={savedPalettes.length === 0}
-                      title={savedPalettes.length === 0 ? 'No saved palettes to export' : 'Export saved palettes'}
-                    >
-                      <Download size={14} />
-                      Export saved
-                    </button>
+                    {canExport && (
+                      <button
+                        type="button"
+                        onClick={exportSavedPalettes}
+                        className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border shrink-0 whitespace-nowrap hover:opacity-90 disabled:opacity-60"
+                        disabled={savedPalettes.length === 0}
+                        title={savedPalettes.length === 0 ? 'No saved palettes to export' : 'Export saved palettes'}
+                      >
+                        <Download size={14} />
+                        Export saved
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={triggerSavedPalettesImport}

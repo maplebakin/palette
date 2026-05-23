@@ -30,37 +30,28 @@ import {
 import { buildTheme } from '../lib/theme/engine.js';
 import { buildThemeCss, getThemeClassName, THEME_CLASSNAMES } from '../lib/themeStyles.js';
 import { buildSectionSnapshotFromPalette, toGeneratorMode } from '../lib/projectUtils.js';
-import { exportMoodBoardCollection, exportSingleMoodBoard } from '../lib/exportMoodBoards.js';
-import {
-  buildPenpotExportPayload,
-  exportCssVariablesFile,
-  exportDesignSpacePaletteFile,
-  exportFigmaTokensJson,
-  exportGenericJsonTokens,
-  exportPenpotJsonBundle,
-  exportSavedPalettesJson,
-  exportStyleDictionaryJson,
-  exportUiThemeCssFile,
-  exportWitchcraftJsonTokens,
-} from '../lib/exports/tokenExports.js';
-import {
-  downloadThemePackArchive,
-  downloadThemePackWithPrintArchive,
-  exportAllAssetsPack,
-  exportDesignSpacePalettesArchive,
-  exportProjectPenpotPrintTokensArchive,
-  exportProjectPrintAssetsArchive,
-  generateListingAssetsArchive,
-} from '../lib/exports/workflowExports.js';
+import { canExport as exportCapability, isPrivateForge } from '../lib/capabilities.js';
 import { useExportStore } from '../store/exportStore.js';
 import { usePaletteStore } from '../store/paletteStore.js';
 import { useProjectStore } from '../store/projectStore.js';
 import { useUiStore } from '../store/uiStore.js';
 
+const loadTokenExports = isPrivateForge
+  ? () => import('../lib/exports/tokenExports.js')
+  : null;
+const loadWorkflowExports = isPrivateForge
+  ? () => import('../lib/exports/workflowExports.js')
+  : null;
+const loadMoodBoardExports = isPrivateForge
+  ? () => loadMoodBoardExports?.()
+  : null;
+
 export default function useAppController() {
   const { notify } = useNotification();
   const projectContext = useContext(ProjectContext);
   const isDev = import.meta.env.DEV;
+  const canExport = exportCapability;
+  const isForgeMode = isPrivateForge;
   const isInternal = import.meta.env.VITE_INTERNAL === 'true';
 
   const paletteState = usePaletteStore(useShallow((state) => ({
@@ -179,6 +170,9 @@ export default function useAppController() {
   const listingSwatchRef = useRef(null);
   const listingSnippetRef = useRef(null);
   const statusTimerRef = useRef(null);
+  const baseColorFrameRef = useRef(null);
+  const pendingBaseColorRef = useRef(null);
+  const pendingBaseInputRef = useRef(null);
 
   const pickerColor = paletteState.baseColor.length === 9 && paletteState.baseColor.startsWith('#')
     ? paletteState.baseColor.slice(0, 7)
@@ -254,10 +248,10 @@ export default function useAppController() {
   }, [uiState.headerOpen, uiState.setChaosMenuOpen, uiState.setOverflowOpen]);
 
   useEffect(() => {
-    if (!isDev && uiState.activeTab === 'Exports') {
+    if (!canExport && uiState.activeTab === 'Exports') {
       uiState.setActiveTab('Quick view');
     }
-  }, [isDev, uiState.activeTab, uiState.setActiveTab]);
+  }, [canExport, uiState.activeTab, uiState.setActiveTab]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -276,7 +270,7 @@ export default function useAppController() {
         uiState.setCurrentStage('Package');
         return;
       }
-      if (uiState.activeTab === 'Exports' && isDev) {
+      if (uiState.activeTab === 'Exports' && canExport) {
         uiState.setCurrentStage('Export');
         return;
       }
@@ -285,7 +279,7 @@ export default function useAppController() {
     updateStage();
     window.addEventListener('hashchange', updateStage);
     return () => window.removeEventListener('hashchange', updateStage);
-  }, [isDev, uiState.activeTab, uiState.view, uiState.setCurrentStage]);
+  }, [canExport, uiState.activeTab, uiState.view, uiState.setCurrentStage]);
 
   const buildSpecFromSection = useCallback((section) => {
     if (!section || typeof section !== 'object') return null;
@@ -307,16 +301,57 @@ export default function useAppController() {
     };
   }, []);
 
-  const handleBaseColorChange = useCallback((value) => {
-    paletteState.setBaseInput(value);
+  const flushBaseColorChange = useCallback(() => {
+    const pending = pendingBaseColorRef.current;
+    if (!pending) return;
+    if (baseColorFrameRef.current && typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(baseColorFrameRef.current);
+    }
+    baseColorFrameRef.current = null;
+    pendingBaseColorRef.current = null;
+    const pendingInput = pendingBaseInputRef.current;
+    pendingBaseInputRef.current = null;
+    if (pendingInput) paletteState.setBaseInput(pendingInput);
+    paletteState.setBaseColor(pending);
+  }, [paletteState.setBaseColor, paletteState.setBaseInput]);
+
+  const scheduleBaseColorCommit = useCallback((sanitized, { immediate = false, inputValue = null } = {}) => {
+    pendingBaseColorRef.current = sanitized;
+    pendingBaseInputRef.current = inputValue;
+    const canUseRaf = typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function';
+    if (immediate || !canUseRaf) {
+      flushBaseColorChange();
+      return;
+    }
+    if (baseColorFrameRef.current) return;
+    baseColorFrameRef.current = window.requestAnimationFrame(() => {
+      baseColorFrameRef.current = null;
+      const pending = pendingBaseColorRef.current;
+      const pendingInput = pendingBaseInputRef.current;
+      pendingBaseColorRef.current = null;
+      pendingBaseInputRef.current = null;
+      if (pendingInput) paletteState.setBaseInput(pendingInput);
+      if (pending) paletteState.setBaseColor(pending);
+    });
+  }, [flushBaseColorChange, paletteState.setBaseColor, paletteState.setBaseInput]);
+
+  const handleBaseColorChange = useCallback((value, options = {}) => {
+    const deferInput = options.deferInput === true;
+    if (!deferInput) paletteState.setBaseInput(value);
     const sanitized = sanitizeHexInput(value);
     if (!sanitized) {
+      if (baseColorFrameRef.current && typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+        window.cancelAnimationFrame(baseColorFrameRef.current);
+      }
+      baseColorFrameRef.current = null;
+      pendingBaseColorRef.current = null;
+      pendingBaseInputRef.current = null;
       paletteState.setBaseError('Enter a hex value like #FF00FF or #ABC');
       return;
     }
     paletteState.setBaseError('');
-    paletteState.setBaseColor(sanitized);
-  }, [paletteState.setBaseColor, paletteState.setBaseError, paletteState.setBaseInput]);
+    scheduleBaseColorCommit(sanitized, { ...options, inputValue: deferInput ? value : null });
+  }, [paletteState.setBaseError, paletteState.setBaseInput, scheduleBaseColorCommit]);
 
   useEffect(() => {
     try {
@@ -440,6 +475,12 @@ export default function useAppController() {
 
   useEffect(() => () => {
     if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    if (baseColorFrameRef.current && typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(baseColorFrameRef.current);
+    }
+    baseColorFrameRef.current = null;
+    pendingBaseColorRef.current = null;
+    pendingBaseInputRef.current = null;
     [harmonyDebounceRef, neutralDebounceRef, accentDebounceRef, apocalypseDebounceRef, popDebounceRef].forEach((ref) => {
       if (ref.current) clearTimeout(ref.current);
     });
@@ -718,10 +759,9 @@ export default function useAppController() {
   ]).filter(({ color }) => Boolean(color)), [paletteState.baseColor, tokens]);
 
   const tabOptions = useMemo(() => (
-    isDev
-      ? ['Quick view', 'Full system', 'Print assets', 'Exports']
+    canExport ? ['Quick view', 'Full system', 'Print assets', 'Exports']
       : ['Quick view', 'Full system', 'Print assets']
-  ), [isDev]);
+  ), [canExport]);
 
   const tabIds = useMemo(() => ({
     'Quick view': 'tab-quick',
@@ -731,8 +771,8 @@ export default function useAppController() {
   }), []);
 
   const stageDefs = useMemo(() => (
-    isDev ? STAGE_DEFS : STAGE_DEFS.filter((stage) => stage.id !== 'export')
-  ), [isDev]);
+    canExport ? STAGE_DEFS : STAGE_DEFS.filter((stage) => stage.id !== 'export')
+  ), [canExport]);
 
   const getTabId = useCallback(
     (tab) => tabIds[tab] || `tab-${tab.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`,
@@ -749,22 +789,24 @@ export default function useAppController() {
   }, [uiState]);
 
   const handleJumpToExports = useCallback(() => {
-    if (!isDev) return;
+    if (!canExport) return;
     requestAnimationFrame(() => {
       if (exportsSectionRef.current) {
         exportsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     });
-  }, [isDev]);
+  }, [canExport]);
 
-  const exportSavedPalettes = useCallback(() => {
+  const exportSavedPalettes = useCallback(async () => {
+    if (!canExport) return;
     if (!paletteState.savedPalettes.length) {
       setStatusMessage('No saved palettes to export', 'warn');
       return;
     }
+    const { exportSavedPalettesJson } = await loadTokenExports?.();
     exportSavedPalettesJson(paletteState.savedPalettes);
     setStatusMessage('Saved palettes exported', 'success');
-  }, [paletteState.savedPalettes, setStatusMessage]);
+  }, [canExport, paletteState.savedPalettes, setStatusMessage]);
 
   const importSavedPalettes = useCallback((event) => {
     const file = event.target.files?.[0];
@@ -1244,8 +1286,9 @@ export default function useAppController() {
     };
   }, [displayThemeName, updatePrintMeta]);
 
-  const exportJson = useCallback((themeName, suffix = '') => {
-    if (!isDev) return;
+  const exportJson = useCallback(async (themeName, suffix = '') => {
+    if (!canExport) return;
+    const { exportPenpotJsonBundle } = await loadTokenExports?.();
     exportPenpotJsonBundle({
       finalTokens,
       orderedStack,
@@ -1257,10 +1300,11 @@ export default function useAppController() {
       printMode: paletteState.printMode,
       tokenPrefix: paletteState.tokenPrefix,
     });
-  }, [finalTokens, isDev, isDark, orderedStack, paletteState.baseColor, paletteState.mode, paletteState.printMode, paletteState.tokenPrefix]);
+  }, [finalTokens, canExport, isDark, orderedStack, paletteState.baseColor, paletteState.mode, paletteState.printMode, paletteState.tokenPrefix]);
 
-  const exportGenericJson = useCallback(() => {
-    if (!isDev) return;
+  const exportGenericJson = useCallback(async () => {
+    if (!canExport) return;
+    const { exportGenericJsonTokens } = await loadTokenExports?.();
     exportGenericJsonTokens({
       finalTokens,
       themeName: displayThemeName,
@@ -1270,43 +1314,47 @@ export default function useAppController() {
       printMode: paletteState.printMode,
       tokenPrefix: paletteState.tokenPrefix,
     });
-  }, [displayThemeName, finalTokens, isDev, isDark, paletteState.baseColor, paletteState.mode, paletteState.printMode, paletteState.tokenPrefix]);
+  }, [displayThemeName, finalTokens, canExport, isDark, paletteState.baseColor, paletteState.mode, paletteState.printMode, paletteState.tokenPrefix]);
 
-  const exportWitchcraftJson = useCallback(() => {
-    if (!isDev) return;
+  const exportWitchcraftJson = useCallback(async () => {
+    if (!canExport) return;
+    const { exportWitchcraftJsonTokens } = await loadTokenExports?.();
     exportWitchcraftJsonTokens({
       finalTokens,
       themeName: displayThemeName,
       mode: paletteState.mode,
       isDark,
     });
-  }, [displayThemeName, finalTokens, isDev, isDark, paletteState.mode]);
+  }, [displayThemeName, finalTokens, canExport, isDark, paletteState.mode]);
 
-  const exportFigmaTokensFile = useCallback(() => {
-    if (!isDev) return;
+  const exportFigmaTokensFile = useCallback(async () => {
+    if (!canExport) return;
+    const { exportFigmaTokensJson } = await loadTokenExports?.();
     exportFigmaTokensJson({
       finalTokens,
       tokenPrefix: paletteState.tokenPrefix,
     });
-  }, [finalTokens, isDev, paletteState.tokenPrefix]);
+  }, [finalTokens, canExport, paletteState.tokenPrefix]);
 
-  const exportStyleDictionaryFile = useCallback(() => {
-    if (!isDev) return;
+  const exportStyleDictionaryFile = useCallback(async () => {
+    if (!canExport) return;
+    const { exportStyleDictionaryJson } = await loadTokenExports?.();
     exportStyleDictionaryJson({
       finalTokens,
       tokenPrefix: paletteState.tokenPrefix,
     });
-  }, [finalTokens, isDev, paletteState.tokenPrefix]);
+  }, [finalTokens, canExport, paletteState.tokenPrefix]);
 
-  const exportCssVars = useCallback(() => {
-    if (!isDev) return;
+  const exportCssVars = useCallback(async () => {
+    if (!canExport) return;
+    const { exportCssVariablesFile } = await loadTokenExports?.();
     exportCssVariablesFile({
       themeMaster,
       themeName: displayThemeName,
       tokenPrefix: sanitizePrefix(paletteState.tokenPrefix),
     });
     setStatusMessage('CSS variables exported', 'success');
-  }, [displayThemeName, isDev, paletteState.tokenPrefix, setStatusMessage, themeMaster]);
+  }, [displayThemeName, canExport, paletteState.tokenPrefix, setStatusMessage, themeMaster]);
 
   const headerBackground = hexWithAlpha(tokens.surfaces['header-background'], 0.9);
   const headerGlowA = hexWithAlpha(tokens.brand.primary, 0.08);
@@ -1463,17 +1511,20 @@ export default function useAppController() {
     if (themeMeta) themeMeta.setAttribute('content', pageBackground);
   }, [pageBackground, themeClass, themeCssText]);
 
-  const exportUiThemeCss = useCallback(() => {
-    if (!isDev) return;
+  const exportUiThemeCss = useCallback(async () => {
+    if (!canExport) return;
+    const { exportUiThemeCssFile } = await loadTokenExports?.();
     exportUiThemeCssFile({
       uiTheme,
       themeClass,
       themeName: displayThemeName,
     });
     setStatusMessage('UI theme CSS exported', 'success');
-  }, [displayThemeName, isDev, setStatusMessage, themeClass, uiTheme]);
+  }, [displayThemeName, canExport, setStatusMessage, themeClass, uiTheme]);
 
-  const exportDesignSpacePalette = useCallback(() => {
+  const exportDesignSpacePalette = useCallback(async () => {
+    if (!canExport) return;
+    const { exportDesignSpacePaletteFile } = await loadTokenExports?.();
     exportDesignSpacePaletteFile({
       baseColor: paletteState.baseColor,
       themeName: displayThemeName,
@@ -1481,7 +1532,7 @@ export default function useAppController() {
       themeMode: paletteState.themeMode,
     });
     setStatusMessage('DesignSpace palette exported', 'success');
-  }, [displayThemeName, paletteState.baseColor, paletteState.mode, paletteState.themeMode, setStatusMessage]);
+  }, [canExport, displayThemeName, paletteState.baseColor, paletteState.mode, paletteState.themeMode, setStatusMessage]);
 
   const handleGenerateListingAssets = useCallback(async (options = {}) => {
     const {
@@ -1490,7 +1541,7 @@ export default function useAppController() {
       zipName,
       successMessage = 'Listing assets generated',
     } = options;
-    if (!isDev) return;
+    if (!canExport) return;
     if (typeof Blob === 'undefined') {
       notify('File export is not supported in this browser', 'error');
       return;
@@ -1508,6 +1559,7 @@ export default function useAppController() {
       return;
     }
     try {
+      const { generateListingAssetsArchive } = await loadWorkflowExports?.();
       await generateListingAssetsArchive({
         coverNode,
         swatchNode,
@@ -1527,14 +1579,16 @@ export default function useAppController() {
       console.error('Listing assets export failed', error);
       notify('Listing assets export failed. Check console for details.', 'error');
     }
-  }, [displayThemeName, isDev, notify, paletteState.baseColor, paletteState.mode, paletteState.themeMode, setStatusMessage, tokens]);
+  }, [displayThemeName, canExport, notify, paletteState.baseColor, paletteState.mode, paletteState.themeMode, setStatusMessage, tokens]);
 
   const handleDownloadThemePack = useCallback(async () => {
+    if (!canExport) return;
     if (typeof Blob === 'undefined') {
       notify('File export is not supported in this browser', 'error');
       return;
     }
     try {
+      const { downloadThemePackArchive } = await loadWorkflowExports?.();
       await downloadThemePackArchive({
         finalTokens,
         themeMaster,
@@ -1554,6 +1608,7 @@ export default function useAppController() {
     }
   }, [
     currentTheme,
+    canExport,
     displayThemeName,
     finalTokens,
     isDark,
@@ -1568,7 +1623,7 @@ export default function useAppController() {
   ]);
 
   const handleExportProductPackage = useCallback(async ({ offering, product, selectedThemeIds }) => {
-    if (!import.meta.env.DEV) return;
+    if (!canExport) return;
     if (typeof Blob === 'undefined') {
       notify('File export is not supported in this browser', 'error');
       return;
@@ -1590,7 +1645,7 @@ export default function useAppController() {
       console.error('Product package export failed', error);
       notify('Product package export failed. Check console for details.', 'error');
     }
-  }, [isDev, notify, productExportThemes, setStatusMessage]);
+  }, [canExport, notify, productExportThemes, setStatusMessage]);
 
   const copyShareLink = useCallback(async () => {
     try {
@@ -1619,7 +1674,7 @@ export default function useAppController() {
   }, [notify, shareUrl]);
 
   const exportAllAssets = useCallback(async () => {
-    if (!isDev) return;
+    if (!canExport) return;
     if (typeof Blob === 'undefined') {
       const message = 'File export is not supported in this browser';
       notify(message, 'error');
@@ -1640,6 +1695,8 @@ export default function useAppController() {
     exportState.setIsExportingAssets(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 0));
+      const { buildPenpotExportPayload } = await loadTokenExports?.();
+      const { exportAllAssetsPack } = await loadWorkflowExports?.();
       const penpotPayload = buildPenpotExportPayload({
         finalTokens,
         orderedStack,
@@ -1665,7 +1722,7 @@ export default function useAppController() {
     displayThemeName,
     exportState,
     finalTokens,
-    isDev,
+    canExport,
     isDark,
     notify,
     orderedStack,
@@ -1676,6 +1733,7 @@ export default function useAppController() {
   ]);
 
   const exportProjectPrintAssets = useCallback(async () => {
+    if (!canExport) return;
     if (!projectContext || projectState.projectExporting) return;
     const sections = projectContext.sections || [];
     if (!sections.length) {
@@ -1685,6 +1743,7 @@ export default function useAppController() {
     projectState.setProjectExporting(true);
     projectState.setProjectExportStatus('Preparing print assets…');
     try {
+      const { exportProjectPrintAssetsArchive } = await loadWorkflowExports?.();
       const skipped = await exportProjectPrintAssetsArchive({
         projectName: projectContext.projectName || 'project',
         sections,
@@ -1700,9 +1759,10 @@ export default function useAppController() {
     } finally {
       projectState.setProjectExporting(false);
     }
-  }, [buildSpecFromSection, projectContext, projectState]);
+  }, [buildSpecFromSection, canExport, projectContext, projectState]);
 
   const exportProjectPenpotPrintTokens = useCallback(async () => {
+    if (!canExport) return;
     if (!projectContext || projectState.projectPenpotExporting) return;
     const sections = projectContext.sections || [];
     if (!sections.length) {
@@ -1712,6 +1772,7 @@ export default function useAppController() {
     projectState.setProjectPenpotExporting(true);
     projectState.setProjectPenpotStatus('Preparing Penpot print tokens…');
     try {
+      const { exportProjectPenpotPrintTokensArchive } = await loadWorkflowExports?.();
       const skipped = await exportProjectPenpotPrintTokensArchive({
         projectName: projectContext.projectName || 'project',
         sections,
@@ -1727,28 +1788,36 @@ export default function useAppController() {
     } finally {
       projectState.setProjectPenpotExporting(false);
     }
-  }, [buildSpecFromSection, projectContext, projectState]);
+  }, [buildSpecFromSection, canExport, projectContext, projectState]);
 
   const exportSingleMoodBoardFromProject = useCallback((moodBoard) => {
+    if (!canExport) return;
     if (!projectContext) return;
-    exportSingleMoodBoard(moodBoard, projectContext.projectName || 'project');
-  }, [projectContext]);
+    loadMoodBoardExports?.().then(({ exportSingleMoodBoard }) => {
+      exportSingleMoodBoard(moodBoard, projectContext.projectName || 'project');
+    });
+  }, [canExport, projectContext]);
 
   const exportAllMoodBoardsFromProject = useCallback(() => {
+    if (!canExport) return;
     if (!projectContext || !projectContext.moodBoards || projectContext.moodBoards.length === 0) return;
-    exportMoodBoardCollection(projectContext.moodBoards, projectContext.projectName || 'project');
-  }, [projectContext]);
+    loadMoodBoardExports?.().then(({ exportMoodBoardCollection }) => {
+      exportMoodBoardCollection(projectContext.moodBoards, projectContext.projectName || 'project');
+    });
+  }, [canExport, projectContext]);
 
   const exportDesignSpacePalettes = useCallback(async () => {
+    if (!canExport) return;
     if (!projectContext || !projectContext.sections || projectContext.sections.length === 0) return;
+    const { exportDesignSpacePalettesArchive } = await loadWorkflowExports?.();
     await exportDesignSpacePalettesArchive({
       projectName: projectContext.projectName || 'project',
       sections: projectContext.sections,
     });
-  }, [projectContext]);
+  }, [canExport, projectContext]);
 
   const handleDownloadThemePackWithPrint = useCallback(async () => {
-    if (!isDev) return;
+    if (!canExport) return;
     const themeLabel = sanitizeThemeName(displayThemeName || 'Theme', 'Theme');
     const themeSlug = themeLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'theme';
     await handleDownloadThemePack();
@@ -1757,6 +1826,8 @@ export default function useAppController() {
       return;
     }
     try {
+      const { buildPenpotExportPayload } = await loadTokenExports?.();
+      const { downloadThemePackWithPrintArchive } = await loadWorkflowExports?.();
       const penpotPayload = buildPenpotExportPayload({
         finalTokens,
         orderedStack,
@@ -1782,7 +1853,7 @@ export default function useAppController() {
     displayThemeName,
     finalTokens,
     handleDownloadThemePack,
-    isDev,
+    canExport,
     isDark,
     notify,
     orderedStack,
@@ -1794,7 +1865,7 @@ export default function useAppController() {
   ]);
 
   const handleExportPdf = useCallback(() => {
-    if (!isDev) return;
+    if (!canExport) return;
     if (typeof window.print !== 'function') {
       notify('Print is not supported in this browser', 'error');
       exportState.setExportError('Print is not supported in this browser');
@@ -1811,7 +1882,7 @@ export default function useAppController() {
         savedTitleRef.current = '';
       }
     }, 200);
-  }, [displayThemeName, exportState, isDev, notify, updatePrintMeta]);
+  }, [displayThemeName, exportState, canExport, notify, updatePrintMeta]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -1849,6 +1920,8 @@ export default function useAppController() {
 
   return {
     isDev,
+    canExport,
+    isPrivateForge: isForgeMode,
     isInternal,
     isDark,
     projectContext,
@@ -1877,6 +1950,7 @@ export default function useAppController() {
     handleJumpToExports,
     buildSpecFromSection,
     handleBaseColorChange,
+    flushBaseColorChange,
     applyPreset,
     randomRitual,
     crankApocalypse,

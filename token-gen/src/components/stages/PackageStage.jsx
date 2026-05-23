@@ -12,8 +12,14 @@ const PackageStage = ({
   printAssetPack,
   canvaPrintHexes,
   onDownloadThemePack,
+  canExport = Boolean(onDownloadThemePack),
 }) => (
-  <StageSection id="package" title="Package" subtitle="Download the customer-ready theme pack or prepare optional print assets." collapsible>
+  <StageSection
+    id="package"
+    title="Package"
+    subtitle={canExport ? 'Download the customer-ready theme pack or prepare optional print assets.' : 'Preview optional print-oriented color sets without generating files.'}
+    collapsible
+  >
     <section
       id="tab-panel-2"
       role="tabpanel"
@@ -33,7 +39,7 @@ const PackageStage = ({
             />
             Print
           </label>
-          {onDownloadThemePack && (
+          {canExport && onDownloadThemePack && (
             <div className="flex min-w-[240px] flex-1 flex-col gap-1">
               <button
                 type="button"
@@ -46,7 +52,9 @@ const PackageStage = ({
                 }}
               >
                 <Download size={14} />
-                Download Theme Pack
+                <span>Download</span>
+                {' '}
+                <span>Theme Pack</span>
               </button>
               <p className="max-w-2xl text-xs panel-muted">
                 Main product export. Creates a customer-ready ZIP with CSS variables, JSON tokens, Figma, Penpot, LibreOffice palette files, README, and previews.
@@ -70,7 +78,9 @@ const PackageStage = ({
                     <span>Print asset pack preview</span>
                   </div>
                   <p className="text-sm panel-muted">
-                    With Print Mode enabled, exports stay CMYK-safe and add foil + ink tokens. The tarball will include:
+                    {canExport
+                      ? 'With Print Mode enabled, exports stay CMYK-safe and add foil + ink tokens. The tarball will include:'
+                      : 'With Print Mode enabled, preview CMYK-safe values plus foil and ink color roles.'}
                   </p>
                   <div className="space-y-2">
                     {printAssetPack.map((item) => (
@@ -109,7 +119,11 @@ const PackageStage = ({
           ) : (
             <div className="p-6 rounded-2xl border shadow-sm panel-surface-soft text-sm">
               <p className="font-semibold mb-2">Enable Print Mode to unlock the asset pack preview.</p>
-              <p className="panel-muted mb-4">We’ll tune tokens for CMYK-safe values and add foil + ink layers before exporting.</p>
+              <p className="panel-muted mb-4">
+                {canExport
+                  ? 'We’ll tune tokens for CMYK-safe values and add foil + ink layers before exporting.'
+                  : 'We’ll tune preview tokens for CMYK-safe values and add foil + ink layers for exploration.'}
+              </p>
               <button
                 type="button"
                 onClick={() => setPrintMode(true)}

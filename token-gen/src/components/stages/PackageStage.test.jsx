@@ -43,4 +43,13 @@ describe('PackageStage', () => {
 
     expect(screen.queryByRole('button', { name: /download theme pack/i })).not.toBeInTheDocument();
   });
+
+  it('hides theme pack downloads when export capability is disabled', () => {
+    const onDownloadThemePack = vi.fn();
+
+    renderPackageStage({ canExport: false, onDownloadThemePack });
+
+    expect(screen.queryByRole('button', { name: /download theme pack/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/without generating files/i)).toBeInTheDocument();
+  });
 });

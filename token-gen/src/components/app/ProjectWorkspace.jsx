@@ -17,11 +17,12 @@ export default function ProjectWorkspace({ controller }) {
           projectPenpotStatus={controller.projectState.projectPenpotStatus}
           projectPenpotExporting={controller.projectState.projectPenpotExporting}
           isDev={controller.isDev}
+          canExport={controller.canExport}
           tokens={controller.tokens}
           primaryTextColor={controller.primaryTextColor}
           productExportThemes={controller.productExportThemes}
-          onExportProductPackage={controller.handleExportProductPackage}
-          onDownloadThemePack={controller.handleDownloadThemePack}
+          onExportProductPackage={controller.canExport ? controller.handleExportProductPackage : undefined}
+          onDownloadThemePack={controller.canExport ? controller.handleDownloadThemePack : undefined}
         />
       </PaletteContext.Provider>
     </Suspense>
