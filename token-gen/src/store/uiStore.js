@@ -6,7 +6,7 @@ const resolveUpdater = (value, current) => (
 
 export const useUiStore = create((set) => ({
   view: 'palette',
-  currentStage: 'Identity',
+  currentStage: 'Create',
   activeTab: 'Quick view',
   showContrast: true,
   showFineTune: false,

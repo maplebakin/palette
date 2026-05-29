@@ -3,7 +3,6 @@ import MoodBoard from '../MoodBoard.jsx';
 import ListingAssetsCanvas from '../ListingAssetsCanvas.jsx';
 import ValidateStage from '../stages/ValidateStage.jsx';
 import BuildStage from '../stages/BuildStage.jsx';
-import IdentityStage from '../stages/IdentityStage.jsx';
 import { StageNav } from '../stages/StageLayout.jsx';
 import { isPrivateForge } from '../../lib/capabilities.js';
 
@@ -72,6 +71,7 @@ export default function PaletteWorkspace({ controller }) {
         debouncedAccentChange={controller.debouncedAccentChange}
         debouncedApocalypseChange={controller.debouncedApocalypseChange}
         debouncedPopChange={controller.debouncedPopChange}
+        resetFineTuneSliders={controller.resetFineTuneSliders}
         canUndo={controller.canUndo}
         canRedo={controller.canRedo}
         undo={controller.paletteState.undo}

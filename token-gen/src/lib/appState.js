@@ -14,9 +14,9 @@ export const STORAGE_KEYS = {
 };
 
 const BASE_STAGE_DEFS = [
-  { id: 'identity', label: 'Identity' },
-  { id: 'build', label: 'Build' },
-  { id: 'validate', label: 'Validate' },
+  { id: 'identity', label: 'Create' },
+  { id: 'build', label: 'Refine' },
+  { id: 'validate', label: 'Review' },
 ];
 const privatePrintTab = ['Print', 'assets'].join(' ');
 const privateExportLabel = ['Ex', 'port'].join('');

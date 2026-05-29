@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, EyeOff, Shuffle, Flame, Sun, Moon, Palette } from 'lucide-react';
+import { Eye, EyeOff, Shuffle, Flame, Sun, Moon, Palette, RotateCcw } from 'lucide-react';
 import { StageSection } from './StageLayout';
 
 const BuildStage = ({
@@ -44,8 +44,9 @@ const BuildStage = ({
   debouncedAccentChange,
   debouncedApocalypseChange,
   debouncedPopChange,
+  resetFineTuneSliders = () => {},
 }) => (
-  <StageSection id="build" title="Build" subtitle="Base color, harmony, and generation controls.">
+  <StageSection id="build" title="Create" subtitle="Pick the base color and shape the first version of the palette.">
     {/* Quick Actions Bar */}
     <div className="flex flex-wrap items-center gap-2 mb-4">
       <button
@@ -178,6 +179,17 @@ const BuildStage = ({
             </button>
             {showFineTune && (
               <div className="mt-3 grid grid-cols-1 gap-3 text-xs rounded-lg border panel-surface-soft p-3 shadow-xl">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[11px] font-bold panel-muted">Fine-tune values</span>
+                  <button
+                    type="button"
+                    onClick={resetFineTuneSliders}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
+                  >
+                    <RotateCcw size={13} />
+                    Reset sliders
+                  </button>
+                </div>
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
                   <span className="text-xs font-bold panel-muted">Harmony spread</span>
                   <input
@@ -362,9 +374,9 @@ const BuildStage = ({
         >
           <div className="flex panel-surface-strong p-1 rounded-lg border flex-wrap" role="group" aria-label="Theme mode">
             {[
-              { key: 'light', label: 'Light', icon: <Sun size={14} /> },
-              { key: 'dark', label: 'Dark', icon: <Moon size={14} /> },
-              { key: 'pop', label: 'Pop', icon: <Palette size={14} /> },
+              { key: 'light', label: 'Light', description: 'For blogs, articles, docs, and readable content pages.', icon: <Sun size={14} /> },
+              { key: 'dark', label: 'Dark', description: 'For dashboards, portals, archives, and immersive spaces.', icon: <Moon size={14} /> },
+              { key: 'pop', label: 'Pop', description: 'For shop pages, product drops, launches, promos, and high-attention CTAs.', icon: <Palette size={14} /> },
             ].map((item) => (
               <button
                 key={item.key}
@@ -372,13 +384,20 @@ const BuildStage = ({
                 className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1 panel-text ${themeMode === item.key ? 'panel-surface shadow-sm' : ''} focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2`}
                 style={themeMode === item.key ? { color: tokens.brand.primary } : undefined}
                 aria-pressed={themeMode === item.key}
-                aria-label={`Set theme mode to ${item.label}`}
+                aria-label={`Set theme mode to ${item.label}: ${item.description}`}
               >
                 {item.icon}
                 {item.label}
               </button>
             ))}
           </div>
+          <p className="text-xs panel-muted">
+            {themeMode === 'light'
+              ? 'For blogs, articles, docs, and readable content pages.'
+              : themeMode === 'dark'
+                ? 'For dashboards, portals, archives, and immersive spaces.'
+                : 'For shop pages, product drops, launches, promos, and high-attention CTAs.'}
+          </p>
         </div>
         </div>
       </div>

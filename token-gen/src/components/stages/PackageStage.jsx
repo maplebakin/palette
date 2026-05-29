@@ -20,7 +20,7 @@ const PackageStage = ({
   <StageSection
     id="package"
     title="Package"
-    subtitle="Download the customer-ready theme pack or prepare optional print assets."
+    subtitle="Prepare the customer-ready theme pack and optional print assets."
     collapsible
   >
     <section

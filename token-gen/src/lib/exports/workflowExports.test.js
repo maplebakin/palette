@@ -109,11 +109,41 @@ describe('workflow export helpers', () => {
       swatchNode: document.createElement('div'),
       snippetNode: document.createElement('div'),
       previewNode: document.createElement('div'),
-      tokens: { surfaces: { background: '#101010' } },
+      tokens: {
+        surfaces: { background: '#101010' },
+        cards: {
+          'card-panel-surface': '#172033',
+          'card-panel-border': '#334155',
+        },
+        typography: {
+          'text-body': '#f8fafc',
+          'text-muted': '#94a3b8',
+        },
+        brand: {
+          primary: '#6633ff',
+          accent: '#38bdf8',
+          cta: '#0ea5e9',
+        },
+        actions: {
+          primary: '#0ea5e9',
+          'primary-foreground': '#ffffff',
+        },
+        entity: {
+          'entity-highlight-bg': '#172033',
+          'entity-highlight-accent': '#38bdf8',
+          'entity-highlight-text': '#f8fafc',
+          'entity-highlight-border': '#334155',
+        },
+      },
       displayThemeName: 'Listing Theme',
       baseColor: '#6633ff',
       mode: 'Analogous',
       themeMode: 'dark',
+      fineTune: {
+        harmonyIntensity: 111,
+        neutralCurve: 96,
+        accentStrength: 104,
+      },
       zipName: 'listing.zip',
     });
 
@@ -123,13 +153,43 @@ describe('workflow export helpers', () => {
       'listing/swatches.png',
       'listing/ui.png',
       'listing/tokens-snippet.png',
+      'listing/theme.json',
+      'listing/theme.css',
+      'listing/hex-list.txt',
+      'listing/canva-hex-list.txt',
+      'listing/README.md',
+      'listing/listing-copy.md',
       'listing/meta.json',
     ]));
-    expect(JSON.parse(zip.files['listing/meta.json'])).toEqual(expect.objectContaining({
-      themeName: 'Listing Theme',
+    const themeJson = JSON.parse(zip.files['listing/theme.json']);
+    expect(themeJson).toEqual(expect.objectContaining({
+      themeFamilyName: 'Listing Theme',
       baseHex: '#6633FF',
       harmonyMode: 'Analogous',
-      themeMode: 'dark',
+      variantCoverage: 'current-mode-only',
+      availableVariants: ['dark'],
+      missingVariants: ['light', 'pop'],
+    }));
+    expect(themeJson.variants.dark.roles).toEqual(expect.objectContaining({
+      background: '#101010',
+      cta: '#0ea5e9',
+      ctaForeground: '#ffffff',
+      entityHighlightBg: '#172033',
+      entityHighlightAccent: '#38bdf8',
+    }));
+    expect(zip.files['listing/theme.css']).toContain('[data-theme="listing-theme-dark"]');
+    expect(zip.files['listing/theme.css']).toContain('--color-cta: #0ea5e9;');
+    expect(zip.files['listing/theme.css']).not.toContain('[data-theme="listing-theme-light"]');
+    expect(zip.files['listing/hex-list.txt']).toContain('Listing Theme - Dark');
+    expect(zip.files['listing/canva-hex-list.txt']).toContain('DARK COLORS');
+    expect(zip.files['listing/README.md']).toContain('does not regenerate missing variants from the seed');
+    expect(JSON.parse(zip.files['listing/meta.json'])).toEqual(expect.objectContaining({
+      themeName: 'Listing Theme',
+      seedHex: '#6633FF',
+      harmonyMode: 'Analogous',
+      selectedMode: 'dark',
+      variantCoverage: 'current-mode-only',
+      fineTune: expect.objectContaining({ harmonyIntensity: 111 }),
     }));
     expect(exportIndex.exportAssets).toHaveBeenCalledWith(expect.objectContaining({
       filename: 'listing.zip',

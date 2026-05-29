@@ -9,6 +9,7 @@ import ColorVisionPanel from '../ColorVisionPanel';
 import ColorBlindnessSimulator from '../ColorBlindnessSimulator';
 import { StageSection } from './StageLayout';
 import { hexWithAlpha } from '../../lib/colorUtils';
+import { buildPreviewRoleTokens } from '../../lib/previewTokens.js';
 
 const ContrastPanel = lazy(() => import('../ContrastPanel'));
 
@@ -36,19 +37,46 @@ const ValidateStage = ({
   onJumpToFileTools,
   showFileTools = false,
   isInternal,
-}) => (
-  <StageSection id="validate" title="Validate" subtitle="Preview, review, and copy essentials while you shape the palette.">
+}) => {
+  const isPopMode = themeMode === 'pop';
+  const isLightPreview = themeMode === 'light';
+  const washAlpha = isPopMode ? 0.1 : isLightPreview ? 0.18 : 0.32;
+  const accentWashAlpha = isPopMode ? 0.06 : isLightPreview ? 0.14 : 0.32;
+  const secondaryWashAlpha = isPopMode ? 0.04 : isLightPreview ? 0.08 : 0.18;
+  const skeletonBlush = tokens.pop?.['skeleton-blush'] || tokens.typography["text-muted"];
+  const stickerBorder = tokens.pop?.['sticker-border'] || tokens.brand.primary;
+  const stickerBorderWidth = tokens.pop?.['sticker-border-width'] || tokens.aliases?.['sticker-border-width'] || '1px';
+  const stickerShadow = isPopMode
+    ? `0 2px 0 ${hexWithAlpha(stickerBorder, 0.35)}, 0 10px 24px ${hexWithAlpha('#000000', 0.08)}`
+    : undefined;
+  const previewRoles = buildPreviewRoleTokens(tokens, themeMode);
+  const entityHighlightAccent = previewRoles.entityHighlightAccent;
+  const entityHighlightBg = previewRoles.entityHighlightBg;
+  const entityHighlightText = previewRoles.entityHighlightText;
+  const entityHighlightBorder = previewRoles.entityHighlightBorder || hexWithAlpha(stickerBorder, 0.22);
+  const previewShellBg = previewRoles.shellBg;
+  const previewPanelBg = previewRoles.panelBg;
+  const previewCardBg = previewRoles.cardBg;
+  const previewUtilityAccent = previewRoles.utilityAccent;
+  const previewPrimaryAction = previewRoles.cta;
+  const previewPrimaryActionForeground = previewRoles.ctaForeground || primaryTextColor;
+  const previewSecondaryActionForeground = previewRoles.secondaryActionForeground;
+  const previewSecondaryActionBorder = previewRoles.secondaryActionBorder;
+  const ctaForeground = tokens.pop?.['pop-cta-foreground'] || previewPrimaryActionForeground;
+
+  return (
+  <StageSection id="validate" title="Review" subtitle="Preview, copy essentials, and confirm the palette before packaging.">
     <ColorBlindnessSimulator>
       <section
         className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-500"
         style={{
           boxShadow: `0 35px 120px -80px ${tokens.brand.primary}aa`,
-          backgroundImage: `linear-gradient(140deg, ${hexWithAlpha(tokens.surfaces["background"], 1)} 0%, ${hexWithAlpha(tokens.brand.primary, 0.32)} 45%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, 0.32)} 90%)`,
+          backgroundImage: `linear-gradient(140deg, ${hexWithAlpha(tokens.surfaces["background"], 1)} 0%, ${hexWithAlpha(tokens.brand.primary, washAlpha)} 45%, ${hexWithAlpha(tokens.brand.accent || tokens.brand.secondary || tokens.brand.primary, accentWashAlpha)} 90%)`,
           borderColor: tokens.cards["card-panel-border"],
         }}
       >
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `radial-gradient(circle at 20% 20%, ${hexWithAlpha('#ffffff', 0.08)}, transparent 35%)` }} />
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `linear-gradient(120deg, ${hexWithAlpha(tokens.brand.secondary || tokens.brand.primary, 0.18)}, transparent 50%)` }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `linear-gradient(120deg, ${hexWithAlpha(tokens.brand.secondary || tokens.brand.primary, secondaryWashAlpha)}, transparent 50%)` }} />
         <div className="relative p-6 md:p-10 space-y-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
@@ -62,76 +90,189 @@ const ValidateStage = ({
             </div>
           </div>
           <div
-            className="relative rounded-2xl overflow-hidden ring-1 bg-white/5 backdrop-blur-md transition-all duration-500 ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4"
+            className={`relative rounded-2xl overflow-hidden ring-1 bg-white/5 backdrop-blur-md transition-all duration-500 ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 ${isPopMode ? 'pop-preview-shell' : ''}`}
             data-testid="theme-preview-root"
             style={{
-              backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.65),
-              boxShadow: `0 24px 70px -50px ${tokens.brand.primary}`,
+              backgroundColor: isPopMode ? tokens.surfaces["background"] : previewShellBg,
+              boxShadow: isPopMode ? `0 34px 90px -46px ${tokens.pop?.['pop-background'] || tokens.brand.primary}` : `0 24px 70px -50px ${tokens.brand.primary}`,
               borderColor: hexWithAlpha(tokens.cards["card-panel-border"], 0.5),
               color: tokens.typography["text-strong"],
             }}
             aria-label={`Live palette preview showing ${displayThemeName}`}
           >
-            <div className="h-12 border-b flex items-center px-4 gap-4" style={{ borderColor: tokens.surfaces["surface-plain-border"], backgroundColor: hexWithAlpha(tokens.surfaces["background"], 0.7) }}>
+            <div className="h-12 border-b flex items-center px-4 gap-4" style={{ borderColor: tokens.surfaces["surface-plain-border"], backgroundColor: isLightPreview ? previewPanelBg : hexWithAlpha(tokens.surfaces["background"], 0.7) }}>
               <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
               <div className="w-3 h-3 rounded-full bg-yellow-400/80"></div>
               <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
               <span className="text-xs font-semibold" style={{ color: tokens.typography['text-muted'] }}>Preview • Instant harmony</span>
             </div>
 
-            <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-3 gap-8" data-testid="theme-preview-content">
-              <div className="space-y-4">
-                <div className="h-8 w-3/4 rounded mb-6" style={{ backgroundColor: tokens.brand.primary, opacity: 0.25 }}></div>
-                <div className="h-4 w-full rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
-                <div className="h-4 w-5/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
-                <div className="h-4 w-4/6 rounded" style={{ backgroundColor: tokens.typography["text-muted"], opacity: 0.12 }}></div>
-              </div>
-
-              <div
-                className="col-span-2 p-6 rounded-xl border shadow-2xl transition-all duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_30px_90px_-60px_rgba(0,0,0,0.5)]"
-                style={{
-                  backgroundColor: tokens.cards["card-panel-surface"],
-                  borderColor: tokens.cards["card-panel-border"],
-                }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-2xl font-extrabold" style={{ color: tokens.typography["heading"] }}>Thematic Output</h3>
-                  <span className="text-[11px] px-3 py-1 rounded-full border" style={{ borderColor: tokens.brand.primary, color: tokens.brand.primary }}>Instant copy</span>
-                </div>
-                <p className="mb-6" style={{ color: tokens.typography["text-body"] }}>
-                  Feel the palette first; tweak later. Surfaces, text, and primary action sit in balance so you can decide fast.
-                </p>
-
-                <div className="flex flex-wrap gap-3">
-                  <button className="px-4 py-2 rounded-lg font-semibold transition-transform active:scale-95 shadow-[0_10px_40px_-20px]" style={{ backgroundColor: tokens.brand.primary, color: '#fff', boxShadow: `0 12px 30px -18px ${tokens.brand.primary}` }}>
-                    Primary Action
-                  </button>
-                  <button className="px-4 py-2 rounded-lg font-semibold border transition-transform active:scale-95"
-                          style={{
-                            borderColor: tokens.brand.primary,
-                            color: tokens.brand.primary,
-                          }}>
-                    Secondary
-                  </button>
-                </div>
-
-                <div className="mt-8 p-4 rounded border flex items-center gap-3"
-                     style={{
-                       backgroundColor: tokens.entity["entity-card-surface"],
-                       borderColor: tokens.entity["entity-card-border"],
-                     }}
-                >
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner"
-                       style={{ backgroundColor: tokens.brand.accent, color: '#fff' }}>
-                    <Check size={20} />
-                  </div>
+            {isPopMode ? (
+              <div className="p-6 md:p-10 space-y-5" data-testid="theme-preview-content">
+                <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <div className="font-bold text-sm" style={{ color: tokens.entity["entity-card-heading"] }}>Entity Highlight</div>
-                    <div className="text-xs opacity-80" style={{ color: tokens.typography["text-body"] }}>Unique component tokens</div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.24em]" style={{ color: tokens.typography["text-muted"] }}>Shop / launch preview</div>
+                    <div className="mt-1 text-xl font-black" style={{ color: tokens.typography["heading"] }}>Product drop section</div>
+                  </div>
+                  <div className="rounded-full border px-3 py-1 text-[11px] font-bold pop-preview-chip" style={{ borderColor: tokens.cards["card-panel-border"], color: tokens.typography["text-strong"] }}>
+                    Saturated conversion mode
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-4">
+                  <div className="rounded-2xl border p-4 pop-shop-panel" style={{ backgroundColor: tokens.cards["card-panel-surface"], borderColor: tokens.cards["card-panel-border"] }}>
+                    <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] pop-section-label">Launch Hero</div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: tokens.typography["text-muted"] }}>New drop</div>
+                    <div className="mt-2 text-3xl font-black leading-none" style={{ color: tokens.typography["heading"] }}>Launch kit</div>
+                    <p className="mt-2 text-sm" style={{ color: tokens.typography["text-muted"] }}>A bold theme kit for product drops, promos, and creator shops.</p>
+                    <div className="mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black pop-cta" style={{ backgroundColor: tokens.brand.cta, color: ctaForeground }}>
+                      Bundle $29
+                    </div>
+                  </div>
+                  <div className="rounded-2xl p-4 border pop-shop-panel" style={{ backgroundColor: tokens.cards["card-panel-surface-strong"], borderColor: tokens.cards["card-panel-border"] }}>
+                    <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] pop-section-label">Signup Strip</div>
+                    <div className="text-sm font-bold" style={{ color: tokens.typography["text-strong"] }}>Drop alerts</div>
+                    <div className="mt-3 flex overflow-hidden rounded-full border" style={{ borderColor: tokens.cards["card-panel-border"] }}>
+                      <div className="flex-1 px-3 py-2 text-xs" style={{ color: tokens.typography["text-muted"] }}>email@example.com</div>
+                      <div className="px-3 py-2 text-xs font-black pop-cta" style={{ backgroundColor: tokens.brand.cta, color: ctaForeground }}>Join</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div
+                    className="relative rounded-3xl border p-5 pop-product-card transition-all duration-500 ease-out hover:-translate-y-1"
+                    style={{
+                      backgroundColor: tokens.cards["card-panel-surface"],
+                      borderColor: tokens.brand["focus-ring"],
+                      borderWidth: 2,
+                    }}
+                  >
+                    <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] pop-section-label">Product Card</div>
+                    <span className="absolute right-4 top-4 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide pop-cta" style={{ backgroundColor: tokens.brand.accent, color: ctaForeground }}>Featured</span>
+                    <div className="aspect-square rounded-2xl mb-4 pop-product-media" />
+                    <h3 className="text-xl font-black" style={{ color: tokens.typography["heading"] }}>Gloss Pack</h3>
+                    <p className="mt-1 text-sm" style={{ color: tokens.typography["text-muted"] }}>Conversion-ready color, buttons, cards, and badges.</p>
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <span className="text-2xl font-black" style={{ color: tokens.typography["text-strong"] }}>$48</span>
+                      <button className="pop-cta px-5 py-2.5 text-sm font-black" style={{ backgroundColor: tokens.brand.cta, color: ctaForeground }}>
+                        Buy now
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="rounded-3xl border p-5 pop-shop-panel" style={{ backgroundColor: tokens.cards["card-panel-surface-strong"], borderColor: tokens.cards["card-panel-border"] }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] pop-section-label">Sale Banner</div>
+                          <div className="mt-1 text-2xl font-black" style={{ color: tokens.typography["heading"] }}>40% off today</div>
+                        </div>
+                        <div className="h-12 w-12 rounded-full flex items-center justify-center font-black" style={{ backgroundColor: tokens.pop?.['pop-highlight'] || tokens.brand["accent-strong"], color: tokens.typography["heading"] }}>!</div>
+                      </div>
+                    </div>
+                    <div className="rounded-3xl border p-5 pop-shop-panel" style={{ backgroundColor: tokens.entity["entity-card-surface"], borderColor: tokens.cards["card-panel-border"] }}>
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ backgroundColor: tokens.pop?.['pop-highlight'] || tokens.brand["accent-strong"], color: tokens.typography["heading"] }}>
+                          <Check size={18} />
+                        </div>
+                        <div>
+                          <div className="text-sm font-black" style={{ color: tokens.typography["text-strong"] }}>Selected product</div>
+                          <div className="text-xs" style={{ color: tokens.typography["text-muted"] }}>Radius-matched highlight, no square outline.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-3 gap-8" data-testid="theme-preview-content">
+                <div className="space-y-4">
+                  <div className="h-8 w-3/4 rounded mb-6" style={{ backgroundColor: tokens.brand.primary, opacity: 0.25 }}></div>
+                  <div className="h-4 w-full rounded" style={{ backgroundColor: skeletonBlush, opacity: 0.12 }}></div>
+                  <div className="h-4 w-5/6 rounded" style={{ backgroundColor: skeletonBlush, opacity: 0.12 }}></div>
+                  <div className="h-4 w-4/6 rounded" style={{ backgroundColor: skeletonBlush, opacity: 0.12 }}></div>
+                </div>
+
+                <div
+                  data-testid="preview-content-card"
+                  className="col-span-2 p-6 rounded-xl border shadow-2xl transition-all duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_30px_90px_-60px_rgba(0,0,0,0.5)]"
+                  style={{
+                    backgroundColor: previewCardBg,
+                    borderColor: tokens.cards["card-panel-border"],
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-2xl font-extrabold" style={{ color: tokens.typography["heading"] }}>Thematic Output</h3>
+                    <span className="text-[11px] px-3 py-1 rounded-full border" style={{ borderColor: previewUtilityAccent, color: previewUtilityAccent }}>Instant copy</span>
+                  </div>
+                  <p className="mb-6" style={{ color: tokens.typography["text-body"] }}>
+                    Feel the palette first; tweak later. Surfaces, text, and primary action sit in balance so you can decide fast.
+                  </p>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      data-testid="preview-primary-action"
+                      className="px-4 py-2 rounded-lg font-semibold transition-transform active:scale-95 shadow-[0_10px_40px_-20px]"
+                      style={{
+                        backgroundColor: previewPrimaryAction,
+                        color: previewPrimaryActionForeground,
+                        boxShadow: `0 12px 30px -18px ${previewPrimaryAction}`,
+                      }}
+                    >
+                      Primary Action
+                    </button>
+                    <button
+                      data-testid="preview-secondary-action"
+                      className="px-4 py-2 rounded-lg font-semibold border transition-transform active:scale-95"
+                      style={{
+                        borderColor: previewSecondaryActionBorder,
+                        borderWidth: stickerBorderWidth,
+                        boxShadow: stickerShadow,
+                        color: previewSecondaryActionForeground,
+                      }}
+                    >
+                      Secondary
+                    </button>
+                  </div>
+
+                  <div
+                       data-testid="entity-highlight-card"
+                       className="relative mt-8 p-4 pl-6 rounded-2xl border flex items-center gap-3 entity-sticker-card"
+                       style={{
+                         backgroundColor: entityHighlightBg,
+                         borderColor: entityHighlightBorder,
+                         borderWidth: 1,
+                         borderRadius: '1rem',
+                       }}
+                  >
+                    <span
+                      data-testid="entity-highlight-strip"
+                      className="entity-sticker-accent absolute left-3 top-4 bottom-4 w-1.5"
+                      style={{ backgroundColor: entityHighlightAccent }}
+                      aria-hidden="true"
+                    />
+                    <div
+                         data-testid="entity-highlight-icon"
+                         className="w-9 h-9 rounded-full flex items-center justify-center"
+                         style={{
+                           backgroundColor: isLightPreview ? entityHighlightBg : entityHighlightAccent,
+                           border: isLightPreview ? `1px solid ${entityHighlightBorder}` : undefined,
+                           color: isLightPreview ? entityHighlightAccent : entityHighlightBg,
+                           boxShadow: isLightPreview ? `0 8px 18px -14px ${entityHighlightAccent}` : `0 8px 18px -10px ${entityHighlightAccent}`,
+                         }}>
+                      <Check size={20} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm" style={{ color: entityHighlightText }}>Entity Highlight</div>
+                      <div className="text-xs opacity-80" style={{ color: entityHighlightText }}>Unique component tokens</div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </section>
@@ -417,6 +558,7 @@ const ValidateStage = ({
       </div>
     </div>
   </StageSection>
-);
+  );
+};
 
 export default ValidateStage;

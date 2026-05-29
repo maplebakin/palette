@@ -97,6 +97,19 @@ export const useUITheme = () => {
     const panelChipBorder = getContrastRatio(panelChipBorderBase, panelChip) >= chipMinContrast
       ? panelChipBorderBase
       : hexWithAlpha(panelChipText, 0.35);
+    const isPopTheme = themeMode === 'pop';
+    const primary = tokens.brand?.primary || '#6366f1';
+    const stickerBorder = tokens.aliases?.['sticker-border'] || tokens.borders?.['border-accent-strong'] || primary;
+    const stickerBorderWidth = tokens.aliases?.['sticker-border-width'] || (isPopTheme ? '2px' : '1px');
+    const popField = tokens.pop?.['pop-field'] || primary;
+    const semanticTint = tokens.pop?.['semantic-tint'] || tokens.entity?.['entity-card-surface'] || panelBase;
+    const skeletonBlush = tokens.pop?.['skeleton-blush'] || tokens.cards?.['card-tag-bg'] || panelSoft;
+    const entityHighlightBg = tokens.entity?.['entity-highlight-bg'] || semanticTint;
+    const entityHighlightAccent = tokens.entity?.['entity-highlight-accent'] || stickerBorder;
+    const entityHighlightBorder = tokens.entity?.['entity-highlight-border'] || stickerBorder;
+    const stickerShadow = isPopTheme
+      ? `0 2px 0 ${hexWithAlpha(stickerBorder, 0.35)}, 0 10px 24px ${hexWithAlpha('#000000', 0.08)}`
+      : `0 22px 60px -48px ${hexWithAlpha(primary, 0.45)}`;
 
     return {
       '--page-background': pageBackground,
@@ -114,13 +127,22 @@ export const useUITheme = () => {
       '--panel-muted-strong': panelMutedStrong,
       '--panel-text-soft': panelTextSoft,
       '--panel-muted-soft': panelMutedSoft,
-      '--panel-accent': tokens.brand?.primary || '#6366f1',
-      '--panel-accent-strong': tokens.brand?.cta || tokens.brand?.primary || '#6366f1',
-      '--panel-accent-text': pickReadableText(tokens.brand?.cta || tokens.brand?.primary || '#6366f1'),
+      '--panel-accent': primary,
+      '--panel-accent-strong': tokens.brand?.cta || primary,
+      '--panel-accent-text': pickReadableText(tokens.brand?.cta || primary),
       '--panel-chip-bg': panelChip,
       '--panel-chip-border': panelChipBorder,
       '--panel-chip-text': panelChipText,
-      '--panel-shadow': `0 22px 60px -48px ${hexWithAlpha(tokens.brand?.primary || '#6366f1', 0.45)}`,
+      '--panel-shadow': `0 22px 60px -48px ${hexWithAlpha(primary, 0.45)}`,
+      '--sticker-border': stickerBorder,
+      '--sticker-border-width': stickerBorderWidth,
+      '--sticker-shadow': stickerShadow,
+      '--entity-highlight-bg': entityHighlightBg,
+      '--entity-highlight-accent': entityHighlightAccent,
+      '--entity-highlight-border': entityHighlightBorder,
+      '--pop-field': popField,
+      '--semantic-tint': semanticTint,
+      '--skeleton-blush': skeletonBlush,
       '--status-success': tokens.status?.success || '#10b981',
       '--status-success-text': pickReadableText(tokens.status?.success || '#10b981'),
       '--status-success-border': hexWithAlpha(tokens.status?.success || '#10b981', 0.45),

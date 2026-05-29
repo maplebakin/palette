@@ -40,7 +40,7 @@ const ExportStage = ({
   displayThemeName,
   isInternal,
 }) => (
-  <StageSection id="export" title="Export" subtitle="Development and internal export tools." collapsible>
+  <StageSection id="export" title="Export" subtitle="Private forge export tools and project utilities." collapsible>
     <section
       ref={exportsSectionRef}
       id="tab-panel-3"

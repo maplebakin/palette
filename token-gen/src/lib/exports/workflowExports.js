@@ -4,7 +4,9 @@ import { toPenpotTokens } from '../penpotTokens.js';
 import { buildCssVariables } from '../theme/styles.js';
 import { buildExportFilename, downloadFile, exportAssets, exportThemePack, slugifyFilename } from '../export/index.js';
 import { buildPrintTokenTree, getThemePackGuidance, sanitizeThemeName } from '../appState.js';
+import { normalizeHex } from '../colorUtils.js';
 import { extractSocColorsFromTokens, generateSoc } from '../soc-exporter.js';
+import { buildPreviewRoleTokens } from '../previewTokens.js';
 import { generateDesignSpacePalette } from './designSpacePalette.js';
 import {
   buildPaletteCardSvg,
@@ -14,6 +16,185 @@ import {
   renderPaletteCardPng,
   renderStripPng,
 } from './previewAssets.js';
+
+const THEME_KIT_ROLE_LABELS = {
+  background: 'Background',
+  surface: 'Surface',
+  text: 'Text',
+  mutedText: 'Muted Text',
+  border: 'Border',
+  accent: 'Accent',
+  cta: 'CTA',
+  ctaForeground: 'CTA Foreground',
+  entityHighlightBg: 'Entity Highlight Background',
+  entityHighlightAccent: 'Entity Highlight Accent',
+  entityHighlightText: 'Entity Highlight Text',
+  entityHighlightBorder: 'Entity Highlight Border',
+};
+
+const THEME_KIT_CSS_VARS = {
+  background: '--color-bg',
+  surface: '--color-surface',
+  text: '--color-text',
+  mutedText: '--color-muted-text',
+  border: '--color-border',
+  accent: '--color-accent',
+  cta: '--color-cta',
+  ctaForeground: '--color-cta-foreground',
+  entityHighlightBg: '--color-entity-highlight-bg',
+  entityHighlightAccent: '--color-entity-highlight-accent',
+  entityHighlightText: '--color-entity-highlight-text',
+  entityHighlightBorder: '--color-entity-highlight-border',
+};
+
+export const buildThemeKitExportData = ({
+  tokens,
+  displayThemeName,
+  baseColor,
+  mode,
+  themeMode,
+  fineTune = {},
+  generatedAt = new Date().toISOString(),
+}) => {
+  const themeName = sanitizeThemeName(displayThemeName || 'Theme Kit', 'Theme Kit');
+  const slug = slugifyFilename(themeName, 'theme-kit');
+  const activeMode = themeMode || 'light';
+  const previewRoles = buildPreviewRoleTokens(tokens, activeMode);
+  const roles = Object.fromEntries(
+    Object.keys(THEME_KIT_ROLE_LABELS).map((role) => [role, previewRoles[role]])
+  );
+  const allModes = ['light', 'dark', 'pop'];
+
+  return {
+    schema: 'apocapalette-theme-kit-v1',
+    themeFamilyName: themeName,
+    slug,
+    baseHex: normalizeHex(baseColor, '#000000').toUpperCase(),
+    harmonyMode: mode || 'Monochromatic',
+    generatedAt,
+    version: 'v1',
+    variantCoverage: 'current-mode-only',
+    availableVariants: [activeMode],
+    missingVariants: allModes.filter((variant) => variant !== activeMode),
+    variants: {
+      [activeMode]: {
+        mode: activeMode,
+        roles,
+      },
+    },
+    fineTune,
+    exportNotes: [
+      'This listing export packages the currently previewed/tuned palette tokens from app state.',
+      'Missing Light/Dark/Pop variants are not regenerated during export because they are not stored as confirmed variant state.',
+    ],
+  };
+};
+
+const buildThemeKitCss = (themeKit) => Object.entries(themeKit.variants).map(([variant, variantData]) => {
+  const selector = `[data-theme="${themeKit.slug}-${variant}"]`;
+  const lines = Object.entries(THEME_KIT_CSS_VARS).map(([role, cssVar]) => `  ${cssVar}: ${variantData.roles[role]};`);
+  return `${selector} {\n${lines.join('\n')}\n}`;
+}).join('\n\n');
+
+const buildHexList = (themeKit) => Object.entries(themeKit.variants).flatMap(([variant, variantData]) => [
+  `${themeKit.themeFamilyName} - ${variant[0].toUpperCase()}${variant.slice(1)}`,
+  ...Object.entries(THEME_KIT_ROLE_LABELS).map(([role, label]) => `${label}: ${variantData.roles[role]}`),
+  '',
+]).join('\n').trimEnd();
+
+const buildCanvaHexList = (themeKit) => Object.entries(themeKit.variants).flatMap(([variant, variantData]) => [
+  `${variant.toUpperCase()} COLORS`,
+  `Background ${variantData.roles.background}`,
+  `Surface ${variantData.roles.surface}`,
+  `Text ${variantData.roles.text}`,
+  `Accent ${variantData.roles.accent}`,
+  `Button ${variantData.roles.cta}`,
+  `Highlight ${variantData.roles.entityHighlightBg}`,
+  `Highlight Accent ${variantData.roles.entityHighlightAccent}`,
+  '',
+]).join('\n').trimEnd();
+
+const buildThemeKitReadme = (themeKit) => [
+  `# ${themeKit.themeFamilyName}`,
+  '',
+  `This is an Apocapalette Theme Kit exported from the currently confirmed ${themeKit.availableVariants.join(', ')} preview for ${themeKit.baseHex}.`,
+  '',
+  '## Variant Coverage',
+  '',
+  `- Included variant: ${themeKit.availableVariants.join(', ')}`,
+  `- Not included in this export: ${themeKit.missingVariants.join(', ') || 'none'}`,
+  '- Export behavior: colors are serialized from the current app tokens. The exporter does not regenerate missing variants from the seed.',
+  '',
+  '## What The Modes Mean',
+  '',
+  '- Light: readable content mode for blogs, docs, About pages, and resource pages.',
+  '- Dark: immersive mode for dashboards, portals, archives, and member areas.',
+  '- Pop: shop, launch, promo, storefront, sales section, and CTA mode.',
+  '',
+  '## Included Files',
+  '',
+  '- `theme.json` - structured role-based token data for the included confirmed variant.',
+  '- `theme.css` - drop-in CSS variables scoped by `data-theme`.',
+  '- `hex-list.txt` - readable grouped color list.',
+  '- `canva-hex-list.txt` - simplified copy-paste color list.',
+  '- `meta.json` - storefront and export metadata.',
+  '- `listing-copy.md` - draft storefront listing copy.',
+  '- `cover.png`, `swatches.png`, `ui.png`, `tokens-snippet.png` - captured preview assets when available.',
+  '',
+  '## CSS Usage',
+  '',
+  'Add `theme.css` to your project, then set the matching theme attribute on a parent element.',
+  '',
+  '```html',
+  `<main data-theme="${themeKit.slug}-${themeKit.availableVariants[0]}">`,
+  '  <button class="primary">Primary Action</button>',
+  '</main>',
+  '```',
+  '',
+  '```css',
+  '.primary {',
+  '  background: var(--color-cta);',
+  '  color: var(--color-cta-foreground);',
+  '}',
+  '```',
+  '',
+  '## Usage Notes',
+  '',
+  'Use the Canva list for planners, Notion pages, and simple design tools. Use `theme.json` for automation and design-system mapping. Colors are provided as-is and should be checked in final context before publishing.',
+  '',
+  'Made with Apocapalette.',
+].join('\n');
+
+const buildListingCopy = (themeKit) => [
+  `# ${themeKit.themeFamilyName} Theme Kit`,
+  '',
+  `A ${themeKit.harmonyMode} Apocapalette theme kit built from ${themeKit.baseHex}.`,
+  '',
+  '## Short Description',
+  '',
+  `A ready-to-use ${themeKit.availableVariants.join(', ')} color theme kit with CSS variables, JSON tokens, hex lists, and preview assets.`,
+  '',
+  '## Included Files',
+  '',
+  '- README.md',
+  '- theme.json',
+  '- theme.css',
+  '- hex-list.txt',
+  '- canva-hex-list.txt',
+  '- meta.json',
+  '- preview PNG assets',
+  '',
+  '## Best For',
+  '',
+  '- Brand direction',
+  '- Web UI styling',
+  '- Canva and Notion planning',
+  '- Storefront listing drafts',
+  '',
+  '## Suggested Tags',
+  '',
+  'theme kit, color palette, css variables, design tokens, brand colors, canva palette, apocapalette',
+].join('\n');
 
 export const exportAllAssetsPack = async ({
   currentTheme,
@@ -50,6 +231,7 @@ export const generateListingAssetsArchive = async ({
   baseColor,
   mode,
   themeMode,
+  fineTune,
   rootFolder = 'listing',
   includeMeta = true,
   zipName,
@@ -74,18 +256,26 @@ export const generateListingAssetsArchive = async ({
   const zip = new JSZip();
   const listingFolder = zip.folder(rootFolder || 'listing');
   if (!listingFolder) throw new Error('Failed to create listing folder');
+  const themeKit = buildThemeKitExportData({
+    tokens,
+    displayThemeName,
+    baseColor,
+    mode,
+    themeMode,
+    fineTune,
+  });
 
   const coverPng = await captureNode(coverNode, {
     width: 1200,
     height: 1200,
-    backgroundColor: tokens.surfaces.background,
+    backgroundColor: themeKit.variants[themeKit.availableVariants[0]].roles.background,
   });
   listingFolder.file('cover.png', coverPng);
 
   const swatchPng = await captureNode(swatchNode, {
     width: 1600,
     height: 400,
-    backgroundColor: tokens.surfaces.background,
+    backgroundColor: themeKit.variants[themeKit.availableVariants[0]].roles.background,
   });
   listingFolder.file('swatches.png', swatchPng);
 
@@ -93,31 +283,64 @@ export const generateListingAssetsArchive = async ({
     width: 1600,
     height: 900,
     style: { width: '1600px', height: '900px' },
-    backgroundColor: tokens.surfaces.background,
+    backgroundColor: themeKit.variants[themeKit.availableVariants[0]].roles.background,
   });
   listingFolder.file('ui.png', uiPng);
 
+  let snippetCaptured = false;
   if (snippetNode) {
     try {
       const snippetPng = await captureNode(snippetNode, {
         width: 1200,
         height: 600,
-        backgroundColor: tokens.surfaces.background,
+        backgroundColor: themeKit.variants[themeKit.availableVariants[0]].roles.background,
       });
       listingFolder.file('tokens-snippet.png', snippetPng);
+      snippetCaptured = true;
     } catch (error) {
       console.warn('Listing tokens snippet failed', error);
     }
   }
 
+  listingFolder.file('theme.json', JSON.stringify(themeKit, null, 2));
+  listingFolder.file('theme.css', buildThemeKitCss(themeKit));
+  listingFolder.file('hex-list.txt', buildHexList(themeKit));
+  listingFolder.file('canva-hex-list.txt', buildCanvaHexList(themeKit));
+  listingFolder.file('README.md', buildThemeKitReadme(themeKit));
+  listingFolder.file('listing-copy.md', buildListingCopy(themeKit));
+
   if (includeMeta) {
     const meta = {
-      themeName: displayThemeName,
-      baseHex: baseColor.toUpperCase(),
-      harmonyMode: mode,
-      themeMode,
-      timestamp: new Date().toISOString(),
-      version: 'v1',
+      themeName: themeKit.themeFamilyName,
+      slug: themeKit.slug,
+      seedHex: themeKit.baseHex,
+      harmonyMode: themeKit.harmonyMode,
+      selectedMode: themeMode,
+      generatedDate: themeKit.generatedAt,
+      includedFiles: [
+        'cover.png',
+        'swatches.png',
+        'ui.png',
+        ...(snippetCaptured ? ['tokens-snippet.png'] : []),
+        'theme.json',
+        'theme.css',
+        'hex-list.txt',
+        'canva-hex-list.txt',
+        'README.md',
+        'meta.json',
+        'listing-copy.md',
+      ],
+      variantCoverage: themeKit.variantCoverage,
+      availableVariants: themeKit.availableVariants,
+      missingVariants: themeKit.missingVariants,
+      colorRoles: themeKit.variants,
+      listingTitle: `${themeKit.themeFamilyName} Theme Kit`,
+      listingDescription: `${themeKit.themeFamilyName} is an Apocapalette color theme kit exported from the confirmed ${themeKit.availableVariants.join(', ')} preview.`,
+      suggestedTags: ['theme kit', 'color palette', 'css variables', 'design tokens', 'canva palette', 'apocapalette'],
+      suggestedUseCases: ['web UI', 'brand direction', 'content pages', 'storefront drafts', 'planning templates'],
+      accessibilityNotes: 'Role colors are exported from the current preview. Check final contrast in the buyer context before publishing.',
+      fineTune: themeKit.fineTune,
+      version: themeKit.version,
     };
     listingFolder.file('meta.json', JSON.stringify(meta, null, 2));
   }

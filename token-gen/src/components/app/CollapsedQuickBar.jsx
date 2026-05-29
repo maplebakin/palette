@@ -61,9 +61,9 @@ export default function CollapsedQuickBar({
           </select>
           <div className="flex panel-surface-strong p-1 rounded-lg border" role="group" aria-label="Theme mode">
             {[
-              { key: 'light', label: 'L' },
-              { key: 'dark', label: 'D' },
-              { key: 'pop', label: 'P' },
+              { key: 'light', label: 'L', name: 'Light', description: 'blogs, articles, docs, and readable content pages' },
+              { key: 'dark', label: 'D', name: 'Dark', description: 'dashboards, portals, archives, and immersive spaces' },
+              { key: 'pop', label: 'P', name: 'Pop', description: 'shop pages, product drops, launches, promos, and high-attention CTAs' },
             ].map((item) => (
               <button
                 key={item.key}
@@ -73,7 +73,7 @@ export default function CollapsedQuickBar({
                 } panel-text focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2`}
                 style={themeMode === item.key ? { color: tokens.brand.primary } : undefined}
                 aria-pressed={themeMode === item.key}
-                aria-label={`Set theme mode to ${item.label}`}
+                aria-label={`Set theme mode to ${item.name} for ${item.description}`}
               >
                 {item.label}
               </button>

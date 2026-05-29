@@ -31,6 +31,7 @@ import { buildTheme } from '../lib/theme/engine.js';
 import { buildThemeCss, getThemeClassName, THEME_CLASSNAMES } from '../lib/themeStyles.js';
 import { buildSectionSnapshotFromPalette, toGeneratorMode } from '../lib/projectUtils.js';
 import { canExport as exportCapability, isPrivateForge } from '../lib/capabilities.js';
+import { buildPreviewPaletteRow, buildPreviewQuickEssentials, buildPreviewRoleTokens } from '../lib/previewTokens.js';
 import { useExportStore } from '../store/exportStore.js';
 import { usePaletteStore } from '../store/paletteStore.js';
 import { useProjectStore } from '../store/projectStore.js';
@@ -266,7 +267,7 @@ export default function useAppController() {
         return;
       }
       if (uiState.view === 'project') {
-        uiState.setCurrentStage('Identity');
+        uiState.setCurrentStage('Create');
         return;
       }
       if (uiState.activeTab === PRIVATE_PRINT_TAB && canExport) {
@@ -277,7 +278,7 @@ export default function useAppController() {
         uiState.setCurrentStage(PRIVATE_EXPORT_STAGE);
         return;
       }
-      uiState.setCurrentStage('Validate');
+      uiState.setCurrentStage('Review');
     };
     updateStage();
     window.addEventListener('hashchange', updateStage);
@@ -748,18 +749,15 @@ export default function useAppController() {
 
   const { shareUrl } = useShareLink(shareState);
 
-  const quickEssentials = useMemo(() => ([
-    { key: 'Primary', color: tokens.brand.primary },
-    { key: 'Secondary', color: tokens.brand.secondary },
-    { key: 'Accent', color: tokens.brand.accent },
-    { key: 'Base', color: paletteState.baseColor },
-    { key: 'Neutral 2', color: tokens.foundation.neutrals['neutral-2'] },
-    { key: 'Neutral 4', color: tokens.foundation.neutrals['neutral-4'] },
-    { key: 'Neutral 6', color: tokens.foundation.neutrals['neutral-6'] },
-    { key: 'Neutral 8', color: tokens.foundation.neutrals['neutral-8'] },
-    { key: 'Text strong', color: tokens.typography['text-strong'] },
-    { key: 'Text muted', color: tokens.typography['text-muted'] },
-  ]).filter(({ color }) => Boolean(color)), [paletteState.baseColor, tokens]);
+  const previewRoles = useMemo(
+    () => buildPreviewRoleTokens(tokens, paletteState.themeMode),
+    [paletteState.themeMode, tokens]
+  );
+
+  const quickEssentials = useMemo(
+    () => buildPreviewQuickEssentials(previewRoles),
+    [previewRoles]
+  );
 
   const tabOptions = useMemo(() => (
     canExport ? ['Quick view', 'Full system', PRIVATE_PRINT_TAB, PRIVATE_EXPORT_TAB]
@@ -1106,12 +1104,13 @@ export default function useAppController() {
   );
 
   const paletteRows = useMemo(() => ([
+    buildPreviewPaletteRow(previewRoles),
     { title: 'Foundation Neutrals', colors: Object.entries(tokens.foundation.neutrals).map(([name, color]) => ({ name, color })) },
     { title: 'Foundation Accents', colors: Object.entries(tokens.foundation.accents).map(([name, color]) => ({ name, color })) },
     { title: 'Brand Core', colors: ['primary', 'secondary', 'accent', 'accent-strong', 'cta', 'cta-hover'].map((key) => ({ name: key, color: tokens.brand[key] })).filter(({ color }) => Boolean(color)) },
     { title: 'Text Palette', colors: ['heading', 'text-strong', 'text-body', 'text-muted', 'text-accent', 'text-accent-strong'].map((key) => ({ name: key, color: tokens.typography[key] })).filter(({ color }) => Boolean(color)) },
     { title: 'Status & Feedback', colors: Object.entries(tokens.status).map(([name, color]) => ({ name, color })) },
-  ]), [tokens]);
+  ]), [previewRoles, tokens]);
 
   const contrastChecks = useMemo(() => {
     const bg = finalTokens.surfaces.background;
@@ -1244,6 +1243,23 @@ export default function useAppController() {
     paletteState.setPopInput(next);
     if (popDebounceRef.current) clearTimeout(popDebounceRef.current);
     popDebounceRef.current = setTimeout(() => paletteState.setPopIntensity(next), 120);
+  }, [paletteState]);
+
+  const resetFineTuneSliders = useCallback(() => {
+    [harmonyDebounceRef, neutralDebounceRef, accentDebounceRef, apocalypseDebounceRef, popDebounceRef].forEach((ref) => {
+      if (ref.current) clearTimeout(ref.current);
+      ref.current = null;
+    });
+    paletteState.setHarmonyInput(100);
+    paletteState.setHarmonyIntensity(100);
+    paletteState.setNeutralInput(100);
+    paletteState.setNeutralCurve(100);
+    paletteState.setAccentInput(100);
+    paletteState.setAccentStrength(100);
+    paletteState.setApocalypseInput(100);
+    paletteState.setApocalypseIntensity(100);
+    paletteState.setPopInput(100);
+    paletteState.setPopIntensity(100);
   }, [paletteState]);
 
   const crankApocalypse = useCallback(() => {
@@ -1422,6 +1438,18 @@ export default function useAppController() {
   const statusWarningText = pickReadableText(statusWarning);
   const statusErrorText = pickReadableText(statusError);
   const statusInfoText = pickReadableText(statusInfo);
+  const isPopTheme = paletteState.themeMode === 'pop';
+  const stickerBorder = tokens.aliases?.['sticker-border'] || tokens.borders?.['border-accent-strong'] || tokens.brand.primary;
+  const stickerBorderWidth = tokens.aliases?.['sticker-border-width'] || (isPopTheme ? '2px' : '1px');
+  const popField = tokens.pop?.['pop-field'] || tokens.brand.primary;
+  const semanticTint = tokens.pop?.['semantic-tint'] || tokens.entity?.['entity-card-surface'] || panelBase;
+  const skeletonBlush = tokens.pop?.['skeleton-blush'] || tokens.cards?.['card-tag-bg'] || panelSoft;
+  const entityHighlightBg = tokens.entity?.['entity-highlight-bg'] || semanticTint;
+  const entityHighlightAccent = tokens.entity?.['entity-highlight-accent'] || stickerBorder;
+  const entityHighlightBorder = tokens.entity?.['entity-highlight-border'] || stickerBorder;
+  const stickerShadow = isPopTheme
+    ? `0 2px 0 ${hexWithAlpha(stickerBorder, 0.35)}, 0 10px 24px ${hexWithAlpha('#000000', 0.08)}`
+    : `0 22px 60px -48px ${hexWithAlpha(tokens.brand.primary, 0.45)}`;
 
   const uiTheme = useMemo(() => ({
     '--page-background': pageBackground,
@@ -1446,6 +1474,15 @@ export default function useAppController() {
     '--panel-chip-border': panelChipBorder,
     '--panel-chip-text': panelChipText,
     '--panel-shadow': `0 22px 60px -48px ${hexWithAlpha(tokens.brand.primary, 0.45)}`,
+    '--sticker-border': stickerBorder,
+    '--sticker-border-width': stickerBorderWidth,
+    '--sticker-shadow': stickerShadow,
+    '--entity-highlight-bg': entityHighlightBg,
+    '--entity-highlight-accent': entityHighlightAccent,
+    '--entity-highlight-border': entityHighlightBorder,
+    '--pop-field': popField,
+    '--semantic-tint': semanticTint,
+    '--skeleton-blush': skeletonBlush,
     '--status-success': statusSuccess,
     '--status-success-text': statusSuccessText,
     '--status-success-border': hexWithAlpha(statusSuccess, 0.45),
@@ -1468,6 +1505,9 @@ export default function useAppController() {
     backgroundPosition,
     backgroundSize,
     ctaTextColor,
+    entityHighlightBg,
+    entityHighlightAccent,
+    entityHighlightBorder,
     pageBackground,
     panelBase,
     panelBorder,
@@ -1483,6 +1523,7 @@ export default function useAppController() {
     panelText,
     panelTextSoft,
     panelTextStrong,
+    popField,
     statusError,
     statusErrorText,
     statusInfo,
@@ -1491,6 +1532,11 @@ export default function useAppController() {
     statusSuccessText,
     statusWarning,
     statusWarningText,
+    semanticTint,
+    skeletonBlush,
+    stickerBorder,
+    stickerBorderWidth,
+    stickerShadow,
     tokens,
   ]);
 
@@ -1575,6 +1621,13 @@ export default function useAppController() {
         baseColor: normalizeHex(paletteState.baseColor || '#000000', '#000000'),
         mode: paletteState.mode,
         themeMode: paletteState.themeMode,
+        fineTune: {
+          harmonyIntensity: paletteState.harmonyIntensity,
+          apocalypseIntensity: paletteState.apocalypseIntensity,
+          neutralCurve: paletteState.neutralCurve,
+          accentStrength: paletteState.accentStrength,
+          popIntensity: paletteState.popIntensity,
+        },
         rootFolder,
         includeMeta,
         zipName,
@@ -1584,7 +1637,21 @@ export default function useAppController() {
       console.error('Listing assets export failed', error);
       notify('Listing assets export failed. Check console for details.', 'error');
     }
-  }, [displayThemeName, canExport, notify, paletteState.baseColor, paletteState.mode, paletteState.themeMode, setStatusMessage, tokens]);
+  }, [
+    displayThemeName,
+    canExport,
+    notify,
+    paletteState.baseColor,
+    paletteState.mode,
+    paletteState.themeMode,
+    paletteState.harmonyIntensity,
+    paletteState.apocalypseIntensity,
+    paletteState.neutralCurve,
+    paletteState.accentStrength,
+    paletteState.popIntensity,
+    setStatusMessage,
+    tokens,
+  ]);
 
   const handleDownloadThemePack = useCallback(async () => {
     if (!canExport) return;
@@ -1972,6 +2039,7 @@ export default function useAppController() {
     debouncedAccentChange,
     debouncedApocalypseChange,
     debouncedPopChange,
+    resetFineTuneSliders,
     exportSavedPalettes,
     importSavedPalettes,
     triggerSavedPalettesImport,

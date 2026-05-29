@@ -15,3 +15,4 @@ test-results/
 coverage/
 playwright-report/
 *.log
+docs/revenue-plan/
