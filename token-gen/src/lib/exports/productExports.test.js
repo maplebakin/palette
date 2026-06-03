@@ -34,7 +34,8 @@ vi.mock('jszip', () => ({ default: JSZipMock }));
 vi.mock('./workflowExports.js', () => ({
   addAllModeThemePackFiles: vi.fn(async (root, theme, options = {}) => {
     const slug = options.slug || String(theme.displayThemeName).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    ['dark', 'light', 'pop'].forEach((mode) => {
+    const modes = theme.variants ? ['dark', 'light', 'pop'].filter((mode) => theme.variants[mode]) : [theme.themeMode || theme.currentTheme?.themeMode || 'dark'];
+    modes.forEach((mode) => {
       root.folder(`modes/${mode}`)?.file('tokens.json', JSON.stringify({
         themeName: theme.displayThemeName,
         themeMode: mode,
@@ -71,10 +72,12 @@ const workflowExports = await import('./workflowExports.js');
 
 const makeTheme = (name) => ({
   displayThemeName: name,
+  themeMode: 'dark',
   currentTheme: {
     name,
     baseColor: '#6633ff',
     mode: 'Monochromatic',
+    themeMode: 'dark',
     isDark: true,
     tokens: {
       brand: { primary: '#6633ff', secondary: '#8b5cf6', accent: '#22d3ee' },
@@ -102,7 +105,7 @@ describe('product export helpers', () => {
     vi.clearAllMocks();
   });
 
-  it('builds an individual product package with dark, light, and pop mode folders', async () => {
+  it('builds an individual product package with confirmed current-mode folders', async () => {
     const theme = makeTheme('HollysLightBlue');
     const individualProduct = {
       ...product,
@@ -131,29 +134,17 @@ describe('product export helpers', () => {
       'hollys-light-blue/modes/dark/libreoffice/hollys-light-blue-dark.soc',
       'hollys-light-blue/modes/dark/preview/palette-card.svg',
       'hollys-light-blue/modes/dark/preview/swatch-strip.svg',
-      'hollys-light-blue/modes/light/tokens.json',
-      'hollys-light-blue/modes/light/css/variables.css',
-      'hollys-light-blue/modes/light/figma/tokens.json',
-      'hollys-light-blue/modes/light/penpot/tokens.json',
-      'hollys-light-blue/modes/light/libreoffice/hollys-light-blue-light.soc',
-      'hollys-light-blue/modes/light/preview/palette-card.svg',
-      'hollys-light-blue/modes/light/preview/swatch-strip.svg',
-      'hollys-light-blue/modes/pop/tokens.json',
-      'hollys-light-blue/modes/pop/css/variables.css',
-      'hollys-light-blue/modes/pop/figma/tokens.json',
-      'hollys-light-blue/modes/pop/penpot/tokens.json',
-      'hollys-light-blue/modes/pop/libreoffice/hollys-light-blue-pop.soc',
-      'hollys-light-blue/modes/pop/preview/palette-card.svg',
-      'hollys-light-blue/modes/pop/preview/swatch-strip.svg',
       'hollys-light-blue/combined/tokens.all-modes.json',
       'hollys-light-blue/combined/css/variables.all-modes.css',
     ]));
+    expect(zip.files['hollys-light-blue/modes/light/tokens.json']).toBeUndefined();
+    expect(zip.files['hollys-light-blue/modes/pop/tokens.json']).toBeUndefined();
     expect(zip.files['hollys-light-blue/README.md']).toContain('# Hollys Light Blue');
-    expect(zip.files['hollys-light-blue/README.md']).toContain('premium adaptive Website & Brand Color Kit');
-    expect(zip.files['hollys-light-blue/README.md']).toContain('dark, light, and pop modes');
+    expect(zip.files['hollys-light-blue/README.md']).toContain('confirmed dark mode');
+    expect(zip.files['hollys-light-blue/README.md']).toContain('Missing modes are not regenerated');
     expect(zip.files['hollys-light-blue/README.md']).toContain('- Hollys Light Blue');
     expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('Website & Brand Color Kit');
-    expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('dark, light, and pop modes');
+    expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('confirmed app-state mode exports');
     expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes');
     expect(zip.files['hollys-light-blue/tags.txt']).toContain('adaptive color system');
     expect(zip.files['hollys-light-blue/tags.txt']).toContain('dark mode palette');

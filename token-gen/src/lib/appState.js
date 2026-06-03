@@ -178,6 +178,36 @@ export const inferThemeMode = (value) => {
   return luma < 0.45 ? 'dark' : 'light';
 };
 
+const SAVED_VARIANT_MODES = ['light', 'dark', 'pop'];
+
+export const summarizeConfirmedVariants = (confirmedVariants = {}) => {
+  const availableModes = SAVED_VARIANT_MODES.filter((mode) => {
+    const variant = confirmedVariants?.[mode];
+    return variant?.finalTokens && typeof variant.finalTokens === 'object';
+  });
+  return {
+    variantCoverage: availableModes.length === SAVED_VARIANT_MODES.length ? 'all-modes' : 'available-modes',
+    availableModes,
+    missingModes: SAVED_VARIANT_MODES.filter((mode) => !availableModes.includes(mode)),
+  };
+};
+
+export const normalizeConfirmedVariants = (confirmedVariants = {}) => {
+  if (!confirmedVariants || typeof confirmedVariants !== 'object' || Array.isArray(confirmedVariants)) return {};
+  return SAVED_VARIANT_MODES.reduce((acc, mode) => {
+    const variant = confirmedVariants[mode];
+    const finalTokens = variant?.finalTokens || variant?.tokens || variant?.currentTheme?.tokens;
+    if (!finalTokens || typeof finalTokens !== 'object' || Array.isArray(finalTokens)) return acc;
+    acc[mode] = {
+      signature: typeof variant.signature === 'string' ? variant.signature : `${mode}-saved`,
+      finalTokens,
+      ...(Array.isArray(variant.orderedStack) ? { orderedStack: variant.orderedStack } : {}),
+      ...(variant.currentTheme && typeof variant.currentTheme === 'object' ? { currentTheme: variant.currentTheme } : {}),
+    };
+    return acc;
+  }, {});
+};
+
 export const normalizeImportedPalette = (palette, index) => {
   if (!palette || typeof palette !== 'object') return null;
   const base = sanitizeHexInput(palette.baseColor, null);
@@ -186,6 +216,8 @@ export const normalizeImportedPalette = (palette, index) => {
   const theme = ['light', 'dark', 'pop'].includes(palette.themeMode)
     ? palette.themeMode
     : (palette.isDark ? 'dark' : 'light');
+  const confirmedVariants = normalizeConfirmedVariants(palette.confirmedVariants);
+  const variantMeta = summarizeConfirmedVariants(confirmedVariants);
   return {
     id: Number.isFinite(palette.id) ? palette.id : Date.now() + index,
     name: sanitizeThemeName(palette.name || `Imported ${index + 1}`, `Imported ${index + 1}`),
@@ -202,6 +234,12 @@ export const normalizeImportedPalette = (palette, index) => {
     popIntensity: clampValue(palette.popIntensity ?? 100, 60, 140),
     tokenPrefix: sanitizePrefix(palette.tokenPrefix || ''),
     importedOverrides: palette.importedOverrides ?? null,
+    confirmedVariants,
+    savedAt: typeof palette.savedAt === 'string' ? palette.savedAt : undefined,
+    version: palette.version || 1,
+    variantCoverage: palette.variantCoverage || variantMeta.variantCoverage,
+    availableModes: Array.isArray(palette.availableModes) ? palette.availableModes : variantMeta.availableModes,
+    missingModes: Array.isArray(palette.missingModes) ? palette.missingModes : variantMeta.missingModes,
   };
 };
 

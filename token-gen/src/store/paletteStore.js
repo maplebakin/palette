@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import {
+  normalizeConfirmedVariants,
   sanitizeHexInput,
   sanitizePrefix,
   sanitizeThemeName,
@@ -10,6 +11,10 @@ const resolveUpdater = (value, current) => (
 );
 
 const MAX_HISTORY = 50;
+const withClearedVariants = (partial) => ({
+  ...partial,
+  confirmedVariants: {},
+});
 
 const applyHistoryState = (state, payload) => ({
   ...state,
@@ -50,6 +55,7 @@ export const usePaletteStore = create((set, get) => ({
   popInput: 100,
   tokenPrefix: '',
   savedPalettes: [],
+  confirmedVariants: {},
   saveStatus: '',
   storageAvailable: null,
   storageCorrupt: false,
@@ -57,19 +63,19 @@ export const usePaletteStore = create((set, get) => ({
   history: [],
   currentIndex: -1,
 
-  setBaseColor: (value) => set((state) => ({ baseColor: resolveUpdater(value, state.baseColor) })),
+  setBaseColor: (value) => set((state) => withClearedVariants({ baseColor: resolveUpdater(value, state.baseColor) })),
   setBaseInput: (value) => set((state) => ({ baseInput: resolveUpdater(value, state.baseInput) })),
   setBaseError: (value) => set((state) => ({ baseError: resolveUpdater(value, state.baseError) })),
-  setMode: (value) => set((state) => ({ mode: resolveUpdater(value, state.mode) })),
+  setMode: (value) => set((state) => withClearedVariants({ mode: resolveUpdater(value, state.mode) })),
   setThemeMode: (value) => set((state) => ({ themeMode: resolveUpdater(value, state.themeMode) })),
-  setPrintMode: (value) => set((state) => ({ printMode: resolveUpdater(value, state.printMode) })),
+  setPrintMode: (value) => set((state) => withClearedVariants({ printMode: resolveUpdater(value, state.printMode) })),
   setCustomThemeName: (value) => set((state) => ({ customThemeName: resolveUpdater(value, state.customThemeName) })),
-  setImportedOverrides: (value) => set((state) => ({ importedOverrides: resolveUpdater(value, state.importedOverrides) })),
-  setHarmonyIntensity: (value) => set((state) => ({ harmonyIntensity: resolveUpdater(value, state.harmonyIntensity) })),
-  setApocalypseIntensity: (value) => set((state) => ({ apocalypseIntensity: resolveUpdater(value, state.apocalypseIntensity) })),
-  setNeutralCurve: (value) => set((state) => ({ neutralCurve: resolveUpdater(value, state.neutralCurve) })),
-  setAccentStrength: (value) => set((state) => ({ accentStrength: resolveUpdater(value, state.accentStrength) })),
-  setPopIntensity: (value) => set((state) => ({ popIntensity: resolveUpdater(value, state.popIntensity) })),
+  setImportedOverrides: (value) => set((state) => withClearedVariants({ importedOverrides: resolveUpdater(value, state.importedOverrides) })),
+  setHarmonyIntensity: (value) => set((state) => withClearedVariants({ harmonyIntensity: resolveUpdater(value, state.harmonyIntensity) })),
+  setApocalypseIntensity: (value) => set((state) => withClearedVariants({ apocalypseIntensity: resolveUpdater(value, state.apocalypseIntensity) })),
+  setNeutralCurve: (value) => set((state) => withClearedVariants({ neutralCurve: resolveUpdater(value, state.neutralCurve) })),
+  setAccentStrength: (value) => set((state) => withClearedVariants({ accentStrength: resolveUpdater(value, state.accentStrength) })),
+  setPopIntensity: (value) => set((state) => withClearedVariants({ popIntensity: resolveUpdater(value, state.popIntensity) })),
   setHarmonyInput: (value) => set((state) => ({ harmonyInput: resolveUpdater(value, state.harmonyInput) })),
   setNeutralInput: (value) => set((state) => ({ neutralInput: resolveUpdater(value, state.neutralInput) })),
   setAccentInput: (value) => set((state) => ({ accentInput: resolveUpdater(value, state.accentInput) })),
@@ -77,6 +83,18 @@ export const usePaletteStore = create((set, get) => ({
   setPopInput: (value) => set((state) => ({ popInput: resolveUpdater(value, state.popInput) })),
   setTokenPrefix: (value) => set((state) => ({ tokenPrefix: resolveUpdater(value, state.tokenPrefix) })),
   setSavedPalettes: (value) => set((state) => ({ savedPalettes: resolveUpdater(value, state.savedPalettes) })),
+  setConfirmedVariant: (themeMode, variant) => set((state) => {
+    if (!themeMode || !variant?.finalTokens) return state;
+    const previous = state.confirmedVariants?.[themeMode];
+    if (previous?.signature === variant.signature) return state;
+    return {
+      confirmedVariants: {
+        ...(state.confirmedVariants || {}),
+        [themeMode]: variant,
+      },
+    };
+  }),
+  clearConfirmedVariants: () => set({ confirmedVariants: {} }),
   setSaveStatus: (value) => set((state) => ({ saveStatus: resolveUpdater(value, state.saveStatus) })),
   setStorageAvailable: (value) => set((state) => ({ storageAvailable: resolveUpdater(value, state.storageAvailable) })),
   setStorageCorrupt: (value) => set((state) => ({ storageCorrupt: resolveUpdater(value, state.storageCorrupt) })),
@@ -87,6 +105,7 @@ export const usePaletteStore = create((set, get) => ({
     const sanitized = sanitizeHexInput(payload.baseColor, '#6366f1');
     const savedThemeMode = payload.themeMode || (payload.isDark ? 'dark' : 'light');
     const savedOverrides = payload.importedOverrides;
+    const confirmedVariants = normalizeConfirmedVariants(payload.confirmedVariants);
     return {
       ...state,
       baseColor: sanitized,
@@ -108,6 +127,7 @@ export const usePaletteStore = create((set, get) => ({
       popInput: payload.popIntensity ?? 100,
       tokenPrefix: sanitizePrefix(payload.tokenPrefix || ''),
       importedOverrides: savedOverrides && typeof savedOverrides === 'object' ? savedOverrides : null,
+      confirmedVariants,
     };
   }),
 
@@ -125,6 +145,7 @@ export const usePaletteStore = create((set, get) => ({
     popIntensity: 100,
     tokenPrefix: '',
     importedOverrides: null,
+    confirmedVariants: {},
   })),
 
   captureHistoryState: () => {

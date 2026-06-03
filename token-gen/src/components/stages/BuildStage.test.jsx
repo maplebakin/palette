@@ -57,6 +57,11 @@ const renderBuildStage = (props = {}) => render(
     debouncedApocalypseChange={vi.fn()}
     debouncedPopChange={vi.fn()}
     resetFineTuneSliders={vi.fn()}
+    variantStatus={{
+      variantCoverage: 'current-mode-only',
+      availableModes: ['light'],
+      missingModes: ['dark', 'pop'],
+    }}
     {...props}
   />
 );
@@ -69,5 +74,14 @@ describe('BuildStage', () => {
     fireEvent.click(screen.getByRole('button', { name: /reset sliders/i }));
 
     expect(resetFineTuneSliders).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows confirmed variant coverage near mode controls', () => {
+    renderBuildStage();
+
+    expect(screen.getByTestId('confirmed-variants-status')).toBeInTheDocument();
+    expect(screen.getByLabelText(/light confirmed/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/dark missing/i)).toBeInTheDocument();
+    expect(screen.getByText(/exports include confirmed modes only/i)).toBeInTheDocument();
   });
 });

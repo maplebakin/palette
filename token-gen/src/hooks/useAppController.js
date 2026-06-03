@@ -16,6 +16,7 @@ import {
   sanitizeHexInput,
   sanitizePrefix,
   sanitizeThemeName,
+  summarizeConfirmedVariants,
   STAGE_DEFS,
   STORAGE_KEYS,
 } from '../lib/appState.js';
@@ -79,6 +80,7 @@ export default function useAppController() {
     popInput: state.popInput,
     tokenPrefix: state.tokenPrefix,
     savedPalettes: state.savedPalettes,
+    confirmedVariants: state.confirmedVariants,
     saveStatus: state.saveStatus,
     storageAvailable: state.storageAvailable,
     storageCorrupt: state.storageCorrupt,
@@ -105,6 +107,7 @@ export default function useAppController() {
     setPopInput: state.setPopInput,
     setTokenPrefix: state.setTokenPrefix,
     setSavedPalettes: state.setSavedPalettes,
+    setConfirmedVariant: state.setConfirmedVariant,
     setSaveStatus: state.setSaveStatus,
     setStorageAvailable: state.setStorageAvailable,
     setStorageCorrupt: state.setStorageCorrupt,
@@ -529,6 +532,50 @@ export default function useAppController() {
   ]);
 
   const { tokens, finalTokens, orderedStack, currentTheme } = themeMaster;
+  const confirmedVariantSignature = useMemo(() => JSON.stringify({
+    baseColor: normalizeHex(paletteState.baseColor || '#000000', '#000000'),
+    mode: paletteState.mode,
+    themeMode: paletteState.themeMode,
+    printMode: paletteState.printMode,
+    harmonyIntensity: paletteState.harmonyIntensity,
+    apocalypseIntensity: paletteState.apocalypseIntensity,
+    neutralCurve: paletteState.neutralCurve,
+    accentStrength: paletteState.accentStrength,
+    popIntensity: paletteState.popIntensity,
+    importedOverrides: paletteState.importedOverrides || null,
+  }), [
+    paletteState.baseColor,
+    paletteState.mode,
+    paletteState.themeMode,
+    paletteState.printMode,
+    paletteState.harmonyIntensity,
+    paletteState.apocalypseIntensity,
+    paletteState.neutralCurve,
+    paletteState.accentStrength,
+    paletteState.popIntensity,
+    paletteState.importedOverrides,
+  ]);
+
+  useEffect(() => {
+    paletteState.setConfirmedVariant(paletteState.themeMode, {
+      signature: confirmedVariantSignature,
+      finalTokens,
+      orderedStack,
+      currentTheme,
+    });
+  }, [
+    confirmedVariantSignature,
+    currentTheme,
+    finalTokens,
+    orderedStack,
+    paletteState.setConfirmedVariant,
+    paletteState.themeMode,
+  ]);
+
+  const confirmedVariantStatus = useMemo(() => ({
+    ...summarizeConfirmedVariants(paletteState.confirmedVariants),
+    currentMode: paletteState.themeMode,
+  }), [paletteState.confirmedVariants, paletteState.themeMode]);
 
   const paletteSnapshot = useMemo(() => ({
     name: displayThemeName,
@@ -599,6 +646,7 @@ export default function useAppController() {
       isDark: spec.isDark ?? spec.themeMode === 'dark',
       printMode: Boolean(spec.printMode),
       themeMode: spec.themeMode || (spec.isDark ? 'dark' : 'light'),
+      variants: spec.confirmedVariants,
       tokenPrefix: sanitizePrefix(spec.tokenPrefix || ''),
       apocalypseIntensity: spec.apocalypseIntensity ?? 100,
       harmonyIntensity: spec.harmonyIntensity ?? 100,
@@ -606,6 +654,9 @@ export default function useAppController() {
       accentStrength: spec.accentStrength ?? 100,
       popIntensity: spec.popIntensity ?? 100,
       importedOverrides: spec.importedOverrides ?? null,
+      variantCoverage: spec.variantCoverage,
+      availableModes: spec.availableModes,
+      missingModes: spec.missingModes,
     };
     const themeTokens = generatedTheme.currentTheme.tokens;
     exportTheme.miniPalette = {
@@ -631,6 +682,7 @@ export default function useAppController() {
       isDark,
       printMode: paletteState.printMode,
       themeMode: paletteState.themeMode,
+      variants: paletteState.confirmedVariants,
       tokenPrefix: sanitizePrefix(paletteState.tokenPrefix),
       apocalypseIntensity: paletteState.apocalypseIntensity,
       harmonyIntensity: paletteState.harmonyIntensity,
@@ -673,6 +725,7 @@ export default function useAppController() {
     paletteState.harmonyIntensity,
     paletteState.neutralCurve,
     paletteState.accentStrength,
+    paletteState.confirmedVariants,
     paletteState.popIntensity,
     paletteState.importedOverrides,
     paletteState.printMode,
@@ -684,28 +737,51 @@ export default function useAppController() {
     tokens,
   ]);
 
-  const serializePalette = useCallback(() => ({
-    id: Date.now(),
-    name: displayThemeName,
-    baseColor: paletteState.baseColor,
-    mode: paletteState.mode,
-    themeMode: paletteState.themeMode,
-    isDark,
-    printMode: paletteState.printMode,
-    customThemeName: safeCustomThemeName,
-    harmonyIntensity: paletteState.harmonyIntensity,
-    apocalypseIntensity: paletteState.apocalypseIntensity,
-    neutralCurve: paletteState.neutralCurve,
-    accentStrength: paletteState.accentStrength,
-    popIntensity: paletteState.popIntensity,
-    tokenPrefix: sanitizePrefix(paletteState.tokenPrefix),
-    importedOverrides: paletteState.importedOverrides && Object.keys(paletteState.importedOverrides).length
-      ? paletteState.importedOverrides
-      : null,
-  }), [
+  const serializePalette = useCallback(() => {
+    const savedAt = new Date().toISOString();
+    const variantMeta = summarizeConfirmedVariants(paletteState.confirmedVariants);
+    return {
+      id: Date.now(),
+      name: displayThemeName,
+      baseColor: paletteState.baseColor,
+      seedHex: paletteState.baseColor,
+      mode: paletteState.mode,
+      harmony: paletteState.mode,
+      themeMode: paletteState.themeMode,
+      currentMode: paletteState.themeMode,
+      isDark,
+      printMode: paletteState.printMode,
+      customThemeName: safeCustomThemeName,
+      themeName: displayThemeName,
+      harmonyIntensity: paletteState.harmonyIntensity,
+      apocalypseIntensity: paletteState.apocalypseIntensity,
+      neutralCurve: paletteState.neutralCurve,
+      accentStrength: paletteState.accentStrength,
+      popIntensity: paletteState.popIntensity,
+      fineTune: {
+        harmonyIntensity: paletteState.harmonyIntensity,
+        apocalypseIntensity: paletteState.apocalypseIntensity,
+        neutralCurve: paletteState.neutralCurve,
+        accentStrength: paletteState.accentStrength,
+        popIntensity: paletteState.popIntensity,
+      },
+      tokenPrefix: sanitizePrefix(paletteState.tokenPrefix),
+      importedOverrides: paletteState.importedOverrides && Object.keys(paletteState.importedOverrides).length
+        ? paletteState.importedOverrides
+        : null,
+      overrides: paletteState.importedOverrides && Object.keys(paletteState.importedOverrides).length
+        ? paletteState.importedOverrides
+        : null,
+      confirmedVariants: paletteState.confirmedVariants,
+      savedAt,
+      version: 2,
+      ...variantMeta,
+    };
+  }, [
     displayThemeName,
     isDark,
     paletteState.baseColor,
+    paletteState.confirmedVariants,
     paletteState.mode,
     paletteState.themeMode,
     paletteState.printMode,
@@ -1660,8 +1736,8 @@ export default function useAppController() {
       return;
     }
     try {
-      const { downloadThemePackArchive } = await loadWorkflowExports?.();
-      await downloadThemePackArchive({
+      const { downloadAllModeThemePackArchive } = await loadWorkflowExports?.();
+      await downloadAllModeThemePackArchive({
         finalTokens,
         themeMaster,
         currentTheme,
@@ -1671,6 +1747,7 @@ export default function useAppController() {
         isDark,
         printMode: paletteState.printMode,
         themeMode: paletteState.themeMode,
+        variants: paletteState.confirmedVariants,
         tokenPrefix: paletteState.tokenPrefix,
       });
       setStatusMessage('Theme pack downloaded', 'success');
@@ -1686,6 +1763,7 @@ export default function useAppController() {
     isDark,
     notify,
     paletteState.baseColor,
+    paletteState.confirmedVariants,
     paletteState.mode,
     paletteState.printMode,
     paletteState.themeMode,
@@ -2017,6 +2095,7 @@ export default function useAppController() {
     listingSnippetRef,
     paletteSnapshot,
     productExportThemes,
+    confirmedVariantStatus,
     presets: PRESETS,
     stageDefs,
     tabOptions,

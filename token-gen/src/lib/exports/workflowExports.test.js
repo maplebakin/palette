@@ -238,7 +238,7 @@ describe('workflow export helpers', () => {
     }));
   });
 
-  it('builds all-mode theme packs from one selected theme seed', async () => {
+  it('builds current-mode theme packs from resolved app-state tokens without regenerating missing modes', async () => {
     const theme = buildSampleTheme();
 
     await workflowExports.buildAllModeThemePackArchive({
@@ -256,6 +256,7 @@ describe('workflow export helpers', () => {
 
     const zip = zipInstances[0];
     expect(Object.keys(zip.files)).toEqual(expect.arrayContaining([
+      'adaptive-cobalt/README.md',
       'adaptive-cobalt/modes/dark/tokens.json',
       'adaptive-cobalt/modes/dark/css/variables.css',
       'adaptive-cobalt/modes/dark/figma/tokens.json',
@@ -263,27 +264,16 @@ describe('workflow export helpers', () => {
       'adaptive-cobalt/modes/dark/libreoffice/adaptive-cobalt-dark.soc',
       'adaptive-cobalt/modes/dark/preview/palette-card.svg',
       'adaptive-cobalt/modes/dark/preview/swatch-strip.svg',
-      'adaptive-cobalt/modes/light/tokens.json',
-      'adaptive-cobalt/modes/light/css/variables.css',
-      'adaptive-cobalt/modes/light/figma/tokens.json',
-      'adaptive-cobalt/modes/light/penpot/tokens.json',
-      'adaptive-cobalt/modes/light/libreoffice/adaptive-cobalt-light.soc',
-      'adaptive-cobalt/modes/light/preview/palette-card.svg',
-      'adaptive-cobalt/modes/light/preview/swatch-strip.svg',
-      'adaptive-cobalt/modes/pop/tokens.json',
-      'adaptive-cobalt/modes/pop/css/variables.css',
-      'adaptive-cobalt/modes/pop/figma/tokens.json',
-      'adaptive-cobalt/modes/pop/penpot/tokens.json',
-      'adaptive-cobalt/modes/pop/libreoffice/adaptive-cobalt-pop.soc',
-      'adaptive-cobalt/modes/pop/preview/palette-card.svg',
-      'adaptive-cobalt/modes/pop/preview/swatch-strip.svg',
       'adaptive-cobalt/combined/tokens.all-modes.json',
       'adaptive-cobalt/combined/css/variables.all-modes.css',
     ]));
+    expect(zip.files['adaptive-cobalt/modes/light/tokens.json']).toBeUndefined();
+    expect(zip.files['adaptive-cobalt/modes/pop/tokens.json']).toBeUndefined();
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('current-mode-only');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('does not regenerate missing modes');
 
     const darkTokens = JSON.parse(zip.files['adaptive-cobalt/modes/dark/tokens.json']);
-    const lightTokens = JSON.parse(zip.files['adaptive-cobalt/modes/light/tokens.json']);
-    const popTokens = JSON.parse(zip.files['adaptive-cobalt/modes/pop/tokens.json']);
+    const combined = JSON.parse(zip.files['adaptive-cobalt/combined/tokens.all-modes.json']);
 
     expect(darkTokens.meta).toEqual(expect.objectContaining({
       themeName: 'Adaptive Cobalt',
@@ -291,22 +281,131 @@ describe('workflow export helpers', () => {
       mode: 'Monochromatic',
       themeMode: 'dark',
     }));
-    expect(lightTokens.meta).toEqual(expect.objectContaining({
-      themeName: 'Adaptive Cobalt',
-      baseColor: '#6633ff',
-      mode: 'Monochromatic',
-      themeMode: 'light',
-    }));
-    expect(popTokens.meta).toEqual(expect.objectContaining({
-      themeName: 'Adaptive Cobalt',
-      baseColor: '#6633ff',
-      mode: 'Monochromatic',
-      themeMode: 'pop',
-    }));
-    expect(darkTokens.brand).not.toEqual(lightTokens.brand);
-    expect(popTokens.brand).not.toEqual(lightTokens.brand);
+    expect(darkTokens.brand.primary).toBe(theme.finalTokens.brand.primary);
+    expect(combined.variantCoverage).toBe('current-mode-only');
+    expect(combined.availableModes).toEqual(['dark']);
+    expect(combined.missingModes).toEqual(['light', 'pop']);
     expect(zip.files['adaptive-cobalt/combined/tokens.all-modes.json']).toContain('"dark"');
-    expect(zip.files['adaptive-cobalt/combined/css/variables.all-modes.css']).toContain('adaptive-cobalt-pop');
+    expect(zip.files['adaptive-cobalt/combined/css/variables.all-modes.css']).toContain('adaptive-cobalt-dark');
+    expect(zip.files['adaptive-cobalt/combined/css/variables.all-modes.css']).not.toContain('adaptive-cobalt-pop');
+  });
+
+  it('includes all modes only when resolved variant tokens are supplied', async () => {
+    const dark = buildSampleTheme();
+    const light = buildTheme({ ...dark.currentTheme, themeMode: 'light', isDark: false });
+    const pop = buildTheme({ ...dark.currentTheme, themeMode: 'pop', isDark: false });
+
+    await workflowExports.buildAllModeThemePackArchive({
+      displayThemeName: 'Stored Family',
+      mode: 'Monochromatic',
+      baseColor: '#6633ff',
+      themeMode: 'dark',
+      finalTokens: dark.finalTokens,
+      currentTheme: dark.currentTheme,
+      themeMaster: dark,
+      variants: {
+        dark,
+        light,
+        pop,
+      },
+    });
+
+    const zip = zipInstances[0];
+    expect(zip.files['stored-family/modes/dark/tokens.json']).toBeTruthy();
+    expect(zip.files['stored-family/modes/light/tokens.json']).toBeTruthy();
+    expect(zip.files['stored-family/modes/pop/tokens.json']).toBeTruthy();
+    const combined = JSON.parse(zip.files['stored-family/combined/tokens.all-modes.json']);
+    expect(combined.variantCoverage).toBe('all-modes');
+    expect(combined.availableModes).toEqual(['dark', 'light', 'pop']);
+    expect(JSON.parse(zip.files['stored-family/modes/light/tokens.json']).brand.primary).toBe(light.finalTokens.brand.primary);
+    expect(JSON.parse(zip.files['stored-family/modes/pop/tokens.json']).brand.primary).toBe(pop.finalTokens.brand.primary);
+  });
+
+  it('exports restored saved-palette confirmed variants without filling missing modes', async () => {
+    const dark = buildSampleTheme();
+    const light = buildTheme({ ...dark.currentTheme, themeMode: 'light', isDark: false });
+
+    await workflowExports.buildAllModeThemePackArchive({
+      displayThemeName: 'Loaded Snapshot',
+      mode: 'Monochromatic',
+      baseColor: '#6633ff',
+      themeMode: 'light',
+      finalTokens: light.finalTokens,
+      currentTheme: light.currentTheme,
+      themeMaster: light,
+      variants: {
+        light: {
+          signature: 'light-saved',
+          finalTokens: light.finalTokens,
+          orderedStack: light.orderedStack,
+          currentTheme: light.currentTheme,
+        },
+        dark: {
+          signature: 'dark-saved',
+          finalTokens: dark.finalTokens,
+          orderedStack: dark.orderedStack,
+          currentTheme: dark.currentTheme,
+        },
+      },
+    });
+
+    const zip = zipInstances[0];
+    const combined = JSON.parse(zip.files['loaded-snapshot/combined/tokens.all-modes.json']);
+    expect(zip.files['loaded-snapshot/modes/light/tokens.json']).toBeTruthy();
+    expect(zip.files['loaded-snapshot/modes/dark/tokens.json']).toBeTruthy();
+    expect(zip.files['loaded-snapshot/modes/pop/tokens.json']).toBeUndefined();
+    expect(JSON.parse(zip.files['loaded-snapshot/modes/light/tokens.json']).brand.cta).toBe(light.finalTokens.brand.cta);
+    expect(JSON.parse(zip.files['loaded-snapshot/modes/dark/tokens.json']).brand.cta).toBe(dark.finalTokens.brand.cta);
+    expect(combined.variantCoverage).toBe('available-modes');
+    expect(combined.availableModes).toEqual(['dark', 'light']);
+    expect(combined.missingModes).toEqual(['pop']);
+  });
+
+  it.each([
+    ['StrawberryMilk', '#FF9DB8', 'light'],
+    ['GrapeArcade', '#A78BFA', 'light'],
+    ['Neutral Gray', '#C7C7C7', 'pop'],
+    ['Dark Botanical', '#102A24', 'pop'],
+    ['Cyan Launch', '#00D1FF', 'dark'],
+  ])('exports resolved Theme Pack token values for %s', async (name, baseColor, themeMode) => {
+    const theme = buildTheme({
+      name,
+      baseColor,
+      mode: 'Monochromatic',
+      themeMode,
+      isDark: themeMode === 'dark',
+      printMode: false,
+      apocalypseIntensity: 100,
+      harmonyIntensity: 91,
+      neutralCurve: 108,
+      accentStrength: 112,
+      popIntensity: 127,
+    });
+
+    await workflowExports.buildAllModeThemePackArchive({
+      displayThemeName: name,
+      mode: 'Monochromatic',
+      baseColor,
+      themeMode,
+      finalTokens: theme.finalTokens,
+      currentTheme: theme.currentTheme,
+      themeMaster: theme,
+    });
+
+    const zip = zipInstances[0];
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const exported = JSON.parse(zip.files[`${slug}/modes/${themeMode}/tokens.json`]);
+    const combined = JSON.parse(zip.files[`${slug}/combined/tokens.all-modes.json`]);
+
+    expect(exported.brand.cta).toBe(theme.finalTokens.brand.cta);
+    expect(exported.surfaces.background).toBe(theme.finalTokens.surfaces.background);
+    expect(exported.entity['entity-highlight-bg']).toBe(theme.finalTokens.entity['entity-highlight-bg']);
+    expect(zip.files[`${slug}/modes/${themeMode}/css/variables.css`]).toContain(theme.finalTokens.brand.cta);
+    expect(zip.files[`${slug}/modes/${themeMode}/figma/tokens.json`]).toContain(theme.finalTokens.brand.cta);
+    expect(zip.files[`${slug}/modes/${themeMode}/penpot/tokens.json`]).toContain(theme.finalTokens.brand.cta);
+    expect(zip.files[`${slug}/modes/${themeMode}/libreoffice/${slug}-${themeMode}.soc`]).toContain(theme.finalTokens.brand.cta.toLowerCase());
+    expect(combined.variantCoverage).toBe('current-mode-only');
+    expect(combined.availableModes).toEqual([themeMode]);
   });
 
   it('exports project print assets and reports skipped sections', async () => {

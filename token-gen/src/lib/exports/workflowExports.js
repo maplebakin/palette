@@ -5,6 +5,7 @@ import { buildCssVariables } from '../theme/styles.js';
 import { buildExportFilename, downloadFile, exportAssets, exportThemePack, slugifyFilename } from '../export/index.js';
 import { buildPrintTokenTree, getThemePackGuidance, sanitizeThemeName } from '../appState.js';
 import { normalizeHex } from '../colorUtils.js';
+import { buildOrderedStack } from '../tokens.js';
 import { extractSocColorsFromTokens, generateSoc } from '../soc-exporter.js';
 import { buildPreviewRoleTokens } from '../previewTokens.js';
 import { generateDesignSpacePalette } from './designSpacePalette.js';
@@ -539,21 +540,6 @@ const resolveAllModeThemeSpec = (theme = {}) => {
   };
 };
 
-const buildModeTheme = (spec, themeMode) => buildTheme({
-  name: spec.name,
-  baseColor: spec.baseColor,
-  mode: spec.mode,
-  themeMode,
-  isDark: themeMode === 'dark',
-  printMode: spec.printMode,
-  apocalypseIntensity: spec.apocalypseIntensity,
-  harmonyIntensity: spec.harmonyIntensity,
-  neutralCurve: spec.neutralCurve,
-  accentStrength: spec.accentStrength,
-  popIntensity: spec.popIntensity,
-  importedOverrides: spec.importedOverrides,
-});
-
 const buildModeCanonicalTokens = ({ finalTokens, spec, themeMode }) => buildGenericPayload(finalTokens, {
   themeName: spec.name,
   mode: spec.mode,
@@ -565,18 +551,145 @@ const buildModeCanonicalTokens = ({ finalTokens, spec, themeMode }) => buildGene
   themeMode,
 });
 
+const normalizeThemePackVariant = (variant, themeMode, spec) => {
+  const finalTokens = variant?.finalTokens || variant?.tokens || variant?.currentTheme?.tokens || null;
+  if (!finalTokens || typeof finalTokens !== 'object') return null;
+  const orderedStack = Array.isArray(variant?.orderedStack)
+    ? variant.orderedStack
+    : buildOrderedStack(finalTokens);
+  const currentTheme = variant?.currentTheme || {
+    name: spec.name,
+    mode: spec.mode,
+    themeMode,
+    isDark: themeMode === 'dark',
+    baseColor: spec.baseColor,
+    tokens: finalTokens,
+    printMode: spec.printMode,
+  };
+  const themeMaster = variant?.themeMaster || {
+    finalTokens,
+    orderedStack,
+    currentTheme,
+  };
+
+  return {
+    themeMode,
+    finalTokens,
+    orderedStack,
+    currentTheme: {
+      ...currentTheme,
+      name: currentTheme.name || spec.name,
+      mode: currentTheme.mode || spec.mode,
+      themeMode,
+      isDark: themeMode === 'dark',
+      baseColor: currentTheme.baseColor || spec.baseColor,
+      tokens: finalTokens,
+      printMode: currentTheme.printMode ?? spec.printMode,
+    },
+    themeMaster: {
+      ...themeMaster,
+      finalTokens,
+      orderedStack,
+      currentTheme: {
+        ...(themeMaster.currentTheme || currentTheme),
+        name: themeMaster.currentTheme?.name || currentTheme.name || spec.name,
+        mode: themeMaster.currentTheme?.mode || currentTheme.mode || spec.mode,
+        themeMode,
+        isDark: themeMode === 'dark',
+        baseColor: themeMaster.currentTheme?.baseColor || currentTheme.baseColor || spec.baseColor,
+        tokens: finalTokens,
+        printMode: themeMaster.currentTheme?.printMode ?? currentTheme.printMode ?? spec.printMode,
+      },
+    },
+  };
+};
+
+export const buildThemePackExportData = (theme = {}) => {
+  const spec = resolveAllModeThemeSpec(theme);
+  const rawVariants = theme.variants && typeof theme.variants === 'object' ? theme.variants : {};
+  const currentMode = theme.themeMode || theme.currentTheme?.themeMode || (theme.isDark ? 'dark' : 'light');
+  const variants = {};
+
+  THEME_PACK_MODES.forEach((themeMode) => {
+    const normalized = normalizeThemePackVariant(rawVariants[themeMode], themeMode, spec);
+    if (normalized) {
+      variants[themeMode] = normalized;
+    }
+  });
+
+  if (!variants[currentMode]) {
+    const currentVariant = normalizeThemePackVariant(theme, currentMode, spec);
+    if (currentVariant) {
+      variants[currentMode] = currentVariant;
+    }
+  }
+
+  const availableModes = THEME_PACK_MODES.filter((themeMode) => variants[themeMode]);
+
+  return {
+    themeName: spec.name,
+    slug: slugifyFilename(spec.name, 'theme'),
+    seedHex: spec.baseColor,
+    harmony: spec.mode,
+    currentMode,
+    availableModes,
+    missingModes: THEME_PACK_MODES.filter((themeMode) => !variants[themeMode]),
+    variantCoverage: availableModes.length === THEME_PACK_MODES.length
+      ? 'all-modes'
+      : availableModes.length > 1
+        ? 'available-modes'
+        : 'current-mode-only',
+    variants,
+    metadata: {
+      printMode: spec.printMode,
+      tokenPrefix: spec.tokenPrefix,
+      generatedAt: new Date().toISOString(),
+    },
+    fineTuneSettings: {
+      apocalypseIntensity: spec.apocalypseIntensity,
+      harmonyIntensity: spec.harmonyIntensity,
+      neutralCurve: spec.neutralCurve,
+      accentStrength: spec.accentStrength,
+      popIntensity: spec.popIntensity,
+    },
+  };
+};
+
 export const addAllModeThemePackFiles = async (root, theme, options = {}) => {
   const spec = resolveAllModeThemeSpec(theme);
+  const exportData = buildThemePackExportData(theme);
   const themeSlug = slugifyFilename(options.slug || spec.name, 'theme');
   const combinedTokens = {};
   const combinedCss = [];
+  const tokenPrefix = spec.tokenPrefix || '';
 
-  for (const themeMode of THEME_PACK_MODES) {
-    const themeMaster = buildModeTheme(spec, themeMode);
-    const { finalTokens, currentTheme } = themeMaster;
+  root.file('README.md', [
+    `# ${spec.name}`,
+    '',
+    `${spec.name} is an Apocapalette theme pack serialized from resolved app-state tokens.`,
+    '',
+    '## Variant Coverage',
+    '',
+    `- Coverage: ${exportData.variantCoverage}`,
+    `- Included modes: ${exportData.availableModes.join(', ') || 'none'}`,
+    `- Missing modes: ${exportData.missingModes.join(', ') || 'none'}`,
+    '- Export behavior: this pack does not regenerate missing modes from seed/fine-tune settings.',
+    '',
+    '## Files',
+    '',
+    '- `modes/{mode}/tokens.json` - canonical tokens for each available resolved mode.',
+    '- `modes/{mode}/css/variables.css` - CSS variables from the same resolved tokens.',
+    '- `modes/{mode}/figma/tokens.json` - Figma token JSON from the same resolved tokens.',
+    '- `modes/{mode}/penpot/tokens.json` - Penpot token JSON from the same resolved tokens.',
+    '- `modes/{mode}/libreoffice/*.soc` - LibreOffice palette from the same resolved tokens.',
+    '- `combined/` - combined reference files for available modes only.',
+  ].join('\n'));
+
+  for (const themeMode of exportData.availableModes) {
+    const variant = exportData.variants[themeMode];
+    const { finalTokens, currentTheme, themeMaster, orderedStack } = variant;
     const modeFolder = root.folder(`modes/${themeMode}`);
     if (!modeFolder) throw new Error(`Failed to create ${themeMode} mode folder`);
-    const tokenPrefix = spec.tokenPrefix || '';
 
     const canonicalTokens = buildModeCanonicalTokens({ finalTokens, spec, themeMode });
     modeFolder.file('tokens.json', JSON.stringify(canonicalTokens, null, 2));
@@ -591,7 +704,7 @@ export const addAllModeThemePackFiles = async (root, theme, options = {}) => {
 
     const penpotPayload = buildPenpotPayload(
       finalTokens,
-      themeMaster.orderedStack ?? [],
+      orderedStack ?? [],
       {
         themeName: spec.name,
         mode: spec.mode,
@@ -646,11 +759,14 @@ export const addAllModeThemePackFiles = async (root, theme, options = {}) => {
     themeName: spec.name,
     baseColor: spec.baseColor,
     harmony: spec.mode,
+    variantCoverage: exportData.variantCoverage,
+    availableModes: exportData.availableModes,
+    missingModes: exportData.missingModes,
     modes: combinedTokens,
   }, null, 2));
   root.folder('combined')?.file('css/variables.all-modes.css', combinedCss.join('\n'));
 
-  return { themeSlug, modes: THEME_PACK_MODES };
+  return { themeSlug, modes: exportData.availableModes, variantCoverage: exportData.variantCoverage };
 };
 
 export const buildAllModeThemePackArchive = async (theme, options = {}) => {
@@ -669,6 +785,11 @@ export const buildAllModeThemePackArchive = async (theme, options = {}) => {
     filename: buildExportFilename(themeSlug, '-theme-pack-v1', 'zip'),
     themeSlug,
   };
+};
+
+export const downloadAllModeThemePackArchive = async (theme, options = {}) => {
+  const { blob, filename } = await buildAllModeThemePackArchive(theme, options);
+  exportThemePack({ data: blob, filename, mime: 'application/zip' });
 };
 
 export const downloadThemePackArchive = async (options) => {

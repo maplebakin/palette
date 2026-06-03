@@ -62,19 +62,112 @@ const pickActionColor = ({
 
   return best;
 };
+const pickForegroundSafeHoverColor = ({
+  hue,
+  saturation,
+  preferredLightness,
+  minLightness,
+  maxLightness,
+  foreground,
+  targetContrast = 4.5,
+}) => {
+  let best = hslToHex(hue, saturation, preferredLightness);
+  let bestRatio = getContrastRatio(foreground, best);
+  let bestDistance = Math.abs(preferredLightness - hexToHsl(best).l);
+  let meetsTarget = bestRatio >= targetContrast;
 
-const getPopSignalProfile = (hue, saturation, lightness, mode, isDark = false, popScale = 1) => {
+  for (let lightness = minLightness; lightness <= maxLightness; lightness += 1) {
+    const candidate = hslToHex(hue, saturation, lightness);
+    const ratio = getContrastRatio(foreground, candidate);
+    const candidateMeetsTarget = ratio >= targetContrast;
+    const distance = Math.abs(lightness - preferredLightness);
+    if (
+      (candidateMeetsTarget && !meetsTarget)
+      || (candidateMeetsTarget && meetsTarget && distance < bestDistance)
+      || (!candidateMeetsTarget && !meetsTarget && ratio > bestRatio)
+    ) {
+      best = candidate;
+      bestRatio = ratio;
+      bestDistance = distance;
+      meetsTarget = candidateMeetsTarget;
+    }
+  }
+
+  return best;
+};
+
+const getHueFamily = (hue, isNeutral) => {
+  if (isNeutral) return 'neutral';
+  if (hue >= 345 || hue < 15) return 'red';
+  if (hue < 38) return 'orange';
+  if (hue < 65) return 'yellow';
+  if (hue < 165) return 'green';
+  if (hue < 200) return 'cyan';
+  if (hue < 250) return 'blue';
+  if (hue < 292) return 'purple';
+  if (hue < 330) return 'magenta';
+  return 'blush';
+};
+
+const getTemperature = (hue, isNeutral) => {
+  if (isNeutral) return 'neutral';
+  if ((hue >= 330 && hue <= 360) || hue < 80) return 'warm';
+  if (hue >= 80 && hue < 170) return 'botanical';
+  return 'cool';
+};
+
+const createSeedProfile = ({ h, s, l }) => {
+  const isNeutral = s < 8;
+  const chromaLevel = isNeutral
+    ? 'neutral'
+    : s < 28
+      ? 'muted'
+      : s < 60
+        ? 'medium'
+        : 'vivid';
+  const lightnessLevel = l >= 78 ? 'pale' : l <= 24 ? 'dark' : 'mid';
+  const hueFamily = getHueFamily(h, isNeutral);
+  const temperature = getTemperature(h, isNeutral);
+
+  return {
+    hueFamily,
+    chromaLevel,
+    lightnessLevel,
+    temperature,
+    isNeutral,
+    isMuted: chromaLevel === 'muted',
+    isVivid: chromaLevel === 'vivid',
+    isPale: lightnessLevel === 'pale',
+    isDarkSeed: lightnessLevel === 'dark',
+    isWarmFamily: temperature === 'warm',
+    isCoolFamily: temperature === 'cool',
+    isBotanicalFamily: temperature === 'botanical',
+    isSoftBlushFamily: !isNeutral && l >= 76 && s >= 30 && (h >= 330 || h <= 8),
+    isPaleBlushFamily: !isNeutral && l >= 78 && s >= 18 && (h >= 330 || h <= 10),
+    isMutedBotanicalFamily: !isNeutral && s < 35 && h >= 80 && h <= 155,
+    isLightPastelFamily: !isNeutral && l >= 68 && s >= 35,
+    isDarkPastelFamily: !isNeutral && l >= 72 && s >= 18,
+  };
+};
+
+const getPopSignalProfile = (hue, saturation, lightness, mode, isDark = false, popScale = 1, seedProfile = createSeedProfile({ h: hue, s: saturation, l: lightness })) => {
   void mode;
   void isDark;
   const popDelta = clamp(popScale, 0.6, 1.4) - 1.3;
-  const trueNeutral = saturation < 8;
-  const mutedBotanical = !trueNeutral && saturation < 35 && hue >= 80 && hue <= 155;
-  const paleBlush = !trueNeutral && lightness >= 78 && saturation >= 18 && (hue >= 330 || hue <= 10);
+  const trueNeutral = seedProfile.isNeutral;
+  const mutedBotanical = seedProfile.isMutedBotanicalFamily;
+  const paleBlush = seedProfile.isPaleBlushFamily;
+  const darkChromatic = seedProfile.isDarkSeed && !trueNeutral;
+  const darkBotanical = darkChromatic && seedProfile.isBotanicalFamily;
   const signalHue = hue;
   const botanicalAccentHue = mutedBotanical ? wrapHue(signalHue + 8) : signalHue;
   const supportHue = signalHue;
   const fieldS = trueNeutral
       ? 0
+      : darkBotanical
+      ? clamp((saturation * 0.36) + 10 + (popDelta * 5), 30, 46)
+      : darkChromatic
+      ? clamp((saturation * 0.72) + 12 + (popDelta * 8), 32, 58)
       : mutedBotanical
       ? clamp(saturation * 2.1 + 16 + (popDelta * 14), 52, 64)
       : paleBlush
@@ -82,48 +175,54 @@ const getPopSignalProfile = (hue, saturation, lightness, mode, isDark = false, p
     : clamp(Math.max(saturation * 1.65, saturation + 18, 82) + (popDelta * 12), 74, 98);
   const fieldL = trueNeutral
     ? clamp(12 - (popDelta * 8), 10, 18)
+    : darkChromatic
+      ? clamp(lightness + 7 - (popDelta * 3), 14, 20)
     : findWhiteSafeLightness(signalHue, fieldS, (lightness > 55 ? lightness - 36 : lightness - 16) - (popDelta * 8));
-  const surfaceL = trueNeutral ? 27 : paleBlush ? clamp(fieldL + 14, 31, 48) : clamp(fieldL + 12, 31, 46);
-  const elevatedL = trueNeutral ? 42 : paleBlush ? clamp(surfaceL + 13, 45, 60) : clamp(surfaceL + 12, 43, 58);
-  const borderL = trueNeutral ? 58 : clamp(elevatedL + 8, 52, 68);
-  const highlightL = trueNeutral ? clamp(Math.max(lightness, 84), 84, 94) : clamp(elevatedL + 14, 58, 74);
+  const surfaceL = trueNeutral ? 27 : darkBotanical ? clamp(fieldL + 10, 28, 31) : darkChromatic ? clamp(fieldL + 13, 29, 35) : paleBlush ? clamp(fieldL + 14, 31, 48) : clamp(fieldL + 12, 31, 46);
+  const elevatedL = trueNeutral ? 42 : darkBotanical ? clamp(surfaceL + 11, 39, 42) : darkChromatic ? clamp(surfaceL + 13, 42, 48) : paleBlush ? clamp(surfaceL + 13, 45, 60) : clamp(surfaceL + 12, 43, 58);
+  const borderL = trueNeutral ? 58 : darkChromatic ? clamp(elevatedL + 12, 48, 60) : clamp(elevatedL + 8, 52, 68);
+  const highlightL = trueNeutral ? clamp(Math.max(lightness, 84), 84, 94) : darkBotanical ? clamp(elevatedL + 14, 53, 57) : darkChromatic ? clamp(elevatedL + 16, 56, 66) : clamp(elevatedL + 14, 58, 74);
   const choreography = trueNeutral
     ? 'neutral-shop-color-flood'
-    : mutedBotanical
+    : darkChromatic
+      ? 'premium-dark-shop'
+      : mutedBotanical
       ? 'botanical-shop-color-flood'
       : paleBlush
         ? 'blush-shop-color-flood'
         : 'seed-shop-color-flood';
   const family = trueNeutral
     ? 'graphite-silver-shop'
-    : mutedBotanical
+    : darkChromatic
+      ? `${seedProfile.hueFamily}-midnight-shop`
+      : mutedBotanical
       ? 'vivid-botanical-shop'
       : paleBlush
         ? 'glossy-blush-shop'
         : 'seed-hue-shop';
   const brightPop = {
     h: botanicalAccentHue,
-    s: trueNeutral ? 0 : mutedBotanical ? clamp(fieldS + 6, 56, 64) : paleBlush ? clamp(fieldS + 7, 72, 84) : clamp(fieldS + 4, 86, 98),
+    s: trueNeutral ? 0 : darkBotanical ? clamp(fieldS + 6, 40, 52) : darkChromatic ? clamp(fieldS + 8, 42, 66) : mutedBotanical ? clamp(fieldS + 6, 56, 64) : paleBlush ? clamp(fieldS + 7, 72, 84) : clamp(fieldS + 4, 86, 98),
     l: highlightL,
   };
   const frostedPop = {
     h: botanicalAccentHue,
-    s: trueNeutral ? 0 : mutedBotanical ? clamp(fieldS - 10, 42, 56) : paleBlush ? clamp(fieldS - 12, 54, 66) : clamp(fieldS - 18, 58, 80),
-    l: trueNeutral ? 82 : clamp(fieldL + 34, 66, 82),
+    s: trueNeutral ? 0 : darkBotanical ? clamp(fieldS - 8, 22, 38) : darkChromatic ? clamp(fieldS - 8, 24, 48) : mutedBotanical ? clamp(fieldS - 10, 42, 56) : paleBlush ? clamp(fieldS - 12, 54, 66) : clamp(fieldS - 18, 58, 80),
+    l: trueNeutral ? 82 : darkChromatic ? clamp(fieldL + 44, 58, 68) : clamp(fieldL + 34, 66, 82),
   };
   const cutout = {
     h: signalHue,
-    s: trueNeutral ? 0 : mutedBotanical ? clamp(fieldS - 6, 44, 58) : paleBlush ? clamp(fieldS - 10, 56, 68) : clamp(fieldS - 12, 68, 90),
+    s: trueNeutral ? 0 : darkBotanical ? clamp(fieldS - 8, 24, 38) : darkChromatic ? clamp(fieldS - 8, 28, 48) : mutedBotanical ? clamp(fieldS - 6, 44, 58) : paleBlush ? clamp(fieldS - 10, 56, 68) : clamp(fieldS - 12, 68, 90),
     l: trueNeutral ? 88 : elevatedL,
   };
   const highlightTint = {
     h: signalHue,
-    s: trueNeutral ? 0 : mutedBotanical ? clamp(fieldS - 16, 36, 50) : paleBlush ? clamp(fieldS - 18, 48, 60) : clamp(fieldS - 22, 54, 78),
+    s: trueNeutral ? 0 : darkBotanical ? clamp(fieldS - 14, 18, 32) : darkChromatic ? clamp(fieldS - 14, 22, 42) : mutedBotanical ? clamp(fieldS - 16, 36, 50) : paleBlush ? clamp(fieldS - 18, 48, 60) : clamp(fieldS - 22, 54, 78),
     l: trueNeutral ? 32 : surfaceL,
   };
   const sticker = {
     h: botanicalAccentHue,
-    s: trueNeutral ? 0 : mutedBotanical ? clamp(fieldS + 6, 56, 64) : paleBlush ? clamp(fieldS + 7, 72, 84) : clamp(fieldS + 2, 84, 98),
+    s: trueNeutral ? 0 : darkBotanical ? clamp(fieldS + 8, 42, 54) : darkChromatic ? clamp(fieldS + 10, 44, 68) : mutedBotanical ? clamp(fieldS + 6, 56, 64) : paleBlush ? clamp(fieldS + 7, 72, 84) : clamp(fieldS + 2, 84, 98),
     l: highlightL,
   };
   const signalText = {
@@ -133,12 +232,12 @@ const getPopSignalProfile = (hue, saturation, lightness, mode, isDark = false, p
   };
   const skeletonBlush = {
     h: signalHue,
-    s: trueNeutral ? 0 : paleBlush ? clamp(fieldS - 28, 36, 50) : clamp(fieldS - 40, 38, 62),
-    l: trueNeutral ? 30 : clamp(fieldL + 28, 58, 74),
+    s: trueNeutral ? 0 : darkBotanical ? clamp(fieldS - 18, 16, 28) : darkChromatic ? clamp(fieldS - 18, 18, 36) : paleBlush ? clamp(fieldS - 28, 36, 50) : clamp(fieldS - 40, 38, 62),
+    l: trueNeutral ? 30 : darkChromatic ? clamp(fieldL + 24, 36, 46) : clamp(fieldL + 28, 58, 74),
   };
   const stickerBorder = {
     h: botanicalAccentHue,
-    s: trueNeutral ? 0 : mutedBotanical ? clamp(fieldS + 6, 56, 64) : paleBlush ? clamp(fieldS + 7, 72, 84) : clamp(fieldS + 2, 84, 98),
+    s: trueNeutral ? 0 : darkBotanical ? clamp(fieldS + 4, 36, 48) : darkChromatic ? clamp(fieldS + 6, 38, 60) : mutedBotanical ? clamp(fieldS + 6, 56, 64) : paleBlush ? clamp(fieldS + 7, 72, 84) : clamp(fieldS + 2, 84, 98),
     l: borderL,
   };
 
@@ -154,9 +253,9 @@ const getPopSignalProfile = (hue, saturation, lightness, mode, isDark = false, p
     backgroundSatCap: 100,
     harmonizeWeight: 0,
     popBackground: { h: signalHue, s: fieldS, l: fieldL },
-    popSurface: { h: signalHue, s: trueNeutral ? 0 : mutedBotanical ? clamp(fieldS - 10, 40, 52) : paleBlush ? clamp(fieldS - 10, 56, 68) : clamp(fieldS - 14, 66, 88), l: surfaceL },
-    popSurfaceElevated: { h: signalHue, s: trueNeutral ? 0 : mutedBotanical ? clamp(fieldS - 16, 34, 48) : paleBlush ? clamp(fieldS - 16, 48, 60) : clamp(fieldS - 22, 56, 82), l: elevatedL },
-    popBorder: { h: signalHue, s: trueNeutral ? 0 : mutedBotanical ? clamp(fieldS - 8, 42, 56) : paleBlush ? clamp(fieldS - 12, 52, 64) : clamp(fieldS - 14, 60, 86), l: borderL },
+    popSurface: { h: signalHue, s: trueNeutral ? 0 : darkBotanical ? clamp(fieldS - 8, 22, 36) : darkChromatic ? clamp(fieldS - 8, 24, 48) : mutedBotanical ? clamp(fieldS - 10, 40, 52) : paleBlush ? clamp(fieldS - 10, 56, 68) : clamp(fieldS - 14, 66, 88), l: surfaceL },
+    popSurfaceElevated: { h: signalHue, s: trueNeutral ? 0 : darkBotanical ? clamp(fieldS - 12, 18, 32) : darkChromatic ? clamp(fieldS - 12, 20, 42) : mutedBotanical ? clamp(fieldS - 16, 34, 48) : paleBlush ? clamp(fieldS - 16, 48, 60) : clamp(fieldS - 22, 56, 82), l: elevatedL },
+    popBorder: { h: signalHue, s: trueNeutral ? 0 : darkBotanical ? clamp(fieldS - 6, 24, 40) : darkChromatic ? clamp(fieldS - 6, 26, 48) : mutedBotanical ? clamp(fieldS - 8, 42, 56) : paleBlush ? clamp(fieldS - 12, 52, 64) : clamp(fieldS - 14, 60, 86), l: borderL },
     brightPop,
     frostedPop,
     popField: { h: signalHue, s: fieldS, l: fieldL },
@@ -277,6 +376,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     ? '#beefbe'
     : (baseColor.length === 9 && baseColor.startsWith('#') ? baseColor.slice(0, 7) : baseColor);
   const hsl = hexToHsl(normalizedBase);
+  const seedProfile = createSeedProfile(hsl);
   const isDark = themeMode === 'dark';
   const isPop = themeMode === 'pop';
   const isLight = themeMode === 'light';
@@ -302,7 +402,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const isPrintMode = Boolean(printModeOverride);
   const POP_INTENSITY = 0.28;
   const LIGHT_TEMP_SHIFT = 8;
-  const popSignalProfile = isPop ? getPopSignalProfile(hsl.h, hsl.s, hsl.l, mode, isDark, popScale) : null;
+  const popSignalProfile = isPop ? getPopSignalProfile(hsl.h, hsl.s, hsl.l, mode, isDark, popScale, seedProfile) : null;
   const popBoost = isPop
     ? POP_INTENSITY * clamp(popScale, 0.85, 1.15) * (isPrintMode ? 0.85 : 1)
     : 0;
@@ -387,7 +487,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     : clamp((paletteMaxS * 1.6) + ((popScale - 1) * 6), 35, 70);
   const popSignalHue = popSignalProfile?.signalHue ?? hsl.h;
   const isNeutralPop = popSignalProfile?.family === 'graphite-silver-shop';
-  const isBlushPop = popSignalProfile?.family === 'glossy-blush-shop';
+  const isSoftFamilyPop = popSignalProfile?.family === 'glossy-blush-shop';
   const popFieldS = popSignalProfile?.popField.s ?? relativePopS;
   const popFieldL = popSignalProfile?.popField.l ?? clamp(hsl.l - 25, 32, 45);
   const popSignalLightness = popFieldL;
@@ -424,8 +524,8 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     || (!isNeutralPop && rawSeedRole.s < 42)
     || getContrastRatio(normalizedBase, popBackgroundColor) < 2.2
     || getContrastRatio(normalizedBase, popSurfaceColor) < 2.2;
-  const blushCtaColor = hslToHex(popSignalHue, clamp(popFieldS + 6, 74, 82), 78);
-  const popCtaColor = isBlushPop ? blushCtaColor : rawSeedTooQuiet ? brightPopColor : normalizedBase;
+  const softFamilyCtaColor = hslToHex(popSignalHue, clamp(popFieldS + 6, 74, 82), 78);
+  const popCtaColor = isSoftFamilyPop ? softFamilyCtaColor : rawSeedTooQuiet ? brightPopColor : normalizedBase;
   const popCtaForegroundColor = chooseReadableText(popCtaColor);
   if (isPop) {
     brandLightness = popSignalLightness;
@@ -452,53 +552,56 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const primary = isPop
     ? popBackgroundColor
     : normalizedBase;
-  const paleBlushActionSeed = !isPop && hsl.l >= 76 && hsl.s >= 30 && (hsl.h >= 330 || hsl.h <= 8);
-  const blushBrandHue = hsl.h;
-  const blushSecondary = paleBlushActionSeed
-    ? hslToHex(blushBrandHue, clamp(hsl.s * 0.44, 38, 54), isDark ? 68 : 72)
+  const softFamilyActionSeed = !isPop && seedProfile.isSoftBlushFamily;
+  const familyAnchorHue = hsl.h;
+  const softFamilySecondary = softFamilyActionSeed
+    ? hslToHex(familyAnchorHue, clamp(hsl.s * 0.44, 38, 54), isDark ? 68 : 72)
     : null;
-  const blushAccent = paleBlushActionSeed
-    ? hslToHex(blushBrandHue, clamp(hsl.s * 0.34, 30, 46), isDark ? 76 : 84)
+  const softFamilyAccent = softFamilyActionSeed
+    ? hslToHex(familyAnchorHue, clamp(hsl.s * 0.34, 30, 46), isDark ? 76 : 84)
     : null;
-  const blushAccentStrong = paleBlushActionSeed
-    ? hslToHex(blushBrandHue, clamp(hsl.s * 0.62, 56, 72), isDark ? 64 : 66)
+  const softFamilyAccentStrong = softFamilyActionSeed
+    ? hslToHex(familyAnchorHue, clamp(hsl.s * 0.62, 56, 72), isDark ? 64 : 66)
     : null;
-  const blushSupport = paleBlushActionSeed ? {
-    accent1: hslToHex(blushBrandHue, clamp(hsl.s * 0.46, 40, 56), isDark ? 70 : 72),
-    accent2: hslToHex(blushBrandHue, clamp(hsl.s * 0.54, 46, 62), isDark ? 64 : 64),
-    accent3: hslToHex(blushBrandHue, clamp(hsl.s * 0.62, 54, 70), isDark ? 58 : 58),
-    accentInk: hslToHex(blushBrandHue, clamp(hsl.s * 0.5, 42, 58), isDark ? 76 : 32),
-    textAccent: hslToHex(blushBrandHue, clamp(hsl.s * 0.42, 38, 54), isDark ? 76 : 38),
-    textAccentStrong: hslToHex(blushBrandHue, clamp(hsl.s * 0.46, 42, 58), isDark ? 84 : 30),
-    link: hslToHex(blushBrandHue, clamp(hsl.s * 0.56, 50, 66), isDark ? 74 : 42),
-    focusRing: hslToHex(blushBrandHue, clamp(hsl.s * 0.56, 50, 66), isDark ? 68 : 64),
+  const softFamilySupport = softFamilyActionSeed ? {
+    accent1: hslToHex(familyAnchorHue, clamp(hsl.s * 0.46, 40, 56), isDark ? 70 : 72),
+    accent2: hslToHex(familyAnchorHue, clamp(hsl.s * 0.54, 46, 62), isDark ? 64 : 64),
+    accent3: hslToHex(familyAnchorHue, clamp(hsl.s * 0.62, 54, 70), isDark ? 58 : 58),
+    accentInk: hslToHex(familyAnchorHue, clamp(hsl.s * 0.5, 42, 58), isDark ? 76 : 32),
+    textAccent: hslToHex(familyAnchorHue, clamp(hsl.s * 0.42, 38, 54), isDark ? 76 : 38),
+    textAccentStrong: hslToHex(familyAnchorHue, clamp(hsl.s * 0.46, 42, 58), isDark ? 84 : 30),
+    link: hslToHex(familyAnchorHue, clamp(hsl.s * 0.56, 50, 66), isDark ? 74 : 42),
+    focusRing: hslToHex(familyAnchorHue, clamp(hsl.s * 0.56, 50, 66), isDark ? 68 : 64),
   } : null;
   const secondary = isPop
     ? popSurfaceColor
-    : paleBlushActionSeed
-      ? blushSecondary
+    : softFamilyActionSeed
+      ? softFamilySecondary
       : getColor(hsl, brandSecondaryHueShift, secondarySat * 0.96, harmonyBrandLightness);
   const accent = isPop
     ? normalizedBase
-    : paleBlushActionSeed
-      ? blushAccent
+    : softFamilyActionSeed
+      ? softFamilyAccent
       : getColor(hsl, brandSignalHueShift, accentSat * 0.9, harmonyAccentLightness);
   const accentStrong = isPop
     ? brightPopColor
-    : paleBlushActionSeed
-      ? blushAccentStrong
+    : softFamilyActionSeed
+      ? softFamilyAccentStrong
       : getColor(hsl, brandSignalHueShift, (accentSat * 0.9) + 0.04, harmonyAccentLightness + 5);
-  const actionHue = paleBlushActionSeed ? hsl.h : wrapHue(hsl.h + brandSignalHueShift);
-  const actionSeedIsNeutral = hsl.s < 8;
-  const darkPastelActionSeed = isDark && !isPop && hsl.l >= 72 && hsl.s >= 18;
+  const actionHue = softFamilyActionSeed ? hsl.h : wrapHue(hsl.h + brandSignalHueShift);
+  const actionSeedIsNeutral = seedProfile.isNeutral;
+  const lightPastelActionSeed = isLight && !isPop && !softFamilyActionSeed && seedProfile.isLightPastelFamily;
+  const darkPastelActionSeed = isDark && !isPop && seedProfile.isDarkPastelFamily;
   const lightActionSaturation = actionSeedIsNeutral
     ? 0
-    : paleBlushActionSeed
+    : softFamilyActionSeed
       ? clamp(Math.max(hsl.s * 0.66, 58) * accentActionScale, 56, 76)
-      : clamp(Math.max(hsl.s * 1.12, 54) * accentActionScale, 48, 92);
+      : lightPastelActionSeed
+        ? clamp(Math.max(hsl.s * 0.78, 52) * accentActionScale, 50, 78)
+        : clamp(Math.max(hsl.s * 1.12, 54) * accentActionScale, 48, 92);
   const darkActionSaturation = actionSeedIsNeutral
     ? 0
-    : paleBlushActionSeed
+    : softFamilyActionSeed
       ? clamp(Math.max(hsl.s * 0.68, 58) * accentActionScale, 56, 76)
       : darkPastelActionSeed
       ? clamp(Math.max(hsl.s * 1.25, 76) * accentActionScale, 70, 92)
@@ -506,11 +609,11 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const lightPrimaryAction = pickActionColor({
     hue: actionHue,
     saturation: lightActionSaturation,
-    preferredLightness: actionSeedIsNeutral ? 30 : paleBlushActionSeed ? 58 : 36,
-    minLightness: paleBlushActionSeed ? 56 : 20,
-    maxLightness: paleBlushActionSeed ? 60 : 48,
+    preferredLightness: actionSeedIsNeutral ? 30 : softFamilyActionSeed ? 58 : lightPastelActionSeed ? 60 : 36,
+    minLightness: softFamilyActionSeed ? 56 : lightPastelActionSeed ? 50 : 20,
+    maxLightness: softFamilyActionSeed ? 60 : lightPastelActionSeed ? 64 : 48,
     surface: '#f7f7f7',
-    targetContrast: paleBlushActionSeed ? 3.2 : 4.2,
+    targetContrast: softFamilyActionSeed ? 3.2 : lightPastelActionSeed ? 4 : 4.2,
   });
   const lightSecondaryAction = pickActionColor({
     hue: actionHue,
@@ -524,7 +627,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const darkPrimaryAction = pickActionColor({
     hue: actionHue,
     saturation: darkActionSaturation,
-    preferredLightness: actionSeedIsNeutral ? 78 : paleBlushActionSeed ? 60 : darkPastelActionSeed ? 58 : 64,
+    preferredLightness: actionSeedIsNeutral ? 78 : softFamilyActionSeed ? 60 : darkPastelActionSeed ? 58 : 64,
     minLightness: darkPastelActionSeed ? 54 : 52,
     maxLightness: darkPastelActionSeed ? 66 : 86,
     surface: '#111827',
@@ -545,9 +648,19 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       ? darkPrimaryAction
       : lightPrimaryAction;
   const ctaRole = hexToHsl(cta);
+  const isPremiumDarkPop = popSignalProfile?.choreography === 'premium-dark-shop';
   const ctaHover = isPop
-    ? hslToHex(popSignalHue, isNeutralPop ? 0 : clamp(popFieldS + 4, 86, 98), clamp(hexToHsl(popCtaColor).l - 8, 28, 66))
-    : paleBlushActionSeed
+    ? isPremiumDarkPop
+      ? pickForegroundSafeHoverColor({
+        hue: popSignalHue,
+        saturation: isNeutralPop ? 0 : clamp(ctaRole.s + 4, ctaRole.s, seedProfile.isBotanicalFamily ? 56 : 70),
+        preferredLightness: clamp(ctaRole.l - 5, 42, 60),
+        minLightness: clamp(ctaRole.l - 6, 42, 60),
+        maxLightness: clamp(ctaRole.l - 2, 42, 60),
+        foreground: popCtaForegroundColor,
+      })
+      : hslToHex(popSignalHue, isNeutralPop ? 0 : clamp(popFieldS + 4, 86, 98), clamp(ctaRole.l - 8, 28, 66))
+    : softFamilyActionSeed
       ? pickActionColor({
         hue: actionHue,
         saturation: clamp(ctaRole.s + (isDark ? 4 : 2), ctaRole.s, isDark ? 80 : 78),
@@ -556,6 +669,16 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
         maxLightness: isDark ? 68 : clamp(ctaRole.l - 2, 54, 58),
         surface: isDark ? '#111827' : '#f7f7f7',
         targetContrast: isDark ? 3.6 : 3.6,
+      })
+    : lightPastelActionSeed
+      ? pickActionColor({
+        hue: actionHue,
+        saturation: clamp(ctaRole.s + 2, ctaRole.s, 80),
+        preferredLightness: clamp(ctaRole.l - 4, 54, 60),
+        minLightness: 50,
+        maxLightness: clamp(ctaRole.l - 2, 54, 62),
+        surface: '#f7f7f7',
+        targetContrast: 4.2,
       })
     : isDark
       ? pickActionColor({
@@ -601,7 +724,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     : { h: neutralSurfaceHue, s: surfaceSat, l: bgL };
   const largeSurfaceBase = isPop ? popBackgroundRole : backgroundBase;
   const mediumSurfaceBase = isPop ? popSurfaceRole : surfaceBase;
-  const lightPastelEntitySeed = isLight && !isPop && hsl.l >= 72 && hsl.s >= 18;
+  const lightPastelEntitySeed = isLight && !isPop && seedProfile.isDarkPastelFamily;
   const lightEntityHighlightHue = hsl.h;
   const lightEntityHighlightBgLightness = clamp(95 - ((neutralCurveScale - 1) * 2), 93, 96);
   const lightEntityHighlightBg = hslToHex(
@@ -625,7 +748,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     28,
   );
   const neutralColor = (lightness, satMult = 0.3) => {
-    const blushNeutralSat = paleBlushActionSeed
+    const softFamilyNeutralSat = softFamilyActionSeed
       ? clamp(
         lightness >= 90 ? 6 : lightness >= 70 ? 8 : lightness >= 50 ? 9 : 10,
         0,
@@ -633,7 +756,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       )
       : 0;
     return getColor(
-      { h: neutralBackgroundHue, s: Math.max(surfaceSat * satMult, blushNeutralSat), l: lightness },
+      { h: neutralBackgroundHue, s: Math.max(surfaceSat * satMult, softFamilyNeutralSat), l: lightness },
       0,
       1,
       lightness,
@@ -650,28 +773,28 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
 
   const success = isApocalypse
     ? (isDark ? hslToHex(145, 100, 60) : hslToHex(145, 95, 40))
-    : paleBlushActionSeed
+    : softFamilyActionSeed
     ? hslToHex(145, isDark ? 46 : 42, isDark ? 58 : 38)
     : (isDark ? hslToHex(145, 65, 45) : hslToHex(145, 65, 40)); 
   const warning = isApocalypse
     ? (isDark ? hslToHex(45, 100, 60) : hslToHex(45, 100, 50))
-    : paleBlushActionSeed
+    : softFamilyActionSeed
     ? hslToHex(42, isDark ? 72 : 62, isDark ? 62 : 48)
     : (isDark ? hslToHex(45, 90, 50) : hslToHex(45, 90, 45));
   const error = isApocalypse
     ? (isDark ? hslToHex(0, 100, 65) : hslToHex(0, 100, 45))
-    : paleBlushActionSeed
+    : softFamilyActionSeed
     ? hslToHex(358, isDark ? 64 : 58, isDark ? 66 : 52)
     : (isDark ? hslToHex(0, 70, 60) : hslToHex(0, 70, 50));
   const info = isApocalypse
     ? (isDark ? hslToHex(210, 100, 65) : hslToHex(210, 100, 50))
-    : paleBlushActionSeed
+    : softFamilyActionSeed
     ? hslToHex(212, isDark ? 50 : 48, isDark ? 66 : 50)
     : (isDark ? hslToHex(210, 80, 60) : hslToHex(210, 80, 50));
   const statusStrong = {
-    success: paleBlushActionSeed ? hslToHex(145, isDark ? 48 : 46, isDark ? 64 : 44) : getColor({ h: 145, s: 65, l: 50 }, 0, 1, isDark ? 52 : 48),
-    warning: paleBlushActionSeed ? hslToHex(42, isDark ? 76 : 66, isDark ? 68 : 52) : getColor({ h: 45, s: 90, l: 55 }, 0, 1, isDark ? 52 : 50),
-    error: paleBlushActionSeed ? hslToHex(358, isDark ? 68 : 62, isDark ? 70 : 56) : getColor({ h: 0, s: 72, l: 55 }, 0, 1, isDark ? 58 : 52),
+    success: softFamilyActionSeed ? hslToHex(145, isDark ? 48 : 46, isDark ? 64 : 44) : getColor({ h: 145, s: 65, l: 50 }, 0, 1, isDark ? 52 : 48),
+    warning: softFamilyActionSeed ? hslToHex(42, isDark ? 76 : 66, isDark ? 68 : 52) : getColor({ h: 45, s: 90, l: 55 }, 0, 1, isDark ? 52 : 50),
+    error: softFamilyActionSeed ? hslToHex(358, isDark ? 68 : 62, isDark ? 70 : 56) : getColor({ h: 0, s: 72, l: 55 }, 0, 1, isDark ? 58 : 52),
   };
   const glassNoiseOpacity = isApocalypse ? '0.9' : (isDark ? '0.08' : '0.04');
   const glassBlur = isApocalypse ? '40px' : '16px';
@@ -682,7 +805,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const accentHueSecondary = isPop && popSignalProfile ? accentHueMain : (hsl.h + interfaceSupportHue + 360) % 360;
   const accentHueRoot = isPop && popSignalProfile ? accentHueMain : hsl.h;
   const accentLightSteps = isDark ? [68, 60, 52, 36] : [58, 52, 46, 32];
-  const accentBaseSat = clamp(Math.max(20, hsl.s) * accentChromaScale, 10, 100);
+  const accentBaseSat = seedProfile.isNeutral ? 0 : clamp(Math.max(20, hsl.s) * accentChromaScale, 10, 100);
   const accentColor = (h, satMult, l) => getColor({ h, s: accentBaseSat, l }, 0, satMult, l);
   const linkBrandSat = isDark ? 0.9 : 0.9 + (popBoost * 0.6);
   const linkTextSat = isDark ? 1 : 1 + (popBoost * 0.6);
@@ -796,10 +919,10 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
         "neutral-9": neutralColor(neutralSteps[9], 0.34),
       },
       accents: {
-        "accent-1": paleBlushActionSeed ? blushSupport.accent1 : accentColor(accentHueMain, satNormalizer * accSat * 0.9, accentLightSteps[0]),
-        "accent-2": paleBlushActionSeed ? blushSupport.accent2 : accentColor(accentHueSecondary, satNormalizer * secSat * 0.98, accentLightSteps[1]),
-        "accent-3": paleBlushActionSeed ? blushSupport.accent3 : accentColor(accentHueRoot, satNormalizer * accSat * 1.05, accentLightSteps[2]),
-        "accent-ink": paleBlushActionSeed ? blushSupport.accentInk : accentColor(accentHueMain, satNormalizer * accSat * 1.2, accentLightSteps[3]),
+        "accent-1": softFamilyActionSeed ? softFamilySupport.accent1 : accentColor(accentHueMain, satNormalizer * accSat * 0.9, accentLightSteps[0]),
+        "accent-2": softFamilyActionSeed ? softFamilySupport.accent2 : accentColor(accentHueSecondary, satNormalizer * secSat * 0.98, accentLightSteps[1]),
+        "accent-3": softFamilyActionSeed ? softFamilySupport.accent3 : accentColor(accentHueRoot, satNormalizer * accSat * 1.05, accentLightSteps[2]),
+        "accent-ink": softFamilyActionSeed ? softFamilySupport.accentInk : accentColor(accentHueMain, satNormalizer * accSat * 1.2, accentLightSteps[3]),
       },
       status: {
         success,
@@ -820,13 +943,13 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       "gradient-end": gradientEnd,
       "link-color": isPop
         ? signalTextColor
-        : paleBlushActionSeed
-          ? blushSupport.link
+        : softFamilyActionSeed
+          ? softFamilySupport.link
           : getColor(hsl, interfaceAccentHue, linkBrandSat, isDark ? 70 : 45),
       "focus-ring": isPop
         ? hslToHex(stickerRole.h, stickerRole.s, isDark ? clamp(stickerRole.l + 2, 66, 76) : clamp(stickerRole.l - 8, 38, 52))
-        : paleBlushActionSeed
-        ? blushSupport.focusRing
+        : softFamilyActionSeed
+        ? softFamilySupport.focusRing
         : getColor(hsl, interfaceAccentHue, focusRingSat, focusRingLight),
     },
 
@@ -852,13 +975,13 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       "text-disabled": isPop ? hslToHex(popBackgroundRole.h, 12, 62) : getColor(hsl, 0, 0.1, isDark ? 30 : 80),
       "text-accent": isPop
         ? popForegroundColor
-        : paleBlushActionSeed
-        ? blushSupport.textAccent
+        : softFamilyActionSeed
+        ? softFamilySupport.textAccent
         : getColor(hsl, interfaceAccentHue, accentTextSat, isDark ? 75 : 40),
       "text-accent-strong": isPop
         ? popForegroundColor
-        : paleBlushActionSeed
-        ? blushSupport.textAccentStrong
+        : softFamilyActionSeed
+        ? softFamilySupport.textAccentStrong
         : getColor(hsl, interfaceAccentHue, accentTextStrongSat, isDark ? 85 : 30),
       "footer-text": isPop ? hslToHex(popBackgroundRole.h, 12, 90) : getColor(hsl, 0, 0.1, isDark ? 60 : 85),
       "footer-text-muted": isPop ? popMutedForegroundColor : getColor(hsl, 0, 0.1, isDark ? 40 : 60),
@@ -871,18 +994,18 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       "text-disabled": isPop ? hslToHex(popBackgroundRole.h, 12, 62) : getColor(hsl, 0, 0.1, isDark ? 38 : 80),
       "text-accent": isPop
         ? popForegroundColor
-        : paleBlushActionSeed
-        ? blushSupport.textAccent
+        : softFamilyActionSeed
+        ? softFamilySupport.textAccent
         : getColor(hsl, interfaceAccentHue, accentTextSat, isDark ? 75 : 40),
       "text-accent-strong": isPop
         ? popForegroundColor
-        : paleBlushActionSeed
-        ? blushSupport.textAccentStrong
+        : softFamilyActionSeed
+        ? softFamilySupport.textAccentStrong
         : getColor(hsl, interfaceAccentHue, accentTextStrongSat, isDark ? 85 : 30),
       "link-color": isPop
         ? popForegroundColor
-        : paleBlushActionSeed
-        ? blushSupport.link
+        : softFamilyActionSeed
+        ? softFamilySupport.link
         : getColor(hsl, interfaceAccentHue, linkTextSat, isDark ? 70 : 45),
     },
 
@@ -1105,6 +1228,8 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   tokens.textPalette['text-tertiary'] = ensureContrast(tokens.textPalette['text-tertiary'], card, 3.2, isDark);
   tokens.typography['text-accent'] = ensureContrast(tokens.typography['text-accent'], bg, 4.5, isDark);
   tokens.typography['text-accent-strong'] = ensureContrast(tokens.typography['text-accent-strong'], bg, 4.5, isDark);
+  tokens.textPalette['text-accent'] = ensureContrast(tokens.textPalette['text-accent'], bg, 4.5, isDark);
+  tokens.textPalette['text-accent-strong'] = ensureContrast(tokens.textPalette['text-accent-strong'], bg, 4.5, isDark);
 
   if (isPop) {
     const accentSurface = tokens.cards['card-panel-surface'];

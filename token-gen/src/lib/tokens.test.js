@@ -11,6 +11,27 @@ const roleDistance = (a, b) => (
   + (Math.abs(a.s - b.s) * 0.25)
   + (hueDistance(a.h, b.h) * 0.08)
 );
+const SEED_GAUNTLET = [
+  '#FF9DB8',
+  '#F7D6E0',
+  '#B86F8A',
+  '#AD14B8',
+  '#A78BFA',
+  '#6B4FA3',
+  '#5B6FA8',
+  '#00D1FF',
+  '#2563EB',
+  '#8BAF91',
+  '#7F9F7A',
+  '#B8A48A',
+  '#B89251',
+  '#FF7A00',
+  '#FFD000',
+  '#C7C7C7',
+  '#71717A',
+  '#111827',
+  '#18181B',
+];
 
 describe('generateTokens', () => {
   it('produces distinct brand colors per harmony mode', () => {
@@ -173,6 +194,24 @@ describe('generateTokens', () => {
     expect(Math.abs(hover.l - cta.l)).toBeLessThanOrEqual(6);
     expect(Math.abs(hover.s - cta.s)).toBeLessThanOrEqual(6);
     expect(getContrastRatio(light.actions.primary, light.cards['card-panel-surface'])).toBeGreaterThanOrEqual(3.2);
+    expect(getContrastRatio(light.actions['primary-foreground'], light.actions.primary)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps soft lavender light actions from collapsing into a navy accent punch', () => {
+    const light = generateTokens('#A78BFA', 'Monochromatic', 'light', 100);
+    const seed = hexToHsl('#A78BFA');
+    const cta = hexToHsl(light.actions.primary);
+    const hover = hexToHsl(light.brand['cta-hover']);
+
+    expect(light.actions.primary).toBe('#6150e2');
+    expect(light.brand.cta).toBe(light.actions.primary);
+    expect(hueDistance(cta.h, seed.h)).toBeLessThanOrEqual(10);
+    expect(cta.l).toBeGreaterThanOrEqual(56);
+    expect(cta.l).toBeLessThanOrEqual(64);
+    expect(cta.s).toBeLessThanOrEqual(80);
+    expect(hover.l).toBeGreaterThanOrEqual(52);
+    expect(hover.l).toBeLessThan(cta.l);
+    expect(getContrastRatio(light.actions.primary, light.cards['card-panel-surface'])).toBeGreaterThanOrEqual(4);
     expect(getContrastRatio(light.actions['primary-foreground'], light.actions.primary)).toBeGreaterThanOrEqual(4.5);
   });
 
@@ -502,6 +541,171 @@ describe('generateTokens', () => {
     expect(pop.brand.accent.toLowerCase()).toBe(base.toLowerCase());
     expect(pop.pop['pop-accent'].toLowerCase()).toBe(base.toLowerCase());
     expect(pop).toEqual(generateTokens(base, 'Monochromatic', 'pop', 100, { popIntensity: 130 }));
+  });
+
+  it.each([
+    ['#111827', 'blue-midnight-shop'],
+    ['#1A0B2E', 'purple-midnight-shop'],
+    ['#102A24', 'cyan-midnight-shop'],
+  ])('keeps dark chromatic seed %s in a premium dark Pop profile', (base, family) => {
+    const pop = generateTokens(base, 'Monochromatic', 'pop', 100, { popIntensity: 130 });
+    const seed = hexToHsl(base);
+    const bg = hexToHsl(pop.pop['pop-background']);
+    const surface = hexToHsl(pop.pop['pop-surface']);
+    const elevated = hexToHsl(pop.pop['pop-surface-elevated']);
+    const cta = hexToHsl(pop.pop['pop-cta']);
+
+    expect(pop.pop.choreography).toBe('premium-dark-shop');
+    expect(pop.pop.family).toBe(family);
+    expect(hueDistance(bg.h, seed.h)).toBeLessThanOrEqual(2);
+    expect(hueDistance(cta.h, seed.h)).toBeLessThanOrEqual(2);
+    expect(bg.l).toBeLessThanOrEqual(22);
+    expect(surface.l).toBeLessThanOrEqual(36);
+    expect(elevated.l).toBeLessThanOrEqual(48);
+    expect(bg.s).toBeLessThanOrEqual(58);
+    expect(surface.s).toBeLessThan(bg.s);
+    expect(elevated.s).toBeLessThan(surface.s);
+    expect(cta.s).toBeLessThanOrEqual(68);
+    expect(roleDistance(bg, surface)).toBeGreaterThanOrEqual(seed.h >= 80 && seed.h < 170 ? 11.5 : 14);
+    expect(roleDistance(surface, elevated)).toBeGreaterThanOrEqual(seed.h >= 80 && seed.h < 170 ? 11.5 : 13);
+    expect(roleDistance(cta, bg)).toBeGreaterThanOrEqual(18);
+    expect(roleDistance(cta, surface)).toBeGreaterThanOrEqual(18);
+    expect(getContrastRatio(pop.pop['pop-cta-foreground'], pop.pop['pop-cta'])).toBeGreaterThanOrEqual(4.5);
+    expect(getContrastRatio(pop.pop['pop-foreground'], pop.pop['pop-background'])).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(['#025a34', '#064e3b', '#052e16'])('keeps dark green Pop seed %s premium botanical instead of neon emerald', (base) => {
+    const pop = generateTokens(base, 'Monochromatic', 'pop', 100, { popIntensity: 130 });
+    const bg = hexToHsl(pop.pop['pop-background']);
+    const surface = hexToHsl(pop.pop['pop-surface']);
+    const elevated = hexToHsl(pop.pop['pop-surface-elevated']);
+    const cta = hexToHsl(pop.pop['pop-cta']);
+
+    expect(pop.pop.choreography).toBe('premium-dark-shop');
+    expect(pop.pop.family).toContain('midnight-shop');
+    expect(bg.l).toBeLessThanOrEqual(21);
+    expect(surface.l).toBeLessThanOrEqual(31);
+    expect(elevated.l).toBeLessThanOrEqual(42);
+    expect(bg.s).toBeLessThanOrEqual(46);
+    expect(surface.s).toBeLessThanOrEqual(36);
+    expect(elevated.s).toBeLessThanOrEqual(33);
+    expect(cta.s).toBeLessThanOrEqual(54);
+    expect(cta.l).toBeLessThanOrEqual(58);
+    expect(getContrastRatio(pop.pop['pop-cta-foreground'], pop.pop['pop-cta'])).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(['#102A24', '#111827', '#1A0B2E', '#2A1F12'])('keeps dark Pop CTA hover related and restrained for %s', (base) => {
+    const pop = generateTokens(base, 'Monochromatic', 'pop', 100, { popIntensity: 130 });
+    const cta = hexToHsl(pop.pop['pop-cta']);
+    const hover = hexToHsl(pop.brand['cta-hover']);
+
+    expect(pop.pop.choreography).toBe('premium-dark-shop');
+    expect(hueDistance(hover.h, cta.h)).toBeLessThanOrEqual(2);
+    expect(hover.s).toBeGreaterThanOrEqual(cta.s);
+    expect(hover.s).toBeLessThanOrEqual(cta.s + 8);
+    expect(hover.l).toBeLessThan(cta.l);
+    expect(cta.l - hover.l).toBeLessThanOrEqual(6);
+    expect(getContrastRatio(pop.actions['primary-foreground'], pop.brand['cta-hover'])).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps dark neutral Pop seeds graphite/silver instead of chromatic neon', () => {
+    const pop = generateTokens('#18181B', 'Monochromatic', 'pop', 100, { popIntensity: 130 });
+    const bg = hexToHsl(pop.pop['pop-background']);
+    const cta = hexToHsl(pop.pop['pop-cta']);
+
+    expect(pop.pop.choreography).toBe('neutral-shop-color-flood');
+    expect(pop.pop.family).toBe('graphite-silver-shop');
+    expect(bg.s).toBeLessThanOrEqual(2);
+    expect(cta.s).toBeLessThanOrEqual(2);
+    expect(bg.l).toBeLessThanOrEqual(18);
+    expect(cta.l).toBeGreaterThanOrEqual(80);
+  });
+
+  it('does not change Light or Dark outputs while refining dark Pop seeds', () => {
+    expect(generateTokens('#111827', 'Monochromatic', 'light', 100).brand.cta).toBe('#2a578d');
+    expect(generateTokens('#111827', 'Monochromatic', 'dark', 100).brand.cta).toBe('#779fcf');
+    expect(generateTokens('#1A0B2E', 'Monochromatic', 'light', 100).brand.cta).toBe('#431d9b');
+    expect(generateTokens('#1A0B2E', 'Monochromatic', 'dark', 100).brand.cta).toBe('#8d6cda');
+    expect(generateTokens('#102A24', 'Monochromatic', 'light', 100).brand.cta).toBe('#278260');
+    expect(generateTokens('#102A24', 'Monochromatic', 'dark', 100).brand.cta).toBe('#77cfaf');
+  });
+
+  it.each(SEED_GAUNTLET)('keeps mode-specific action roles visible and family-faithful for %s', (base) => {
+    const seed = hexToHsl(base);
+    const isNeutralSeed = seed.s < 8;
+
+    ['light', 'dark', 'pop'].forEach((themeMode) => {
+      const tokens = generateTokens(base, 'Monochromatic', themeMode, 100, { popIntensity: 130 });
+      const cta = hexToHsl(tokens.actions.primary);
+      const hover = hexToHsl(tokens.brand['cta-hover']);
+      const surface = themeMode === 'dark' ? tokens.surfaces.background : tokens.cards['card-panel-surface'];
+      const surfaceTarget = themeMode === 'pop' ? 1.8 : themeMode === 'dark' ? 3.4 : 3.2;
+
+      expect(tokens.brand.cta).toBe(tokens.actions.primary);
+      expect(getContrastRatio(tokens.actions.primary, surface)).toBeGreaterThanOrEqual(surfaceTarget);
+      expect(getContrastRatio(tokens.actions['primary-foreground'], tokens.actions.primary)).toBeGreaterThanOrEqual(4.5);
+
+      if (themeMode === 'pop') {
+        expect(tokens.actions.primary).toBe(tokens.pop['pop-cta']);
+        expect(tokens.actions['primary-foreground']).toBe(tokens.pop['pop-cta-foreground']);
+      } else {
+        expect(tokens.pop).toEqual({});
+      }
+
+      if (isNeutralSeed) {
+        expect(cta.s).toBeLessThanOrEqual(2);
+        expect(hover.s).toBeLessThanOrEqual(2);
+      } else {
+        expect(hueDistance(cta.h, seed.h)).toBeLessThanOrEqual(10);
+        expect(hueDistance(hover.h, cta.h)).toBeLessThanOrEqual(10);
+      }
+    });
+  });
+
+  it.each(SEED_GAUNTLET)('keeps supporting Light palette groups anchored to Brand Core for %s', (base) => {
+    const light = generateTokens(base, 'Monochromatic', 'light', 100);
+    const seed = hexToHsl(base);
+    const isNeutralSeed = seed.s < 8;
+    const accents = Object.values(light.foundation.accents).map(hexToHsl);
+    const textAccent = hexToHsl(light.textPalette['text-accent']);
+    const textAccentStrong = hexToHsl(light.textPalette['text-accent-strong']);
+
+    if (isNeutralSeed) {
+      accents.forEach((role) => {
+        expect(role.s).toBeLessThanOrEqual(2);
+      });
+      expect(hexToHsl(light.actions.primary).s).toBeLessThanOrEqual(2);
+      return;
+    }
+
+    accents.forEach((role) => {
+      expect(hueDistance(role.h, seed.h)).toBeLessThanOrEqual(12);
+    });
+    expect(hueDistance(textAccent.h, seed.h)).toBeLessThanOrEqual(12);
+    expect(hueDistance(textAccentStrong.h, seed.h)).toBeLessThanOrEqual(12);
+    expect(getContrastRatio(light.textPalette['text-accent'], light.surfaces.background)).toBeGreaterThanOrEqual(4.5);
+    expect(getContrastRatio(light.textPalette['text-accent-strong'], light.surfaces.background)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(SEED_GAUNTLET)('keeps entity highlights mode-aware without competing with primary actions for %s', (base) => {
+    const light = generateTokens(base, 'Monochromatic', 'light', 100);
+    const dark = generateTokens(base, 'Monochromatic', 'dark', 100);
+    const pop = generateTokens(base, 'Monochromatic', 'pop', 100, { popIntensity: 130 });
+
+    expect(light.entity['entity-highlight-bg']).not.toBe(light.brand.cta);
+    expect(light.entity['entity-highlight-bg']).not.toBe(light.brand['cta-hover']);
+    expect(light.entity['entity-highlight-bg']).not.toBe(light.brand['accent-strong']);
+    expect(getContrastRatio(light.entity['entity-highlight-accent'], light.entity['entity-highlight-bg'])).toBeGreaterThanOrEqual(4.5);
+    expect(getContrastRatio(light.entity['entity-highlight-text'], light.entity['entity-highlight-bg'])).toBeGreaterThanOrEqual(4.5);
+
+    expect(dark.entity['entity-card-glow']).not.toBe(dark.brand.cta);
+    expect(dark.entity['entity-card-glow']).not.toBe(dark.brand['cta-hover']);
+    expect(dark.entity['entity-card-glow']).not.toBe(dark.brand['accent-strong']);
+    expect(getContrastRatio(dark.entity['entity-highlight-accent'], dark.entity['entity-card-glow'])).toBeGreaterThanOrEqual(4.5);
+    expect(getContrastRatio(dark.entity['entity-highlight-text'], dark.entity['entity-card-glow'])).toBeGreaterThanOrEqual(4.5);
+
+    expect(pop.entity['entity-highlight-bg']).toBe(pop.actions['seed-accent']);
+    expect(pop.entity['entity-highlight-border']).toBe(pop.pop['sticker-border']);
   });
 
   it.each(['#050505', '#FAFAFA'])('keeps near-black and near-white pop seeds visible and contrast-safe', (base) => {

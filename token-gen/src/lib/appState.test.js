@@ -6,10 +6,12 @@ import {
   getPrintTimestamps,
   getThemePackGuidance,
   inferThemeMode,
+  normalizeConfirmedVariants,
   normalizeImportedPalette,
   sanitizeHexInput,
   sanitizePrefix,
   sanitizeThemeName,
+  summarizeConfirmedVariants,
 } from './appState.js';
 
 describe('appState helpers', () => {
@@ -89,7 +91,51 @@ describe('appState helpers', () => {
       popIntensity: 140,
       tokenPrefix: 'demoprefix',
       importedOverrides: null,
+      confirmedVariants: {},
+      savedAt: undefined,
+      version: 1,
+      variantCoverage: 'available-modes',
+      availableModes: [],
+      missingModes: ['light', 'dark', 'pop'],
     });
+  });
+
+  it('normalizes confirmed variant snapshots for saved palettes', () => {
+    const confirmedVariants = normalizeConfirmedVariants({
+      light: {
+        signature: 'light-approved',
+        finalTokens: { brand: { cta: '#112233' } },
+        orderedStack: [{ path: 'brand.cta', value: '#112233' }],
+      },
+      dark: { tokens: { brand: { cta: '#ffffff' } } },
+      pop: null,
+    });
+
+    expect(confirmedVariants.light.finalTokens.brand.cta).toBe('#112233');
+    expect(confirmedVariants.light.orderedStack).toEqual([{ path: 'brand.cta', value: '#112233' }]);
+    expect(confirmedVariants.dark.finalTokens.brand.cta).toBe('#ffffff');
+    expect(summarizeConfirmedVariants(confirmedVariants)).toEqual({
+      variantCoverage: 'available-modes',
+      availableModes: ['light', 'dark'],
+      missingModes: ['pop'],
+    });
+
+    expect(normalizeImportedPalette({
+      name: 'Snapshot Theme',
+      baseColor: '#112233',
+      mode: 'Monochromatic',
+      themeMode: 'light',
+      confirmedVariants,
+      savedAt: '2026-06-03T12:00:00.000Z',
+      version: 2,
+    }, 0)).toEqual(expect.objectContaining({
+      confirmedVariants,
+      savedAt: '2026-06-03T12:00:00.000Z',
+      version: 2,
+      variantCoverage: 'available-modes',
+      availableModes: ['light', 'dark'],
+      missingModes: ['pop'],
+    }));
   });
 
   it('returns formatted print timestamps and fallback theme pack guidance', () => {

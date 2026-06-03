@@ -22,6 +22,11 @@ const renderPackageStage = (props = {}) => render(
     primaryTextColor="#ffffff"
     printAssetPack={[]}
     canvaPrintHexes={[]}
+    variantStatus={{
+      variantCoverage: 'all-modes',
+      availableModes: ['light', 'dark', 'pop'],
+      missingModes: [],
+    }}
     {...props}
   />
 );
@@ -36,6 +41,14 @@ describe('PackageStage', () => {
     expect(onDownloadThemePack).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/main product export/i)).toBeInTheDocument();
     expect(screen.getByText(/customer-ready ZIP with CSS variables, JSON tokens, Figma, Penpot, LibreOffice palette files, README, and previews/i)).toBeInTheDocument();
+  });
+
+  it('shows full-family confirmed variant coverage with the theme pack action', () => {
+    renderPackageStage({ onDownloadThemePack: vi.fn() });
+
+    expect(screen.getByTestId('confirmed-variants-status')).toBeInTheDocument();
+    expect(screen.getByTestId('variant-coverage-label')).toHaveTextContent(/full family ready/i);
+    expect(screen.getByText(/review each mode once to unlock a full light\/dark\/pop theme pack/i)).toBeInTheDocument();
   });
 
   it('does not render the theme pack button without a handler', () => {

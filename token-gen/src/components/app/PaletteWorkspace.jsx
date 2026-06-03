@@ -72,6 +72,7 @@ export default function PaletteWorkspace({ controller }) {
         debouncedApocalypseChange={controller.debouncedApocalypseChange}
         debouncedPopChange={controller.debouncedPopChange}
         resetFineTuneSliders={controller.resetFineTuneSliders}
+        variantStatus={controller.confirmedVariantStatus}
         canUndo={controller.canUndo}
         canRedo={controller.canRedo}
         undo={controller.paletteState.undo}
@@ -128,6 +129,7 @@ export default function PaletteWorkspace({ controller }) {
             canvaPrintHexes={controller.canvaPrintHexes}
             onDownloadThemePack={controller.handleDownloadThemePack}
             canExport={controller.canExport}
+            variantStatus={controller.confirmedVariantStatus}
           />
         </Suspense>
       )}

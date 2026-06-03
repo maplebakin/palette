@@ -43,6 +43,12 @@ describe('paletteStore', () => {
 
   it('applies a saved palette and sanitizes imported values', () => {
     const { result } = renderHook(() => usePaletteStore());
+    const confirmedVariants = {
+      light: {
+        signature: 'light-approved',
+        finalTokens: { brand: { cta: '#112233' } },
+      },
+    };
 
     act(() => {
       result.current.applySavedPalette({
@@ -58,6 +64,7 @@ describe('paletteStore', () => {
         popIntensity: 120,
         tokenPrefix: 'demo prefix!*',
         importedOverrides: { 'brand.primary': '#123456' },
+        confirmedVariants,
       });
     });
 
@@ -74,6 +81,24 @@ describe('paletteStore', () => {
     expect(result.current.neutralInput).toBe(90);
     expect(result.current.accentInput).toBe(110);
     expect(result.current.popInput).toBe(120);
+    expect(result.current.confirmedVariants).toEqual(confirmedVariants);
+  });
+
+  it('loads older spec-only saved palettes without confirmed variants', () => {
+    const { result } = renderHook(() => usePaletteStore());
+
+    act(() => {
+      result.current.applySavedPalette({
+        baseColor: '#445566',
+        mode: 'Complementary',
+        themeMode: 'light',
+      });
+    });
+
+    expect(result.current.baseColor).toBe('#445566');
+    expect(result.current.mode).toBe('Complementary');
+    expect(result.current.themeMode).toBe('light');
+    expect(result.current.confirmedVariants).toEqual({});
   });
 
   it('captures history snapshots and supports undo/redo', () => {
@@ -112,6 +137,7 @@ describe('paletteStore', () => {
 
     act(() => {
       result.current.setSavedPalettes([{ id: 1, name: 'Saved' }]);
+      result.current.setConfirmedVariant('dark', { signature: 'dark-1', finalTokens: { brand: { cta: '#ffffff' } } });
       result.current.setBaseColor('#ffffff');
       result.current.setMode('Tertiary');
       result.current.setThemeMode('pop');
@@ -126,5 +152,57 @@ describe('paletteStore', () => {
     expect(result.current.printMode).toBe(false);
     expect(result.current.customThemeName).toBe('');
     expect(result.current.savedPalettes).toEqual([{ id: 1, name: 'Saved' }]);
+    expect(result.current.confirmedVariants).toEqual({});
+  });
+
+  it('stores confirmed variants across mode switches and clears stale variants on generation changes', () => {
+    const { result } = renderHook(() => usePaletteStore());
+
+    act(() => {
+      result.current.setConfirmedVariant('dark', { signature: 'dark-1', finalTokens: { brand: { cta: '#111111' } } });
+      result.current.setThemeMode('light');
+      result.current.setConfirmedVariant('light', { signature: 'light-1', finalTokens: { brand: { cta: '#eeeeee' } } });
+    });
+
+    expect(Object.keys(result.current.confirmedVariants)).toEqual(['dark', 'light']);
+
+    act(() => {
+      result.current.setAccentStrength(130);
+    });
+
+    expect(result.current.confirmedVariants).toEqual({});
+  });
+
+  it('does not rewrite a confirmed variant when its signature is unchanged', () => {
+    const { result } = renderHook(() => usePaletteStore());
+    const variant = { signature: 'pop-1', finalTokens: { brand: { cta: '#222222' } } };
+
+    act(() => {
+      result.current.setConfirmedVariant('pop', variant);
+      result.current.setConfirmedVariant('pop', { ...variant, finalTokens: { brand: { cta: '#333333' } } });
+    });
+
+    expect(result.current.confirmedVariants.pop.finalTokens.brand.cta).toBe('#222222');
+  });
+
+  it('clears restored confirmed variants when generation inputs change after load', () => {
+    const { result } = renderHook(() => usePaletteStore());
+
+    act(() => {
+      result.current.applySavedPalette({
+        baseColor: '#112233',
+        mode: 'Monochromatic',
+        themeMode: 'dark',
+        confirmedVariants: {
+          dark: {
+            signature: 'dark-approved',
+            finalTokens: { brand: { cta: '#abcdef' } },
+          },
+        },
+      });
+      result.current.setBaseColor('#223344');
+    });
+
+    expect(result.current.confirmedVariants).toEqual({});
   });
 });

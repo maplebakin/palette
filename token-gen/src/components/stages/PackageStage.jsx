@@ -1,6 +1,7 @@
 import React from 'react';
 import { Download, Palette, Printer } from 'lucide-react';
 import ColorSwatch from '../ColorSwatch';
+import ConfirmedVariantsStatus from '../ConfirmedVariantsStatus.jsx';
 import { StageSection } from './StageLayout';
 
 const PackageStage = ({
@@ -13,6 +14,7 @@ const PackageStage = ({
   canvaPrintHexes,
   onDownloadThemePack,
   canExport = Boolean(onDownloadThemePack),
+  variantStatus,
 }) => {
   if (!canExport) return null;
 
@@ -62,6 +64,9 @@ const PackageStage = ({
               <p className="max-w-2xl text-xs panel-muted">
                 Main product export. Creates a customer-ready ZIP with CSS variables, JSON tokens, Figma, Penpot, LibreOffice palette files, README, and previews.
               </p>
+              {variantStatus && (
+                <ConfirmedVariantsStatus {...variantStatus} className="mt-2 max-w-2xl" />
+              )}
             </div>
           )}
         </div>

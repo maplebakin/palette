@@ -1,5 +1,6 @@
 import React from 'react';
 import { Eye, EyeOff, Shuffle, Flame, Sun, Moon, Palette, RotateCcw } from 'lucide-react';
+import ConfirmedVariantsStatus from '../ConfirmedVariantsStatus.jsx';
 import { StageSection } from './StageLayout';
 
 const BuildStage = ({
@@ -45,6 +46,7 @@ const BuildStage = ({
   debouncedApocalypseChange,
   debouncedPopChange,
   resetFineTuneSliders = () => {},
+  variantStatus,
 }) => (
   <StageSection id="build" title="Create" subtitle="Pick the base color and shape the first version of the palette.">
     {/* Quick Actions Bar */}
@@ -398,6 +400,9 @@ const BuildStage = ({
                 ? 'For dashboards, portals, archives, and immersive spaces.'
                 : 'For shop pages, product drops, launches, promos, and high-attention CTAs.'}
           </p>
+          {variantStatus && (
+            <ConfirmedVariantsStatus {...variantStatus} />
+          )}
         </div>
         </div>
       </div>

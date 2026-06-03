@@ -43,11 +43,22 @@ const themeLabel = (theme, fallback = 'Theme') => (
   humanizeName(theme?.displayThemeName || theme?.currentTheme?.name || theme?.name || fallback, fallback)
 );
 
+const themeModes = (theme) => {
+  const variantModes = theme?.variants && typeof theme.variants === 'object'
+    ? ['dark', 'light', 'pop'].filter((mode) => theme.variants[mode])
+    : [];
+  if (variantModes.length) return variantModes;
+  const currentMode = theme?.themeMode || theme?.currentTheme?.themeMode || (theme?.isDark ? 'dark' : 'light');
+  return [currentMode];
+};
+
 const buildReadme = ({ product, themes, offering }) => {
   const title = humanizeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
   const themeNames = themes.map((theme) => themeLabel(theme));
+  const firstThemeModes = themeModes(themes[0] || {});
+  const firstThemeModeList = firstThemeModes.join(', ');
   const intro = offering === 'individual'
-    ? product.shortDescription || `${title} is a premium adaptive Website & Brand Color Kit with dark, light, and pop modes for production-ready web, brand, and design-token workflows.`
+    ? product.shortDescription || `${title} is a Website & Brand Color Kit exported from confirmed Apocapalette tokens for ${firstThemeModeList} mode${firstThemeModes.length === 1 ? '' : 's'}.`
     : product.shortDescription || `${title} packaged from Apocapalette.`;
   const themePackLines = offering === 'mini'
     ? [
@@ -57,13 +68,11 @@ const buildReadme = ({ product, themes, offering }) => {
     ]
     : offering === 'individual'
     ? [
-      '- `modes/dark/` - dark mode tokens, CSS, design-tool files, LibreOffice palette, and previews.',
-      '- `modes/light/` - light mode tokens, CSS, design-tool files, LibreOffice palette, and previews.',
-      '- `modes/pop/` - pop mode tokens, CSS, design-tool files, LibreOffice palette, and previews.',
+      ...firstThemeModes.map((mode) => `- \`modes/${mode}/\` - confirmed ${mode} mode tokens, CSS, design-tool files, LibreOffice palette, and previews.`),
       '- `combined/tokens.all-modes.json` - all included modes in one JSON reference.',
       '- `combined/css/variables.all-modes.css` - scoped CSS variables for all included modes.',
     ]
-    : themes.map((theme) => `- \`${themeSlug(theme)}-theme-pack-v1.zip\` - included full dark, light, and pop theme pack ZIP`);
+    : themes.map((theme) => `- \`${themeSlug(theme)}-theme-pack-v1.zip\` - included confirmed ${themeModes(theme).join(', ')} theme pack ZIP`);
 
   return [
     `# ${title}`,
@@ -77,7 +86,7 @@ const buildReadme = ({ product, themes, offering }) => {
       '',
       '## Included Modes',
       '',
-      'This Website & Brand Color Kit includes dark, light, and pop modes generated from the same selected theme seed, so the system can adapt across editorial pages, app UI, launch sections, and high-emphasis brand moments without losing its core color identity.',
+      `This Website & Brand Color Kit includes the confirmed ${firstThemeModeList} mode${firstThemeModes.length === 1 ? '' : 's'} from app-state tokens. Missing modes are not regenerated during export.`,
     ] : []),
     '',
     '## Source Theme Kit(s)',
@@ -104,11 +113,11 @@ const buildUsage = (product) => [
 
 const buildShopListing = ({ product, offering }) => {
   const title = humanizeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
-  const individualShort = `${title} is a Website & Brand Color Kit with dark, light, and pop modes for polished digital products, landing pages, and brand systems.`;
+  const individualShort = `${title} is a Website & Brand Color Kit exported from confirmed Apocapalette tokens for polished digital products, landing pages, and brand systems.`;
   const individualLong = [
     `${title} is a ready-to-use adaptive color kit for websites, product UI, launch pages, and brand systems.`,
     '',
-    'Includes dark, light, and pop modes generated from the same theme seed, plus CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes.',
+    'Includes confirmed app-state mode exports, plus CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes.',
     '',
     'Use the mode folders for implementation, the combined files for system-wide references, and the preview assets for quick QA or shop listing visuals.',
   ].join('\n');
