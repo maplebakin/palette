@@ -43,22 +43,50 @@ const themeLabel = (theme, fallback = 'Theme') => (
   humanizeName(theme?.displayThemeName || theme?.currentTheme?.name || theme?.name || fallback, fallback)
 );
 
-const themeModes = (theme) => {
-  const variantModes = theme?.variants && typeof theme.variants === 'object'
-    ? ['dark', 'light', 'pop'].filter((mode) => theme.variants[mode])
+const THEME_MODE_ORDER = ['light', 'dark', 'pop'];
+
+export const getThemeExportSourceInfo = (theme = {}) => {
+  const confirmedModes = theme?.variants && typeof theme.variants === 'object'
+    ? THEME_MODE_ORDER.filter((mode) => theme.variants[mode])
     : [];
-  if (variantModes.length) return variantModes;
-  const currentMode = theme?.themeMode || theme?.currentTheme?.themeMode || (theme?.isDark ? 'dark' : 'light');
-  return [currentMode];
+  const fallbackMode = theme?.themeMode || theme?.currentTheme?.themeMode || (theme?.isDark ? 'dark' : 'light');
+  const modes = confirmedModes.length ? confirmedModes : [fallbackMode];
+  const isFullConfirmed = confirmedModes.length === THEME_MODE_ORDER.length;
+  const isPartialConfirmed = confirmedModes.length > 0 && !isFullConfirmed;
+  const isSpecDerived = confirmedModes.length === 0;
+  const modeList = modes.join(', ');
+
+  return {
+    modes,
+    confirmedModes,
+    modeList,
+    isFullConfirmed,
+    isPartialConfirmed,
+    isSpecDerived,
+    sourceLabel: isSpecDerived
+      ? 'Uses current/spec-derived mode data. Missing modes are not regenerated.'
+      : isPartialConfirmed
+        ? 'Includes confirmed reviewed modes only.'
+        : 'Uses confirmed reviewed modes.',
+    modeLine: isSpecDerived
+      ? `Includes current/spec-derived ${modeList} mode data. Missing modes are not regenerated during export.`
+      : `Includes confirmed reviewed ${modeList} mode${modes.length === 1 ? '' : 's'} only. Missing modes are not regenerated during export.`,
+    folderLine: isSpecDerived
+      ? 'current/spec-derived'
+      : 'confirmed reviewed',
+    shortDescriptor: isSpecDerived
+      ? `current/spec-derived ${modeList} mode data`
+      : `confirmed reviewed ${modeList} mode${modes.length === 1 ? '' : 's'}`,
+  };
 };
 
 const buildReadme = ({ product, themes, offering }) => {
   const title = humanizeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
   const themeNames = themes.map((theme) => themeLabel(theme));
-  const firstThemeModes = themeModes(themes[0] || {});
-  const firstThemeModeList = firstThemeModes.join(', ');
+  const firstThemeInfo = getThemeExportSourceInfo(themes[0] || {});
+  const firstThemeModes = firstThemeInfo.modes;
   const intro = offering === 'individual'
-    ? product.shortDescription || `${title} is a Website & Brand Color Kit exported from confirmed Apocapalette tokens for ${firstThemeModeList} mode${firstThemeModes.length === 1 ? '' : 's'}.`
+    ? product.shortDescription || `${title} is a Website & Brand Color Kit exported from ${firstThemeInfo.shortDescriptor}.`
     : product.shortDescription || `${title} packaged from Apocapalette.`;
   const themePackLines = offering === 'mini'
     ? [
@@ -68,11 +96,14 @@ const buildReadme = ({ product, themes, offering }) => {
     ]
     : offering === 'individual'
     ? [
-      ...firstThemeModes.map((mode) => `- \`modes/${mode}/\` - confirmed ${mode} mode tokens, CSS, design-tool files, LibreOffice palette, and previews.`),
+      ...firstThemeModes.map((mode) => `- \`modes/${mode}/\` - ${firstThemeInfo.folderLine} ${mode} mode tokens, CSS, design-tool files, LibreOffice palette, and previews.`),
       '- `combined/tokens.all-modes.json` - all included modes in one JSON reference.',
       '- `combined/css/variables.all-modes.css` - scoped CSS variables for all included modes.',
     ]
-    : themes.map((theme) => `- \`${themeSlug(theme)}-theme-pack-v1.zip\` - included confirmed ${themeModes(theme).join(', ')} theme pack ZIP`);
+    : themes.map((theme) => {
+      const info = getThemeExportSourceInfo(theme);
+      return `- \`${themeSlug(theme)}-theme-pack-v1.zip\` - included ${info.shortDescriptor} theme pack ZIP`;
+    });
 
   return [
     `# ${title}`,
@@ -86,7 +117,7 @@ const buildReadme = ({ product, themes, offering }) => {
       '',
       '## Included Modes',
       '',
-      `This Website & Brand Color Kit includes the confirmed ${firstThemeModeList} mode${firstThemeModes.length === 1 ? '' : 's'} from app-state tokens. Missing modes are not regenerated during export.`,
+      firstThemeInfo.modeLine,
     ] : []),
     '',
     '## Source Theme Kit(s)',
@@ -111,13 +142,14 @@ const buildUsage = (product) => [
   product.usageLicense || DEFAULT_USAGE_LICENSE,
 ].join('\n');
 
-const buildShopListing = ({ product, offering }) => {
+const buildShopListing = ({ product, offering, themes = [] }) => {
   const title = humanizeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
-  const individualShort = `${title} is a Website & Brand Color Kit exported from confirmed Apocapalette tokens for polished digital products, landing pages, and brand systems.`;
+  const sourceInfo = getThemeExportSourceInfo(themes[0] || {});
+  const individualShort = `${title} is a Website & Brand Color Kit exported from ${sourceInfo.shortDescriptor} for polished digital products, landing pages, and brand systems.`;
   const individualLong = [
     `${title} is a ready-to-use adaptive color kit for websites, product UI, launch pages, and brand systems.`,
     '',
-    'Includes confirmed app-state mode exports, plus CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes.',
+    `${sourceInfo.modeLine} Includes CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes.`,
     '',
     'Use the mode folders for implementation, the combined files for system-wide references, and the preview assets for quick QA or shop listing visuals.',
   ].join('\n');
@@ -218,7 +250,7 @@ const buildMiniPreviewSvg = ({ product, theme, palette }) => {
 const addProductDocs = (root, { product, themes, offering }) => {
   root.file('README.md', buildReadme({ product, themes, offering }));
   root.file('USAGE.txt', buildUsage(product));
-  root.file('shop-listing.md', buildShopListing({ product, offering }));
+  root.file('shop-listing.md', buildShopListing({ product, offering, themes }));
   root.file('tags.txt', buildTags(product));
 };
 

@@ -166,7 +166,9 @@ export const buildPaletteCardSvg = (theme) => {
   }).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="palette-card-title palette-card-desc">
+  <title id="palette-card-title">${escapeXml(safeName)} ${themeLabel} Theme Pack palette card</title>
+  <desc id="palette-card-desc">A visual summary of the ${escapeXml(safeName)} ${themeLabel} mode palette, including base ${base.toUpperCase()} and key color hex values.</desc>
   <defs>
     <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="${primary}" stop-opacity="0.95"/>
@@ -217,6 +219,7 @@ export const buildStripSvg = (theme) => {
   const brand = theme.tokens.brand ?? {};
   const foundation = theme.tokens.foundation?.neutrals ?? {};
   const safeName = sanitizeThemeName(theme.name || 'Palette', 'Palette');
+  const themeLabel = theme.themeMode === 'pop' ? 'Pop' : (theme.isDark ? 'Dark' : 'Light');
   const swatches = [
     brand.primary,
     brand.secondary,
@@ -237,7 +240,9 @@ export const buildStripSvg = (theme) => {
   }).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1500" height="420" viewBox="0 0 1500 420" xmlns="http://www.w3.org/2000/svg">
+<svg width="1500" height="420" viewBox="0 0 1500 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="swatch-strip-title swatch-strip-desc">
+  <title id="swatch-strip-title">${escapeXml(safeName)} ${themeLabel} mode swatch strip</title>
+  <desc id="swatch-strip-desc">A quick-reference strip of key ${escapeXml(safeName)} ${themeLabel} mode color hex values.</desc>
   <rect width="1500" height="420" rx="32" fill="#f8fafc" />
   <text x="60" y="60" fill="#0f172a" font-family="Inter, system-ui" font-size="22" font-weight="800">${escapeXml(safeName)} • Swatch Strip</text>
   ${rects}

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildTheme } from '../theme/engine.js';
 import {
   buildPaletteCardSvg,
+  buildStripSvg,
   renderPaletteCardPng,
   renderStripPng,
 } from './previewAssets.js';
@@ -93,11 +94,30 @@ describe('preview assets', () => {
     expect(svg).toContain('<svg width="1200" height="800"');
     expect(svg).toContain('</svg>');
     expect(svg).toContain('Beef Ritual');
+    expect(svg).toContain('<title id="palette-card-title">Beef Ritual Dark Theme Pack palette card</title>');
+    expect(svg).toContain('<desc id="palette-card-desc">A visual summary of the Beef Ritual Dark mode palette');
     expect(svg).toContain('APOCAPALETTE THEME PACK');
     expect(svg).toContain('Main palette');
     expect(svg).toContain('Token categories');
     expect(svg).toContain('CSS, JSON, Figma, Penpot, LibreOffice');
     expect(svg).toContain('Preview artwork');
+  });
+
+  it('builds an accessible swatch strip with buyer-facing theme and mode metadata', () => {
+    const theme = buildTheme({
+      name: 'Beef Ritual',
+      baseColor: '#8b2f24',
+      mode: 'Apocalypse',
+      themeMode: 'pop',
+      isDark: false,
+    });
+
+    const svg = buildStripSvg(theme.currentTheme);
+
+    expect(svg).toContain('role="img"');
+    expect(svg).toContain('<title id="swatch-strip-title">Beef Ritual Pop mode swatch strip</title>');
+    expect(svg).toContain('<desc id="swatch-strip-desc">A quick-reference strip of key Beef Ritual Pop mode color hex values.</desc>');
+    expect(svg).not.toMatch(/current-mode-only|available-modes|all-modes/);
   });
 
   it('renders palette-card PNG from the polished palette-card SVG source', async () => {

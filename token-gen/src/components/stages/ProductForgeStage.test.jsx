@@ -14,7 +14,29 @@ const renderProductForgeStage = (props = {}) => render(
     isDev
     tokens={tokens}
     primaryTextColor="#ffffff"
-    productExportThemes={[{ id: 'current', label: 'Current Theme', miniPalette: {} }]}
+    productExportThemes={[
+      { id: 'current', label: 'Current Theme', themeMode: 'dark', miniPalette: {} },
+      {
+        id: 'saved-1',
+        label: 'Saved Partial',
+        themeMode: 'light',
+        variants: {
+          light: { finalTokens: { brand: { cta: '#112233' } } },
+        },
+        miniPalette: {},
+      },
+      {
+        id: 'project-1',
+        label: 'Project Full',
+        themeMode: 'pop',
+        variants: {
+          light: { finalTokens: { brand: { cta: '#112233' } } },
+          dark: { finalTokens: { brand: { cta: '#eeeeee' } } },
+          pop: { finalTokens: { brand: { cta: '#ff00aa' } } },
+        },
+        miniPalette: {},
+      },
+    ]}
     onExportProductPackage={vi.fn()}
     onDownloadThemePack={vi.fn()}
     {...props}
@@ -34,6 +56,9 @@ describe('ProductForgeStage', () => {
     expect(screen.getByText('Mini Website Palette')).toBeInTheDocument();
     expect(screen.getByText('Available Export Kits')).toBeInTheDocument();
     expect(screen.getByText('Current Theme')).toBeInTheDocument();
+    expect(screen.getByText(/uses current\/spec-derived mode data/i)).toBeInTheDocument();
+    expect(screen.getByText(/includes confirmed reviewed modes only/i)).toBeInTheDocument();
+    expect(screen.getByText(/uses confirmed reviewed modes/i)).toBeInTheDocument();
     expect(screen.getByText('Bundle Builder')).toBeInTheDocument();
     expect(screen.getByText('Mini Palette Freebies')).toBeInTheDocument();
     expect(screen.getByText('Product Library / Ready to Upload')).toBeInTheDocument();

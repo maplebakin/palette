@@ -140,17 +140,40 @@ describe('product export helpers', () => {
     expect(zip.files['hollys-light-blue/modes/light/tokens.json']).toBeUndefined();
     expect(zip.files['hollys-light-blue/modes/pop/tokens.json']).toBeUndefined();
     expect(zip.files['hollys-light-blue/README.md']).toContain('# Hollys Light Blue');
-    expect(zip.files['hollys-light-blue/README.md']).toContain('confirmed dark mode');
+    expect(zip.files['hollys-light-blue/README.md']).toContain('current/spec-derived dark mode data');
     expect(zip.files['hollys-light-blue/README.md']).toContain('Missing modes are not regenerated');
     expect(zip.files['hollys-light-blue/README.md']).toContain('- Hollys Light Blue');
     expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('Website & Brand Color Kit');
-    expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('confirmed app-state mode exports');
+    expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('current/spec-derived dark mode data');
+    expect(zip.files['hollys-light-blue/shop-listing.md']).not.toContain('confirmed app-state mode exports');
     expect(zip.files['hollys-light-blue/shop-listing.md']).toContain('CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes');
     expect(zip.files['hollys-light-blue/tags.txt']).toContain('adaptive color system');
     expect(zip.files['hollys-light-blue/tags.txt']).toContain('dark mode palette');
     expect(zip.files['hollys-light-blue/tags.txt']).toContain('website color kit');
     expect(workflowExports.addAllModeThemePackFiles).toHaveBeenCalledWith(expect.any(FolderMock), theme, { slug: 'hollys-light-blue' });
     expect(workflowExports.buildAllModeThemePackArchive).not.toHaveBeenCalled();
+  });
+
+  it('labels partial confirmed product docs without implying a full confirmed family', async () => {
+    const theme = {
+      ...makeTheme('Partial Cobalt'),
+      variants: {
+        dark: { finalTokens: { brand: { cta: '#112233' } } },
+        light: { finalTokens: { brand: { cta: '#eeeeee' } } },
+      },
+    };
+
+    await productExports.buildProductPackageArchive({
+      offering: 'individual',
+      product: { ...product, title: 'Partial Cobalt', slug: 'partial-cobalt', shortDescription: '', longDescription: '' },
+      themes: [theme],
+    });
+
+    const zip = zipInstances[0];
+    expect(zip.files['partial-cobalt/README.md']).toContain('confirmed reviewed light, dark modes');
+    expect(zip.files['partial-cobalt/README.md']).toContain('Includes confirmed reviewed light, dark modes only');
+    expect(zip.files['partial-cobalt/README.md']).not.toContain('current/spec-derived');
+    expect(zip.files['partial-cobalt/shop-listing.md']).toContain('confirmed reviewed light, dark modes');
   });
 
   it('builds a bundle package with per-theme previews and theme pack zips', async () => {

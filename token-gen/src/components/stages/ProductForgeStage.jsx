@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { CheckCircle2, Download, FolderOpen, Layers, PackageCheck, PackageOpen, Sparkles } from 'lucide-react';
 import { StageSection } from './StageLayout.jsx';
 import { isPrivateForge } from '../../lib/capabilities.js';
+import { getThemeExportSourceInfo } from '../../lib/exports/productExports.js';
 
 const ProductExportBuilder = isPrivateForge
   ? lazy(() => import('../ProductExportBuilder.jsx'))
@@ -129,6 +130,9 @@ export default function ProductForgeStage({
                     {theme.mode && <span>{theme.mode}</span>}
                     {theme.themeMode && <span>{theme.themeMode}</span>}
                   </div>
+                  <p className="mt-2 text-[11px] font-semibold panel-muted">
+                    {getThemeExportSourceInfo(theme).sourceLabel}
+                  </p>
                 </div>
               ))}
             </div>

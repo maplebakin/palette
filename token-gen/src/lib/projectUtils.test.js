@@ -63,6 +63,17 @@ describe('projectUtils normalizeProject', () => {
         { name: 'Primary', value: '#22c55e' },
         { name: 'Accent', value: '#f97316' },
       ],
+      confirmedVariants: {
+        light: {
+          signature: 'light-approved',
+          finalTokens: {
+            brand: {
+              cta: '#22c55e',
+            },
+          },
+        },
+        pop: null,
+      },
     });
 
     expect(snapshot).toMatchObject({
@@ -76,6 +87,16 @@ describe('projectUtils normalizeProject', () => {
         customThemeName: 'Neon Orchard',
         harmonyIntensity: 118,
         tokenPrefix: 'orchard',
+        confirmedVariants: {
+          light: {
+            signature: 'light-approved',
+            finalTokens: {
+              brand: {
+                cta: '#22c55e',
+              },
+            },
+          },
+        },
       },
     });
     expect(snapshot.tokenSet.brand.primary).toBe('#22c55e');

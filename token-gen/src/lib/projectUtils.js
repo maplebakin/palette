@@ -1,4 +1,5 @@
 import { normalizeHex } from './colorUtils.js';
+import { normalizeConfirmedVariants } from './appState.js';
 import { readPath } from './theme/paths.js';
 import { buildOrderedStack, generateTokens } from './tokens.js';
 
@@ -173,6 +174,10 @@ export const buildSectionSnapshotFromPalette = (paletteState) => {
   const neutralCurve = paletteState.neutralCurve ?? 100;
   const accentStrength = paletteState.accentStrength ?? 100;
   const popIntensity = paletteState.popIntensity ?? 100;
+  const confirmedVariants = normalizeConfirmedVariants(paletteState.confirmedVariants);
+  const confirmedVariantPayload = Object.keys(confirmedVariants).length
+    ? { confirmedVariants }
+    : {};
 
   const tokensSource = paletteState.finalTokens || paletteState.tokens || null;
   const tokens = tokensSource || generateTokens(baseHex, generatorMode, themeMode, apocalypseIntensity, {
@@ -208,6 +213,7 @@ export const buildSectionSnapshotFromPalette = (paletteState) => {
     popIntensity,
     tokenPrefix: paletteState.tokenPrefix || '',
     importedOverrides: paletteState.importedOverrides ?? null,
+    ...confirmedVariantPayload,
   };
 
   const snapshot = {
