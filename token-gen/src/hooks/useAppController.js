@@ -597,6 +597,7 @@ export default function useAppController() {
     tokens,
     finalTokens,
     orderedStack,
+    confirmedVariants: paletteState.confirmedVariants,
   }), [
     displayThemeName,
     finalTokens,
@@ -613,6 +614,7 @@ export default function useAppController() {
     paletteState.accentStrength,
     paletteState.popIntensity,
     paletteState.tokenPrefix,
+    paletteState.confirmedVariants,
     paletteState.importedOverrides,
     tokens,
   ]);
@@ -1729,7 +1731,7 @@ export default function useAppController() {
     tokens,
   ]);
 
-  const handleDownloadThemePack = useCallback(async () => {
+  const handleDownloadThemePack = useCallback(async (selectedModes) => {
     if (!canExport) return;
     if (typeof Blob === 'undefined') {
       notify('File export is not supported in this browser', 'error');
@@ -1737,7 +1739,7 @@ export default function useAppController() {
     }
     try {
       const { downloadAllModeThemePackArchive } = await loadWorkflowExports?.();
-      await downloadAllModeThemePackArchive({
+      const themePackData = {
         finalTokens,
         themeMaster,
         currentTheme,
@@ -1749,7 +1751,12 @@ export default function useAppController() {
         themeMode: paletteState.themeMode,
         variants: paletteState.confirmedVariants,
         tokenPrefix: paletteState.tokenPrefix,
-      });
+      };
+      if (Array.isArray(selectedModes)) {
+        await downloadAllModeThemePackArchive(themePackData, { selectedModes });
+      } else {
+        await downloadAllModeThemePackArchive(themePackData);
+      }
       setStatusMessage('Theme pack downloaded', 'success');
     } catch (error) {
       console.error('Theme pack export failed', error);

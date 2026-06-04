@@ -1,8 +1,16 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Download, Palette, Printer } from 'lucide-react';
 import ColorSwatch from '../ColorSwatch';
 import ConfirmedVariantsStatus from '../ConfirmedVariantsStatus.jsx';
 import { StageSection } from './StageLayout';
+import { buildThemePackSelectionCopy } from '../../lib/appState.js';
+
+const THEME_PACK_MODES = ['light', 'dark', 'pop'];
+const MODE_LABELS = {
+  light: 'Light',
+  dark: 'Dark',
+  pop: 'Pop',
+};
 
 const PackageStage = ({
   getTabId,
@@ -16,7 +24,44 @@ const PackageStage = ({
   canExport = Boolean(onDownloadThemePack),
   variantStatus,
 }) => {
+  const availableModes = variantStatus?.availableModes || [];
+  const missingModes = variantStatus?.missingModes || THEME_PACK_MODES.filter((mode) => !availableModes.includes(mode));
+  const [selectedModes, setSelectedModes] = useState(() => [...availableModes]);
+  const [exportSuccessMessage, setExportSuccessMessage] = useState('');
+  const previousAvailableModes = useRef(availableModes);
+  const exportCopy = buildThemePackSelectionCopy({ availableModes, missingModes }, selectedModes);
+  const coverageKey = `${availableModes.join('|')}|${missingModes.join('|')}`;
+  const selectionKey = selectedModes.join('|');
+
+  useEffect(() => {
+    const previousAvailable = previousAvailableModes.current;
+    setSelectedModes((currentSelected) => THEME_PACK_MODES.filter((mode) => (
+      availableModes.includes(mode)
+      && (currentSelected.includes(mode) || !previousAvailable.includes(mode))
+    )));
+    previousAvailableModes.current = availableModes;
+    setExportSuccessMessage('');
+  }, [coverageKey]);
+
+  useEffect(() => {
+    setExportSuccessMessage('');
+  }, [selectionKey]);
+
   if (!canExport) return null;
+
+  const handleThemePackClick = async () => {
+    setExportSuccessMessage('');
+    await onDownloadThemePack(exportCopy.selectedModes);
+    setExportSuccessMessage(exportCopy.successMessage);
+  };
+
+  const toggleSelectedMode = (mode) => {
+    setSelectedModes((current) => (
+      current.includes(mode)
+        ? current.filter((selectedMode) => selectedMode !== mode)
+        : THEME_PACK_MODES.filter((candidate) => current.includes(candidate) || candidate === mode)
+    ));
+  };
 
   return (
   <StageSection
@@ -48,8 +93,9 @@ const PackageStage = ({
             <div className="flex min-w-[240px] flex-1 flex-col gap-1">
               <button
                 type="button"
-                onClick={onDownloadThemePack}
-                className="flex w-fit items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold hover:-translate-y-[1px] transition shadow"
+                onClick={handleThemePackClick}
+                disabled={!exportCopy.canExportSelection}
+                className="flex w-fit items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold hover:-translate-y-[1px] transition shadow disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                 style={{
                   backgroundColor: tokens.brand.primary,
                   color: primaryTextColor,
@@ -57,15 +103,50 @@ const PackageStage = ({
                 }}
               >
                 <Download size={14} />
-                <span>Download</span>
-                {' '}
-                <span>Theme Pack</span>
+                <span>{exportCopy.exportButtonLabel}</span>
               </button>
               <p className="max-w-2xl text-xs panel-muted">
                 Main product export. Creates a customer-ready ZIP with CSS variables, JSON tokens, Figma, Penpot, LibreOffice palette files, README, and previews.
               </p>
+              <fieldset className="mt-2 max-w-2xl rounded-lg border panel-surface-soft p-3">
+                <legend className="px-1 text-xs font-bold panel-text">Choose modes to include</legend>
+                <div className="flex flex-wrap gap-3">
+                  {THEME_PACK_MODES.map((mode) => {
+                    const available = availableModes.includes(mode);
+                    return (
+                      <label key={mode} className={`flex items-center gap-2 text-xs font-semibold ${available ? 'panel-text' : 'panel-muted'}`}>
+                        <input
+                          type="checkbox"
+                          checked={available && selectedModes.includes(mode)}
+                          disabled={!available}
+                          onChange={() => toggleSelectedMode(mode)}
+                          className="h-4 w-4"
+                          style={{ accentColor: tokens.brand.accent }}
+                          aria-label={`${MODE_LABELS[mode]} — ${available ? 'Available' : 'Missing'}`}
+                        />
+                        <span>{MODE_LABELS[mode]} — {available ? 'Available' : 'Missing'}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs panel-muted">
+                  Only available reviewed modes can be exported. Missing modes are not regenerated.
+                </p>
+              </fieldset>
+              <div className="max-w-2xl space-y-0.5 text-xs panel-muted">
+                <p className="font-semibold panel-text">{exportCopy.includedModesLabel}</p>
+                {missingModes.length > 0 && (
+                  <p>{exportCopy.missingModesLabel}</p>
+                )}
+                {exportCopy.omittedModesLabel && <p>{exportCopy.omittedModesLabel}</p>}
+              </div>
               {variantStatus && (
                 <ConfirmedVariantsStatus {...variantStatus} className="mt-2 max-w-2xl" />
+              )}
+              {exportSuccessMessage && (
+                <p className="mt-2 max-w-2xl rounded-lg border panel-surface-soft px-3 py-2 text-xs font-bold panel-text" role="status">
+                  {exportSuccessMessage}
+                </p>
               )}
             </div>
           )}

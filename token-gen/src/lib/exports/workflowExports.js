@@ -115,56 +115,60 @@ const buildCanvaHexList = (themeKit) => Object.entries(themeKit.variants).flatMa
   '',
 ]).join('\n').trimEnd();
 
-const buildThemeKitReadme = (themeKit) => [
-  `# ${themeKit.themeFamilyName}`,
-  '',
-  `This is an Apocapalette Theme Kit exported from the currently confirmed ${themeKit.availableVariants.join(', ')} preview for ${themeKit.baseHex}.`,
-  '',
-  '## Variant Coverage',
-  '',
-  `- Included variant: ${themeKit.availableVariants.join(', ')}`,
-  `- Not included in this export: ${themeKit.missingVariants.join(', ') || 'none'}`,
-  '- Export behavior: colors are serialized from the current app tokens. The exporter does not regenerate missing variants from the seed.',
-  '',
-  '## What The Modes Mean',
-  '',
-  '- Light: readable content mode for blogs, docs, About pages, and resource pages.',
-  '- Dark: immersive mode for dashboards, portals, archives, and member areas.',
-  '- Pop: shop, launch, promo, storefront, sales section, and CTA mode.',
-  '',
-  '## Included Files',
-  '',
-  '- `theme.json` - structured role-based token data for the included confirmed variant.',
-  '- `theme.css` - drop-in CSS variables scoped by `data-theme`.',
-  '- `hex-list.txt` - readable grouped color list.',
-  '- `canva-hex-list.txt` - simplified copy-paste color list.',
-  '- `meta.json` - storefront and export metadata.',
-  '- `listing-copy.md` - draft storefront listing copy.',
-  '- `cover.png`, `swatches.png`, `ui.png`, `tokens-snippet.png` - captured preview assets when available.',
-  '',
-  '## CSS Usage',
-  '',
-  'Add `theme.css` to your project, then set the matching theme attribute on a parent element.',
-  '',
-  '```html',
-  `<main data-theme="${themeKit.slug}-${themeKit.availableVariants[0]}">`,
-  '  <button class="primary">Primary Action</button>',
-  '</main>',
-  '```',
-  '',
-  '```css',
-  '.primary {',
-  '  background: var(--color-cta);',
-  '  color: var(--color-cta-foreground);',
-  '}',
-  '```',
-  '',
-  '## Usage Notes',
-  '',
-  'Use the Canva list for planners, Notion pages, and simple design tools. Use `theme.json` for automation and design-system mapping. Colors are provided as-is and should be checked in final context before publishing.',
-  '',
-  'Made with Apocapalette.',
-].join('\n');
+const formatListingMode = (mode) => (
+  mode ? `${mode[0].toUpperCase()}${mode.slice(1)}` : ''
+);
+
+const buildThemeKitReadme = (themeKit) => {
+  const includedModes = themeKit.availableVariants.map(formatListingMode).join(', ') || 'None';
+  const missingModes = themeKit.missingVariants.map(formatListingMode).join(', ') || 'None';
+
+  return [
+    `# ${themeKit.themeFamilyName} Listing Asset Package`,
+    '',
+    `This Apocapalette listing asset package helps prepare storefront previews and product listing materials for ${themeKit.themeFamilyName} (${themeKit.baseHex}). It is not a full Light/Dark/Pop Theme Pack.`,
+    '',
+    '## Package Coverage',
+    '',
+    '- Coverage: Current mode only',
+    `- Included active mode: ${includedModes}`,
+    `- Missing modes: ${missingModes}`,
+    '- Missing modes are not regenerated. Review and export those modes separately when you need additional listing assets.',
+    '',
+    '## Included Listing Files',
+    '',
+    '- `theme.json` - role-based color data for the included active mode.',
+    '- `theme.css` - CSS variables for previewing the included active mode.',
+    '- `hex-list.txt` - readable list of color hex codes.',
+    '- `canva-hex-list.txt` - simplified hex code list for quick copy-paste.',
+    '- `listing-copy.md` - draft storefront listing copy.',
+    '- `meta.json` - listing package details and file metadata.',
+    '- `cover.png`, `swatches.png`, `ui.png`, `tokens-snippet.png` - captured listing and preview images when available.',
+    '',
+    '## CSS Usage',
+    '',
+    'Add `theme.css` to your project, then set the matching theme attribute on a parent element.',
+    '',
+    '```html',
+    `<main data-theme="${themeKit.slug}-${themeKit.availableVariants[0]}">`,
+    '  <button class="primary">Primary Action</button>',
+    '</main>',
+    '```',
+    '',
+    '```css',
+    '.primary {',
+    '  background: var(--color-cta);',
+    '  color: var(--color-cta-foreground);',
+    '}',
+    '```',
+    '',
+    '## Usage Notes',
+    '',
+    'Use the Canva list for planners, Notion pages, and simple design tools. Use `theme.json` for automation and design-system mapping. Colors are provided as-is and should be checked in final context before publishing.',
+    '',
+    'Made with Apocapalette.',
+  ].join('\n');
+};
 
 const buildListingCopy = (themeKit) => [
   `# ${themeKit.themeFamilyName} Theme Kit`,
@@ -521,6 +525,20 @@ export const buildThemePackArchive = async ({
 };
 
 export const THEME_PACK_MODES = ['dark', 'light', 'pop'];
+const THEME_PACK_MODE_LABELS = {
+  light: 'Light',
+  dark: 'Dark',
+  pop: 'Pop',
+};
+
+const buildThemePackDownloadFilename = (name) => {
+  const themeSlug = slugifyFilename(name, '');
+  return `apocapalette${themeSlug ? `-${themeSlug}` : ''}-theme-pack-v1.zip`;
+};
+
+const formatThemePackModes = (modes = []) => (
+  modes.map((mode) => THEME_PACK_MODE_LABELS[mode] || mode).join(', ')
+);
 
 const resolveAllModeThemeSpec = (theme = {}) => {
   const current = theme.currentTheme || {};
@@ -549,6 +567,14 @@ const buildModeCanonicalTokens = ({ finalTokens, spec, themeMode }) => buildGene
   generatedAt: new Date().toISOString(),
   tokenPrefix: spec.tokenPrefix || undefined,
   themeMode,
+});
+
+const buildThemePackPreviewTheme = (currentTheme, spec, themeMode) => ({
+  ...currentTheme,
+  name: spec.name,
+  mode: currentTheme.mode || spec.mode,
+  themeMode,
+  isDark: themeMode === 'dark',
 });
 
 const normalizeThemePackVariant = (variant, themeMode, spec) => {
@@ -604,27 +630,42 @@ const normalizeThemePackVariant = (variant, themeMode, spec) => {
   };
 };
 
-export const buildThemePackExportData = (theme = {}) => {
+export const buildThemePackExportData = (theme = {}, options = {}) => {
   const spec = resolveAllModeThemeSpec(theme);
   const rawVariants = theme.variants && typeof theme.variants === 'object' ? theme.variants : {};
   const currentMode = theme.themeMode || theme.currentTheme?.themeMode || (theme.isDark ? 'dark' : 'light');
-  const variants = {};
+  const resolvedVariants = {};
 
   THEME_PACK_MODES.forEach((themeMode) => {
     const normalized = normalizeThemePackVariant(rawVariants[themeMode], themeMode, spec);
     if (normalized) {
-      variants[themeMode] = normalized;
+      resolvedVariants[themeMode] = normalized;
     }
   });
 
-  if (!variants[currentMode]) {
+  if (!resolvedVariants[currentMode]) {
     const currentVariant = normalizeThemePackVariant(theme, currentMode, spec);
     if (currentVariant) {
-      variants[currentMode] = currentVariant;
+      resolvedVariants[currentMode] = currentVariant;
     }
   }
 
-  const availableModes = THEME_PACK_MODES.filter((themeMode) => variants[themeMode]);
+  const exportableModes = THEME_PACK_MODES.filter((themeMode) => resolvedVariants[themeMode]);
+  const hasSelectedModes = Array.isArray(options.selectedModes);
+  const selectedModes = hasSelectedModes
+    ? THEME_PACK_MODES.filter((themeMode) => options.selectedModes.includes(themeMode))
+    : exportableModes;
+  const availableModes = exportableModes.filter((themeMode) => selectedModes.includes(themeMode));
+  const missingModes = THEME_PACK_MODES.filter((themeMode) => !exportableModes.includes(themeMode));
+  const omittedModes = exportableModes.filter((themeMode) => !availableModes.includes(themeMode));
+
+  if (hasSelectedModes && availableModes.length === 0) {
+    throw new Error('Select at least one available Theme Pack mode to export.');
+  }
+
+  const variants = Object.fromEntries(
+    availableModes.map((themeMode) => [themeMode, resolvedVariants[themeMode]])
+  );
 
   return {
     themeName: spec.name,
@@ -633,7 +674,8 @@ export const buildThemePackExportData = (theme = {}) => {
     harmony: spec.mode,
     currentMode,
     availableModes,
-    missingModes: THEME_PACK_MODES.filter((themeMode) => !variants[themeMode]),
+    missingModes,
+    omittedModes,
     variantCoverage: availableModes.length === THEME_PACK_MODES.length
       ? 'all-modes'
       : availableModes.length > 1
@@ -657,37 +699,71 @@ export const buildThemePackExportData = (theme = {}) => {
 
 export const addAllModeThemePackFiles = async (root, theme, options = {}) => {
   const spec = resolveAllModeThemeSpec(theme);
-  const exportData = buildThemePackExportData(theme);
+  const exportData = buildThemePackExportData(theme, options);
   const themeSlug = slugifyFilename(options.slug || spec.name, 'theme');
   const combinedTokens = {};
   const combinedCss = [];
   const tokenPrefix = spec.tokenPrefix || '';
+  const includedModeNames = formatThemePackModes(exportData.availableModes) || 'none';
+  const missingModeNames = formatThemePackModes(exportData.missingModes) || 'none';
+  const omittedModeNames = formatThemePackModes(exportData.omittedModes);
+  const coverageSummary = exportData.variantCoverage === 'all-modes'
+    ? 'Full Light/Dark/Pop family'
+    : exportData.variantCoverage === 'available-modes'
+      ? 'Partial confirmed modes'
+      : exportData.omittedModes.length > 0
+        ? 'Selected mode only'
+        : 'Current mode only';
+  const combinedGuide = exportData.availableModes.length > 1
+    ? [
+      '- `combined/tokens.all-modes.json` - all included modes in one JSON reference.',
+      '- `combined/css/variables.all-modes.css` - scoped CSS variables for all included modes.',
+    ]
+    : [
+      '- `combined/tokens.all-modes.json` - combined reference for the included mode.',
+      '- `combined/css/variables.all-modes.css` - scoped CSS variables for the included mode.',
+    ];
+
+  let introSentence;
+  if (exportData.variantCoverage === 'all-modes') {
+    introSentence = `${spec.name} is a complete Apocapalette Theme Pack exported from confirmed Light, Dark, and Pop modes.`;
+  } else if (exportData.variantCoverage === 'available-modes') {
+    introSentence = `${spec.name} is an Apocapalette Theme Pack exported from confirmed reviewed modes.`;
+  } else if (exportData.omittedModes.length > 0) {
+    introSentence = `${spec.name} is an Apocapalette Theme Pack exported from the selected reviewed mode.`;
+  } else { // 'current-mode-only'
+    introSentence = `${spec.name} is an Apocapalette Theme Pack exported from the current reviewed mode.`;
+  }
 
   root.file('README.md', [
     `# ${spec.name}`,
     '',
-    `${spec.name} is an Apocapalette theme pack serialized from resolved app-state tokens.`,
+    introSentence,
     '',
-    '## Variant Coverage',
+    '## What You Received',
     '',
-    `- Coverage: ${exportData.variantCoverage}`,
-    `- Included modes: ${exportData.availableModes.join(', ') || 'none'}`,
-    `- Missing modes: ${exportData.missingModes.join(', ') || 'none'}`,
-    '- Export behavior: this pack does not regenerate missing modes from seed/fine-tune settings.',
+    `- Theme name: ${spec.name}`,
+    `- Coverage: ${coverageSummary}`,
+    `- Included modes: ${includedModeNames}`,
+    `- Missing modes: ${missingModeNames}`,
+    ...(omittedModeNames ? [`- Omitted modes: ${omittedModeNames} (available but intentionally excluded from this export)`] : []),
+    '- Missing modes are not regenerated from the seed or fine-tune settings during export.',
     '',
-    '## Files',
+    '## File Guide',
     '',
-    '- `modes/{mode}/tokens.json` - canonical tokens for each available resolved mode.',
-    '- `modes/{mode}/css/variables.css` - CSS variables from the same resolved tokens.',
-    '- `modes/{mode}/figma/tokens.json` - Figma token JSON from the same resolved tokens.',
-    '- `modes/{mode}/penpot/tokens.json` - Penpot token JSON from the same resolved tokens.',
-    '- `modes/{mode}/libreoffice/*.soc` - LibreOffice palette from the same resolved tokens.',
-    '- `combined/` - combined reference files for available modes only.',
+    '- `modes/{mode}/tokens.json` - canonical tokens for each included resolved mode.',
+    '- `modes/{mode}/css/variables.css` - CSS variables from the same resolved mode tokens.',
+    '- `modes/{mode}/figma/tokens.json` - Figma token JSON from the same resolved mode tokens.',
+    '- `modes/{mode}/penpot/tokens.json` - Penpot-friendly token JSON from the same resolved mode tokens.',
+    '- `modes/{mode}/libreoffice/` - LibreOffice/OpenOffice palette files from the same resolved mode tokens.',
+    '- `modes/{mode}/preview/` - palette card and swatch preview assets for that mode when available.',
+    ...combinedGuide,
   ].join('\n'));
 
   for (const themeMode of exportData.availableModes) {
     const variant = exportData.variants[themeMode];
     const { finalTokens, currentTheme, themeMaster, orderedStack } = variant;
+    const previewTheme = buildThemePackPreviewTheme(currentTheme, spec, themeMode);
     const modeFolder = root.folder(`modes/${themeMode}`);
     if (!modeFolder) throw new Error(`Failed to create ${themeMode} mode folder`);
 
@@ -724,18 +800,18 @@ export const addAllModeThemePackFiles = async (root, theme, options = {}) => {
 
     const previewFolder = modeFolder.folder('preview');
     try {
-      previewFolder?.file('palette-card.svg', buildPaletteCardSvg(currentTheme));
+      previewFolder?.file('palette-card.svg', buildPaletteCardSvg(previewTheme));
     } catch (error) {
       console.warn(`All-mode ${themeMode} palette SVG failed`, error);
     }
     try {
-      previewFolder?.file('swatch-strip.svg', buildStripSvg(currentTheme));
+      previewFolder?.file('swatch-strip.svg', buildStripSvg(previewTheme));
     } catch (error) {
       console.warn(`All-mode ${themeMode} strip SVG failed`, error);
     }
     const [palettePng, stripPng] = await Promise.allSettled([
-      renderPaletteCardPng(currentTheme),
-      renderStripPng(currentTheme),
+      renderPaletteCardPng(previewTheme),
+      renderStripPng(previewTheme),
     ]);
     if (palettePng.status === 'fulfilled') {
       previewFolder?.file('palette-card.png', palettePng.value);
@@ -762,11 +838,18 @@ export const addAllModeThemePackFiles = async (root, theme, options = {}) => {
     variantCoverage: exportData.variantCoverage,
     availableModes: exportData.availableModes,
     missingModes: exportData.missingModes,
+    ...(exportData.omittedModes.length ? { omittedModes: exportData.omittedModes } : {}),
     modes: combinedTokens,
   }, null, 2));
   root.folder('combined')?.file('css/variables.all-modes.css', combinedCss.join('\n'));
 
-  return { themeSlug, modes: exportData.availableModes, variantCoverage: exportData.variantCoverage };
+  return {
+    themeSlug,
+    modes: exportData.availableModes,
+    missingModes: exportData.missingModes,
+    omittedModes: exportData.omittedModes,
+    variantCoverage: exportData.variantCoverage,
+  };
 };
 
 export const buildAllModeThemePackArchive = async (theme, options = {}) => {
@@ -777,7 +860,7 @@ export const buildAllModeThemePackArchive = async (theme, options = {}) => {
   const root = zip.folder(themeSlug);
   if (!root) throw new Error('Failed to create all-mode theme pack folder');
 
-  await addAllModeThemePackFiles(root, theme, { slug: themeSlug });
+  await addAllModeThemePackFiles(root, theme, { ...options, slug: themeSlug });
 
   const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
   return {
@@ -788,13 +871,22 @@ export const buildAllModeThemePackArchive = async (theme, options = {}) => {
 };
 
 export const downloadAllModeThemePackArchive = async (theme, options = {}) => {
-  const { blob, filename } = await buildAllModeThemePackArchive(theme, options);
-  exportThemePack({ data: blob, filename, mime: 'application/zip' });
+  const { blob } = await buildAllModeThemePackArchive(theme, options);
+  const themeName = options.slug || theme.displayThemeName || theme.currentTheme?.name || theme.name;
+  exportThemePack({
+    data: blob,
+    filename: buildThemePackDownloadFilename(themeName),
+    mime: 'application/zip',
+  });
 };
 
 export const downloadThemePackArchive = async (options) => {
-  const { blob, filename } = await buildThemePackArchive(options);
-  exportThemePack({ data: blob, filename, mime: 'application/zip' });
+  const { blob } = await buildThemePackArchive(options);
+  exportThemePack({
+    data: blob,
+    filename: buildThemePackDownloadFilename(options.displayThemeName),
+    mime: 'application/zip',
+  });
 };
 
 export const downloadThemePackWithPrintArchive = async ({

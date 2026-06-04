@@ -179,6 +179,24 @@ export const inferThemeMode = (value) => {
 };
 
 const SAVED_VARIANT_MODES = ['light', 'dark', 'pop'];
+const MODE_LABELS = {
+  light: 'Light',
+  dark: 'Dark',
+  pop: 'Pop',
+};
+
+const formatModeList = (modes = []) => (
+  modes
+    .map((mode) => MODE_LABELS[mode] || mode)
+    .filter(Boolean)
+    .join(', ')
+);
+
+const formatSentenceModeList = (modes = []) => {
+  const labels = modes.map((mode) => MODE_LABELS[mode] || mode).filter(Boolean);
+  if (labels.length <= 2) return labels.join(' and ');
+  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+};
 
 export const summarizeConfirmedVariants = (confirmedVariants = {}) => {
   const availableModes = SAVED_VARIANT_MODES.filter((mode) => {
@@ -189,6 +207,84 @@ export const summarizeConfirmedVariants = (confirmedVariants = {}) => {
     variantCoverage: availableModes.length === SAVED_VARIANT_MODES.length ? 'all-modes' : 'available-modes',
     availableModes,
     missingModes: SAVED_VARIANT_MODES.filter((mode) => !availableModes.includes(mode)),
+  };
+};
+
+export const buildThemePackExportCopy = ({
+  availableModes = [],
+  missingModes = SAVED_VARIANT_MODES,
+  variantCoverage,
+} = {}) => {
+  const safeAvailableModes = SAVED_VARIANT_MODES.filter((mode) => availableModes.includes(mode));
+  const safeMissingModes = SAVED_VARIANT_MODES.filter((mode) => missingModes.includes(mode));
+  const isFullFamily = safeAvailableModes.length === SAVED_VARIANT_MODES.length || variantCoverage === 'all-modes';
+  const isCurrentModeOnly = !isFullFamily && safeAvailableModes.length <= 1;
+  const isPartialFamily = !isFullFamily && safeAvailableModes.length > 1;
+  const includedModes = formatModeList(safeAvailableModes) || 'Current mode';
+  const includedSentenceModes = formatSentenceModeList(safeAvailableModes) || 'Current mode';
+  const missingModesText = formatModeList(safeMissingModes);
+  const missingSentenceModes = formatSentenceModeList(safeMissingModes);
+
+  return {
+    exportButtonLabel: isFullFamily
+      ? 'Download Full Theme Pack'
+      : isPartialFamily
+        ? 'Download Confirmed Modes Theme Pack'
+        : 'Download Current Mode Theme Pack',
+    includedModesLabel: `Included in this ZIP: ${includedModes}`,
+    missingModesLabel: safeMissingModes.length ? `Missing modes: ${missingModesText}` : 'Missing modes: none',
+    successMessage: isFullFamily
+      ? `Full Theme Pack exported. Included: ${includedSentenceModes}.`
+      : safeMissingModes.length
+        ? `Theme Pack exported. Included: ${includedSentenceModes}. Missing: ${missingSentenceModes}.`
+        : `Theme Pack exported. Included: ${includedSentenceModes}.`,
+    coverageLabel: isFullFamily
+      ? 'Full Light/Dark/Pop family'
+      : isPartialFamily
+        ? 'Partial confirmed family'
+        : 'Current mode only',
+    isFullFamily,
+    isCurrentModeOnly,
+    isPartialFamily,
+  };
+};
+
+export const buildThemePackSelectionCopy = ({
+  availableModes = [],
+  missingModes = SAVED_VARIANT_MODES,
+} = {}, selectedModes = availableModes) => {
+  const safeAvailableModes = SAVED_VARIANT_MODES.filter((mode) => availableModes.includes(mode));
+  const safeSelectedModes = safeAvailableModes.filter((mode) => selectedModes.includes(mode));
+  const safeMissingModes = SAVED_VARIANT_MODES.filter((mode) => missingModes.includes(mode));
+  const omittedModes = safeAvailableModes.filter((mode) => !safeSelectedModes.includes(mode));
+  const includedModesText = formatModeList(safeSelectedModes) || 'None';
+  const includedSentenceModes = formatSentenceModeList(safeSelectedModes);
+  const missingModesText = formatModeList(safeMissingModes);
+  const missingSentenceModes = formatSentenceModeList(safeMissingModes);
+  const omittedModesText = formatModeList(omittedModes);
+  const allExportableSelected = safeSelectedModes.length === safeAvailableModes.length;
+  const defaultCopy = buildThemePackExportCopy({
+    availableModes: safeAvailableModes,
+    missingModes: safeMissingModes,
+  });
+
+  return {
+    selectedModes: safeSelectedModes,
+    omittedModes,
+    canExportSelection: safeSelectedModes.length > 0,
+    exportButtonLabel: allExportableSelected
+      ? defaultCopy.exportButtonLabel
+      : safeSelectedModes.length > 1
+        ? 'Download Selected Modes Theme Pack'
+        : 'Download Selected Mode Theme Pack',
+    includedModesLabel: `Included in this ZIP: ${includedModesText}`,
+    missingModesLabel: safeMissingModes.length ? `Missing modes: ${missingModesText}` : 'Missing modes: none',
+    omittedModesLabel: omittedModes.length ? `Omitted from this ZIP: ${omittedModesText}` : '',
+    successMessage: allExportableSelected
+      ? defaultCopy.successMessage
+      : safeSelectedModes.length > 0
+      ? `Theme Pack exported. Included: ${includedSentenceModes}.${safeMissingModes.length ? ` Missing: ${missingSentenceModes}.` : ''}${omittedModes.length ? ` Omitted: ${formatSentenceModeList(omittedModes)}.` : ''}`
+      : '',
   };
 };
 

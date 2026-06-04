@@ -36,8 +36,14 @@ vi.mock('html-to-image', () => ({
   toPng: vi.fn(async () => 'data:image/png;base64,AA=='),
 }));
 vi.mock('./previewAssets.js', () => ({
-  buildPaletteCardSvg: vi.fn(() => '<svg>palette</svg>'),
-  buildStripSvg: vi.fn(() => '<svg>strip</svg>'),
+  buildPaletteCardSvg: vi.fn((theme) => {
+    const mode = theme.themeMode === 'pop' ? 'Pop' : (theme.isDark ? 'Dark' : 'Light');
+    return `<svg><title>${theme.name} ${mode} Theme Pack palette card</title><desc>${mode} mode palette preview</desc></svg>`;
+  }),
+  buildStripSvg: vi.fn((theme) => {
+    const mode = theme.themeMode === 'pop' ? 'Pop' : (theme.isDark ? 'Dark' : 'Light');
+    return `<svg><title>${theme.name} ${mode} mode swatch strip</title><desc>${mode} mode swatches</desc></svg>`;
+  }),
   createTarArchive: vi.fn(() => new Uint8Array([9, 8, 7])),
   encodeText: vi.fn((value) => new TextEncoder().encode(value)),
   renderPaletteCardPng: vi.fn(async () => new Uint8Array([1, 2, 3])),
@@ -182,7 +188,28 @@ describe('workflow export helpers', () => {
     expect(zip.files['listing/theme.css']).not.toContain('[data-theme="listing-theme-light"]');
     expect(zip.files['listing/hex-list.txt']).toContain('Listing Theme - Dark');
     expect(zip.files['listing/canva-hex-list.txt']).toContain('DARK COLORS');
-    expect(zip.files['listing/README.md']).toContain('does not regenerate missing variants from the seed');
+    const listingReadme = zip.files['listing/README.md'];
+    expect(listingReadme).toContain('# Listing Theme Listing Asset Package');
+    expect(listingReadme).toContain('This Apocapalette listing asset package helps prepare storefront previews and product listing materials');
+    expect(listingReadme).toContain('It is not a full Light/Dark/Pop Theme Pack.');
+    expect(zip.files['listing/README.md']).toContain('Coverage: Current mode only');
+    expect(listingReadme).toContain('Included active mode: Dark');
+    expect(listingReadme).toContain('Missing modes: Light, Pop');
+    expect(listingReadme).toContain('Missing modes are not regenerated.');
+    expect(listingReadme).toContain('## Included Listing Files');
+    expect(listingReadme).toContain('`theme.json`');
+    expect(listingReadme).toContain('`theme.css`');
+    expect(listingReadme).toContain('`hex-list.txt`');
+    expect(listingReadme).toContain('`canva-hex-list.txt`');
+    expect(listingReadme).toContain('`listing-copy.md`');
+    expect(listingReadme).toContain('`meta.json`');
+    expect(listingReadme).toContain('captured listing and preview images when available');
+    expect(listingReadme).not.toMatch(/\bserialized\b/i);
+    expect(listingReadme).not.toMatch(/\bapp-state\b/i);
+    expect(listingReadme).not.toMatch(/resolved app-state tokens/i);
+    expect(listingReadme).not.toContain('current-mode-only');
+    expect(listingReadme).not.toContain('available-modes');
+    expect(listingReadme).not.toContain('all-modes');
     expect(JSON.parse(zip.files['listing/meta.json'])).toEqual(expect.objectContaining({
       themeName: 'Listing Theme',
       seedHex: '#6633FF',
@@ -230,10 +257,57 @@ describe('workflow export helpers', () => {
     expect(zip.files['theme-pack/figma/tokens.json']).toContain('"demo"');
     expect(zip.files['theme-pack/penpot/tokens.json']).toContain('"brand"');
     expect(zip.files['theme-pack/libreoffice/theme-pack.soc']).toContain('<ooo:color-table');
-    expect(zip.files['theme-pack/preview/palette-card.svg']).toBe('<svg>palette</svg>');
-    expect(zip.files['theme-pack/preview/swatch-strip.svg']).toBe('<svg>strip</svg>');
+    expect(zip.files['theme-pack/preview/palette-card.svg']).toContain('Test Theme Dark Theme Pack palette card');
+    expect(zip.files['theme-pack/preview/swatch-strip.svg']).toContain('Test Theme Dark mode swatch strip');
     expect(exportIndex.exportThemePack).toHaveBeenCalledWith(expect.objectContaining({
-      filename: 'theme-pack-theme-pack-v1.zip',
+      filename: 'apocapalette-theme-pack-theme-pack-v1.zip',
+      mime: 'application/zip',
+    }));
+  });
+
+  it('uses a branded, slug-safe filename for named Theme Pack downloads', async () => {
+    const theme = buildSampleTheme();
+
+    await workflowExports.downloadAllModeThemePackArchive({
+      ...theme,
+      displayThemeName: 'Moonlit Moss',
+    });
+
+    expect(exportIndex.exportThemePack).toHaveBeenCalledWith(expect.objectContaining({
+      filename: 'apocapalette-moonlit-moss-theme-pack-v1.zip',
+      mime: 'application/zip',
+    }));
+  });
+
+  it('uses the branded Theme Pack fallback filename for unnamed downloads', async () => {
+    const theme = buildSampleTheme();
+
+    await workflowExports.downloadAllModeThemePackArchive({
+      ...theme,
+      displayThemeName: '',
+      name: '',
+      currentTheme: {
+        ...theme.currentTheme,
+        name: '',
+      },
+    });
+
+    expect(exportIndex.exportThemePack).toHaveBeenCalledWith(expect.objectContaining({
+      filename: 'apocapalette-theme-pack-v1.zip',
+      mime: 'application/zip',
+    }));
+  });
+
+  it('sanitizes unsafe characters in Theme Pack download filenames', async () => {
+    const theme = buildSampleTheme();
+
+    await workflowExports.downloadAllModeThemePackArchive({
+      ...theme,
+      displayThemeName: ' Moonlit / Moss: Deluxe?! ',
+    });
+
+    expect(exportIndex.exportThemePack).toHaveBeenCalledWith(expect.objectContaining({
+      filename: 'apocapalette-moonlit-moss-deluxe-theme-pack-v1.zip',
       mime: 'application/zip',
     }));
   });
@@ -269,8 +343,23 @@ describe('workflow export helpers', () => {
     ]));
     expect(zip.files['adaptive-cobalt/modes/light/tokens.json']).toBeUndefined();
     expect(zip.files['adaptive-cobalt/modes/pop/tokens.json']).toBeUndefined();
-    expect(zip.files['adaptive-cobalt/README.md']).toContain('current-mode-only');
-    expect(zip.files['adaptive-cobalt/README.md']).toContain('does not regenerate missing modes');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('Adaptive Cobalt is an Apocapalette Theme Pack exported from the current reviewed mode.');
+    expect(zip.files['adaptive-cobalt/README.md']).not.toContain('serialized');
+    expect(zip.files['adaptive-cobalt/README.md']).not.toContain('resolved app-state tokens');
+    expect(zip.files['adaptive-cobalt/README.md']).not.toContain('app-state');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('Coverage: Current mode only');
+    expect(zip.files['adaptive-cobalt/README.md']).not.toContain('(current-mode-only)');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('Included modes: Dark');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('Missing modes: Light, Pop');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('Missing modes are not regenerated from the seed or fine-tune settings during export.');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('## File Guide');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('`modes/{mode}/tokens.json`');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('`modes/{mode}/css/variables.css`');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('`modes/{mode}/figma/tokens.json`');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('`modes/{mode}/penpot/tokens.json`');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('`modes/{mode}/libreoffice/`');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('`modes/{mode}/preview/`');
+    expect(zip.files['adaptive-cobalt/README.md']).toContain('`combined/tokens.all-modes.json`');
 
     const darkTokens = JSON.parse(zip.files['adaptive-cobalt/modes/dark/tokens.json']);
     const combined = JSON.parse(zip.files['adaptive-cobalt/combined/tokens.all-modes.json']);
@@ -304,7 +393,6 @@ describe('workflow export helpers', () => {
       currentTheme: dark.currentTheme,
       themeMaster: dark,
       variants: {
-        dark,
         light,
         pop,
       },
@@ -317,8 +405,153 @@ describe('workflow export helpers', () => {
     const combined = JSON.parse(zip.files['stored-family/combined/tokens.all-modes.json']);
     expect(combined.variantCoverage).toBe('all-modes');
     expect(combined.availableModes).toEqual(['dark', 'light', 'pop']);
+    expect(combined).not.toHaveProperty('omittedModes');
+    expect(zip.files['stored-family/README.md']).toContain('Stored Family is a complete Apocapalette Theme Pack exported from confirmed Light, Dark, and Pop modes.');
+    expect(zip.files['stored-family/README.md']).not.toContain('serialized');
+    expect(zip.files['stored-family/README.md']).not.toContain('resolved app-state tokens');
+    expect(zip.files['stored-family/README.md']).not.toContain('app-state');
+    expect(zip.files['stored-family/README.md']).toContain('Coverage: Full Light/Dark/Pop family');
+    expect(zip.files['stored-family/README.md']).not.toContain('(all-modes)');
+    expect(zip.files['stored-family/README.md']).toContain('Included modes: Dark, Light, Pop');
+    expect(zip.files['stored-family/README.md']).toContain('Missing modes: none');
     expect(JSON.parse(zip.files['stored-family/modes/light/tokens.json']).brand.primary).toBe(light.finalTokens.brand.primary);
     expect(JSON.parse(zip.files['stored-family/modes/pop/tokens.json']).brand.primary).toBe(pop.finalTokens.brand.primary);
+  });
+
+  it('exports only explicitly selected resolved modes without re-adding a deselected current mode', async () => {
+    const dark = buildSampleTheme();
+    const light = buildTheme({ ...dark.currentTheme, themeMode: 'light', isDark: false });
+    const pop = buildTheme({ ...dark.currentTheme, themeMode: 'pop', isDark: false });
+
+    await workflowExports.buildAllModeThemePackArchive({
+      displayThemeName: 'Selected Family',
+      mode: 'Monochromatic',
+      baseColor: '#6633ff',
+      themeMode: 'dark',
+      finalTokens: dark.finalTokens,
+      currentTheme: dark.currentTheme,
+      themeMaster: dark,
+      variants: {
+        light,
+        pop,
+      },
+    }, {
+      selectedModes: ['light', 'pop'],
+    });
+
+    const zip = zipInstances[0];
+    const combined = JSON.parse(zip.files['selected-family/combined/tokens.all-modes.json']);
+    const readme = zip.files['selected-family/README.md'];
+
+    expect(zip.files['selected-family/modes/dark/tokens.json']).toBeUndefined();
+    expect(zip.files['selected-family/modes/dark/preview/palette-card.svg']).toBeUndefined();
+    expect(zip.files['selected-family/modes/light/tokens.json']).toBeTruthy();
+    expect(zip.files['selected-family/modes/light/preview/palette-card.svg']).toBeTruthy();
+    expect(zip.files['selected-family/modes/pop/tokens.json']).toBeTruthy();
+    expect(zip.files['selected-family/modes/pop/preview/palette-card.svg']).toBeTruthy();
+    expect(combined.availableModes).toEqual(['light', 'pop']);
+    expect(combined.missingModes).toEqual([]);
+    expect(combined.omittedModes).toEqual(['dark']);
+    expect(combined.modes).not.toHaveProperty('dark');
+    expect(readme).toContain('Included modes: Light, Pop');
+    expect(readme).toContain('Missing modes: none');
+    expect(readme).toContain('Omitted modes: Dark (available but intentionally excluded from this export)');
+    expect(readme).not.toContain('exported from the current reviewed mode');
+  });
+
+  it('ignores selected unavailable modes and keeps them separate from omitted exportable modes', async () => {
+    const dark = buildSampleTheme();
+    const light = buildTheme({ ...dark.currentTheme, themeMode: 'light', isDark: false });
+
+    await workflowExports.buildAllModeThemePackArchive({
+      displayThemeName: 'Partial Selection',
+      mode: 'Monochromatic',
+      baseColor: '#6633ff',
+      themeMode: 'dark',
+      finalTokens: dark.finalTokens,
+      currentTheme: dark.currentTheme,
+      themeMaster: dark,
+      variants: {
+        dark,
+        light,
+      },
+    }, {
+      selectedModes: ['light', 'pop'],
+    });
+
+    const zip = zipInstances[0];
+    const combined = JSON.parse(zip.files['partial-selection/combined/tokens.all-modes.json']);
+    const readme = zip.files['partial-selection/README.md'];
+
+    expect(combined.availableModes).toEqual(['light']);
+    expect(combined.missingModes).toEqual(['pop']);
+    expect(combined.omittedModes).toEqual(['dark']);
+    expect(zip.files['partial-selection/modes/dark/tokens.json']).toBeUndefined();
+    expect(zip.files['partial-selection/modes/pop/tokens.json']).toBeUndefined();
+    expect(readme).toContain('exported from the selected reviewed mode');
+    expect(readme).toContain('Coverage: Selected mode only');
+    expect(readme).toContain('Included modes: Light');
+    expect(readme).toContain('Missing modes: Pop');
+    expect(readme).toContain('Omitted modes: Dark (available but intentionally excluded from this export)');
+    expect(readme).toContain('Missing modes are not regenerated');
+  });
+
+  it('rejects selectedModes when none of the selected modes are exportable', async () => {
+    const dark = buildSampleTheme();
+
+    await expect(workflowExports.buildAllModeThemePackArchive({
+      ...dark,
+      displayThemeName: 'Unavailable Selection',
+      themeMode: 'dark',
+      variants: {},
+    }, {
+      selectedModes: ['pop'],
+    })).rejects.toThrow('Select at least one available Theme Pack mode to export.');
+  });
+
+  it('uses the resolved export name and buyer-facing mode labels in Theme Pack previews', async () => {
+    const dark = buildSampleTheme();
+    const light = buildTheme({ ...dark.currentTheme, name: 'Stale Light Name', themeMode: 'light', isDark: false });
+    const pop = buildTheme({ ...dark.currentTheme, name: 'Stale Pop Name', themeMode: 'pop', isDark: false });
+
+    await workflowExports.buildAllModeThemePackArchive({
+      displayThemeName: 'Moonlit Moss',
+      mode: 'Monochromatic',
+      baseColor: '#6633ff',
+      themeMode: 'dark',
+      finalTokens: dark.finalTokens,
+      currentTheme: {
+        ...dark.currentTheme,
+        name: 'Stale Dark Name',
+      },
+      themeMaster: dark,
+      variants: {
+        dark: {
+          ...dark,
+          currentTheme: {
+            ...dark.currentTheme,
+            name: 'Stale Dark Name',
+          },
+        },
+        light,
+        pop,
+      },
+    });
+
+    const zip = zipInstances[0];
+    ['dark', 'light', 'pop'].forEach((mode) => {
+      const label = mode[0].toUpperCase() + mode.slice(1);
+      const paletteCard = zip.files[`moonlit-moss/modes/${mode}/preview/palette-card.svg`];
+      const swatchStrip = zip.files[`moonlit-moss/modes/${mode}/preview/swatch-strip.svg`];
+
+      expect(paletteCard).toContain(`Moonlit Moss ${label} Theme Pack palette card`);
+      expect(paletteCard).toContain(`${label} mode palette preview`);
+      expect(swatchStrip).toContain(`Moonlit Moss ${label} mode swatch strip`);
+      expect(paletteCard).not.toMatch(/Stale (Dark|Light|Pop) Name/);
+      expect(swatchStrip).not.toMatch(/Stale (Dark|Light|Pop) Name/);
+      expect(paletteCard).not.toMatch(/current-mode-only|available-modes|all-modes/);
+      expect(swatchStrip).not.toMatch(/current-mode-only|available-modes|all-modes/);
+    });
   });
 
   it('exports restored saved-palette confirmed variants without filling missing modes', async () => {
@@ -359,6 +592,14 @@ describe('workflow export helpers', () => {
     expect(combined.variantCoverage).toBe('available-modes');
     expect(combined.availableModes).toEqual(['dark', 'light']);
     expect(combined.missingModes).toEqual(['pop']);
+    expect(zip.files['loaded-snapshot/README.md']).toContain('Loaded Snapshot is an Apocapalette Theme Pack exported from confirmed reviewed modes.');
+    expect(zip.files['loaded-snapshot/README.md']).not.toContain('serialized');
+    expect(zip.files['loaded-snapshot/README.md']).not.toContain('resolved app-state tokens');
+    expect(zip.files['loaded-snapshot/README.md']).not.toContain('app-state');
+    expect(zip.files['loaded-snapshot/README.md']).toContain('Coverage: Partial confirmed modes');
+    expect(zip.files['loaded-snapshot/README.md']).not.toContain('(available-modes)');
+    expect(zip.files['loaded-snapshot/README.md']).toContain('Included modes: Dark, Light');
+    expect(zip.files['loaded-snapshot/README.md']).toContain('Missing modes: Pop');
   });
 
   it.each([
@@ -406,6 +647,13 @@ describe('workflow export helpers', () => {
     expect(zip.files[`${slug}/modes/${themeMode}/libreoffice/${slug}-${themeMode}.soc`]).toContain(theme.finalTokens.brand.cta.toLowerCase());
     expect(combined.variantCoverage).toBe('current-mode-only');
     expect(combined.availableModes).toEqual([themeMode]);
+
+    // New assertion: Verify buildPaletteCardSvg was called with the correct theme name
+    expect(previewAssets.buildPaletteCardSvg).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: name,
+      })
+    );
   });
 
   it('exports project print assets and reports skipped sections', async () => {
