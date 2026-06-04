@@ -1732,10 +1732,10 @@ export default function useAppController() {
   ]);
 
   const handleDownloadThemePack = useCallback(async (selectedModes) => {
-    if (!canExport) return;
+    if (!canExport) return false;
     if (typeof Blob === 'undefined') {
       notify('File export is not supported in this browser', 'error');
-      return;
+      return false;
     }
     try {
       const { downloadAllModeThemePackArchive } = await loadWorkflowExports?.();
@@ -1758,9 +1758,11 @@ export default function useAppController() {
         await downloadAllModeThemePackArchive(themePackData);
       }
       setStatusMessage('Theme pack downloaded', 'success');
+      return true;
     } catch (error) {
       console.error('Theme pack export failed', error);
       notify('Theme pack export failed. Check console for details.', 'error');
+      return false;
     }
   }, [
     currentTheme,

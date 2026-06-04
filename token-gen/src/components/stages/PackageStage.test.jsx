@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import PackageStage from './PackageStage.jsx';
 
@@ -33,7 +33,7 @@ const renderPackageStage = (props = {}) => render(
 
 describe('PackageStage', () => {
   it('renders an optional theme pack download button', async () => {
-    const onDownloadThemePack = vi.fn(async () => undefined);
+    const onDownloadThemePack = vi.fn(async () => true);
 
     renderPackageStage({ onDownloadThemePack });
     fireEvent.click(screen.getByRole('button', { name: /download full theme pack/i }));
@@ -62,7 +62,7 @@ describe('PackageStage', () => {
   });
 
   it('passes selected modes to export and shows omitted modes separately', async () => {
-    const onDownloadThemePack = vi.fn(async () => undefined);
+    const onDownloadThemePack = vi.fn(async () => true);
     renderPackageStage({ onDownloadThemePack });
 
     fireEvent.click(screen.getByRole('checkbox', { name: /pop.*available/i }));
@@ -120,7 +120,7 @@ describe('PackageStage', () => {
 
   it('shows current-mode-only success after export', async () => {
     renderPackageStage({
-      onDownloadThemePack: vi.fn(async () => undefined),
+      onDownloadThemePack: vi.fn(async () => true),
       variantStatus: {
         variantCoverage: 'current-mode-only',
         availableModes: ['dark'],
@@ -152,7 +152,7 @@ describe('PackageStage', () => {
 
   it('shows partial-family success after export', async () => {
     renderPackageStage({
-      onDownloadThemePack: vi.fn(async () => undefined),
+      onDownloadThemePack: vi.fn(async () => true),
       variantStatus: {
         variantCoverage: 'available-modes',
         availableModes: ['light', 'dark'],
@@ -179,7 +179,7 @@ describe('PackageStage', () => {
   });
 
   it('shows full-family success after export', async () => {
-    renderPackageStage({ onDownloadThemePack: vi.fn(async () => undefined) });
+    renderPackageStage({ onDownloadThemePack: vi.fn(async () => true) });
 
     fireEvent.click(screen.getByRole('button', { name: /download full theme pack/i }));
 
@@ -188,9 +188,41 @@ describe('PackageStage', () => {
     });
   });
 
+  it('does not show success when Theme Pack export returns false', async () => {
+    let resolveExport;
+    const onDownloadThemePack = vi.fn(() => new Promise((resolve) => {
+      resolveExport = resolve;
+    }));
+    renderPackageStage({ onDownloadThemePack });
+
+    fireEvent.click(screen.getByRole('button', { name: /download full theme pack/i }));
+    await act(async () => {
+      resolveExport(false);
+    });
+
+    expect(onDownloadThemePack).toHaveBeenCalledWith(['light', 'dark', 'pop']);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('does not show success when Theme Pack export rejects', async () => {
+    let rejectExport;
+    const onDownloadThemePack = vi.fn(() => new Promise((resolve, reject) => {
+      rejectExport = reject;
+    }));
+    renderPackageStage({ onDownloadThemePack });
+
+    fireEvent.click(screen.getByRole('button', { name: /download full theme pack/i }));
+    await act(async () => {
+      rejectExport(new Error('download failed'));
+    });
+
+    expect(onDownloadThemePack).toHaveBeenCalledWith(['light', 'dark', 'pop']);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('clears export success when coverage changes', async () => {
     const { rerender } = renderPackageStage({
-      onDownloadThemePack: vi.fn(async () => undefined),
+      onDownloadThemePack: vi.fn(async () => true),
       variantStatus: {
         variantCoverage: 'available-modes',
         availableModes: ['light', 'dark'],
@@ -213,7 +245,7 @@ describe('PackageStage', () => {
         primaryTextColor="#ffffff"
         printAssetPack={[]}
         canvaPrintHexes={[]}
-        onDownloadThemePack={vi.fn(async () => undefined)}
+        onDownloadThemePack={vi.fn(async () => true)}
         variantStatus={{
           variantCoverage: 'all-modes',
           availableModes: ['light', 'dark', 'pop'],
@@ -228,7 +260,7 @@ describe('PackageStage', () => {
   });
 
   it('reconciles selection when exportable modes change', async () => {
-    const onDownloadThemePack = vi.fn(async () => undefined);
+    const onDownloadThemePack = vi.fn(async () => true);
     const { rerender } = renderPackageStage({
       onDownloadThemePack,
       variantStatus: {

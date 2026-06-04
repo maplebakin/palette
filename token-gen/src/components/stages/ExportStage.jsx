@@ -83,6 +83,7 @@ const ExportStage = ({
               style={{ borderColor: tokens.cards["card-panel-border"] }}
               aria-expanded={overflowOpen}
               aria-haspopup="true"
+              aria-label="More export actions"
               title="More actions"
             >
               ⋮

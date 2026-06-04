@@ -50,11 +50,24 @@ export const getThemeExportSourceInfo = (theme = {}) => {
     ? THEME_MODE_ORDER.filter((mode) => theme.variants[mode])
     : [];
   const fallbackMode = theme?.themeMode || theme?.currentTheme?.themeMode || (theme?.isDark ? 'dark' : 'light');
-  const modes = confirmedModes.length ? confirmedModes : [fallbackMode];
+  const currentResolvedTokens = theme?.finalTokens || theme?.tokens || theme?.currentTheme?.tokens;
+  const includesCurrentFallback = confirmedModes.length > 0
+    && !confirmedModes.includes(fallbackMode)
+    && currentResolvedTokens
+    && typeof currentResolvedTokens === 'object';
+  const modes = confirmedModes.length
+    ? THEME_MODE_ORDER.filter((mode) => confirmedModes.includes(mode) || (includesCurrentFallback && mode === fallbackMode))
+    : [fallbackMode];
   const isFullConfirmed = confirmedModes.length === THEME_MODE_ORDER.length;
   const isPartialConfirmed = confirmedModes.length > 0 && !isFullConfirmed;
   const isSpecDerived = confirmedModes.length === 0;
   const modeList = modes.join(', ');
+  const confirmedModeList = confirmedModes.join(', ');
+  const confirmedModeNoun = `mode${confirmedModes.length === 1 ? '' : 's'}`;
+  const mixedDescriptor = `confirmed reviewed ${confirmedModeList} ${confirmedModeNoun} plus the current resolved ${fallbackMode} mode`;
+  const folderLineForMode = (mode) => (
+    includesCurrentFallback && mode === fallbackMode ? 'current resolved' : 'confirmed reviewed'
+  );
 
   return {
     modes,
@@ -63,19 +76,27 @@ export const getThemeExportSourceInfo = (theme = {}) => {
     isFullConfirmed,
     isPartialConfirmed,
     isSpecDerived,
+    includesCurrentFallback,
     sourceLabel: isSpecDerived
       ? 'Uses current/spec-derived mode data. Missing modes are not regenerated.'
+      : includesCurrentFallback
+        ? 'Includes confirmed modes plus the current resolved mode.'
       : isPartialConfirmed
         ? 'Includes confirmed reviewed modes only.'
         : 'Uses confirmed reviewed modes.',
     modeLine: isSpecDerived
       ? `Includes current/spec-derived ${modeList} mode data. Missing modes are not regenerated during export.`
+      : includesCurrentFallback
+        ? `Includes ${mixedDescriptor}. Missing modes are not regenerated during export.`
       : `Includes confirmed reviewed ${modeList} mode${modes.length === 1 ? '' : 's'} only. Missing modes are not regenerated during export.`,
     folderLine: isSpecDerived
       ? 'current/spec-derived'
       : 'confirmed reviewed',
+    folderLineForMode,
     shortDescriptor: isSpecDerived
       ? `current/spec-derived ${modeList} mode data`
+      : includesCurrentFallback
+        ? mixedDescriptor
       : `confirmed reviewed ${modeList} mode${modes.length === 1 ? '' : 's'}`,
   };
 };
@@ -96,7 +117,7 @@ const buildReadme = ({ product, themes, offering }) => {
     ]
     : offering === 'individual'
     ? [
-      ...firstThemeModes.map((mode) => `- \`modes/${mode}/\` - ${firstThemeInfo.folderLine} ${mode} mode tokens, CSS, design-tool files, LibreOffice palette, and previews.`),
+      ...firstThemeModes.map((mode) => `- \`modes/${mode}/\` - ${firstThemeInfo.folderLineForMode(mode)} ${mode} mode tokens, CSS, design-tool files, LibreOffice palette, and previews.`),
       '- `combined/tokens.all-modes.json` - all included modes in one JSON reference.',
       '- `combined/css/variables.all-modes.css` - scoped CSS variables for all included modes.',
     ]

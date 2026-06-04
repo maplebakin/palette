@@ -89,8 +89,23 @@ describe('ExportsPanel', () => {
       ['Generate Listing Assets (Dev)', handlers.onGenerateListingAssets],
       ['Witchcraft JSON', handlers.onExportWitchcraft],
     ].forEach(([name, handler]) => {
-      fireEvent.click(screen.getByRole('button', { name }));
+      const button = screen.getByRole('button', { name });
+      expect(button).toHaveAttribute('type', 'button');
+      fireEvent.click(button);
       expect(handler).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('gives export group summaries a visible keyboard focus treatment', () => {
+    renderPanel();
+
+    [
+      'Asset and Preview Exports',
+      'Design Tool Exports',
+      'Developer Token Exports',
+      'Advanced / Dev Exports',
+    ].forEach((name) => {
+      expect(screen.getByText(name)).toHaveClass('focus-visible:ring-2');
     });
   });
 

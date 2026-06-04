@@ -4,7 +4,7 @@ import { hexWithAlpha, pickReadableText } from '../lib/colorUtils';
 
 const ExportGroup = ({ title, description, defaultOpen = false, children }) => (
   <details className="rounded-lg border panel-surface-soft" open={defaultOpen}>
-    <summary className="cursor-pointer select-none px-3 py-2 text-xs font-bold panel-text">
+    <summary className="cursor-pointer select-none rounded-lg px-3 py-2 text-xs font-bold panel-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2">
       {title}
     </summary>
     <div className="border-t px-3 py-3">
@@ -81,6 +81,7 @@ export default function ExportsPanel({
           defaultOpen
         >
           <button
+            type="button"
             onClick={onExportAssets}
             disabled={isExporting || exportBlocked}
             className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2 disabled:opacity-60"
@@ -109,6 +110,7 @@ export default function ExportsPanel({
             {canPrint ? 'Palette PDF' : 'Print unavailable'}
           </button>
           <button
+            type="button"
             onClick={onExportDesignSpace}
             className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
             style={{
@@ -127,6 +129,7 @@ export default function ExportsPanel({
           description="Export Penpot-ready JSON or Figma-compatible token files for design token workflows."
         >
           <button
+            type="button"
             onClick={onExportPenpot}
             className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
             style={{
@@ -139,6 +142,7 @@ export default function ExportsPanel({
             {printMode ? 'Penpot JSON (Print)' : 'Penpot JSON'}
           </button>
           <button
+            type="button"
             onClick={onExportFigmaTokens}
             className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
             style={{
@@ -157,6 +161,7 @@ export default function ExportsPanel({
           description="Export implementation-ready token JSON, CSS variables, or Apocapalette app UI styles."
         >
           <button
+            type="button"
             onClick={onExportGeneric}
             className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
             style={{
@@ -169,6 +174,7 @@ export default function ExportsPanel({
             Generic Token JSON
           </button>
           <button
+            type="button"
             onClick={onExportStyleDictionary}
             className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
             style={{
@@ -181,6 +187,7 @@ export default function ExportsPanel({
             Style Dictionary JSON
           </button>
           <button
+            type="button"
             onClick={onExportCssVars}
             className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
             style={{
@@ -193,6 +200,7 @@ export default function ExportsPanel({
             CSS Variables
           </button>
           <button
+            type="button"
             onClick={onExportUiThemeCss}
             className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
             style={{
@@ -259,6 +267,7 @@ export default function ExportsPanel({
             )}
             {isInternal && (
               <button
+                type="button"
                 onClick={onExportWitchcraft}
                 className="px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all border flex items-center gap-2"
                 style={{

@@ -99,10 +99,12 @@ describe('useAppController Theme Pack export wiring', () => {
 
     const confirmedVariants = result.current.paletteState.confirmedVariants;
 
+    let exported;
     await act(async () => {
-      await result.current.handleDownloadThemePack();
+      exported = await result.current.handleDownloadThemePack();
     });
 
+    expect(exported).toBe(true);
     expect(workflowExportMocks.downloadAllModeThemePackArchive).toHaveBeenCalledTimes(1);
     expect(workflowExportMocks.downloadAllModeThemePackArchive.mock.calls[0]).toHaveLength(1);
     const exportArg = workflowExportMocks.downloadAllModeThemePackArchive.mock.calls[0][0];
@@ -141,13 +143,33 @@ describe('useAppController Theme Pack export wiring', () => {
       expect(result.current.paletteState.confirmedVariants.dark).toBeTruthy();
     });
 
+    let exported;
     await act(async () => {
-      await result.current.handleDownloadThemePack(['dark']);
+      exported = await result.current.handleDownloadThemePack(['dark']);
     });
 
+    expect(exported).toBe(true);
     expect(workflowExportMocks.downloadAllModeThemePackArchive).toHaveBeenCalledTimes(1);
     expect(workflowExportMocks.downloadAllModeThemePackArchive.mock.calls[0][1]).toEqual({
       selectedModes: ['dark'],
     });
+  });
+
+  it('returns false when Theme Pack export fails', async () => {
+    workflowExportMocks.downloadAllModeThemePackArchive.mockRejectedValueOnce(new Error('download failed'));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { result } = renderHook(() => useAppController());
+
+    let exported;
+    await act(async () => {
+      exported = await result.current.handleDownloadThemePack(['dark']);
+    });
+
+    expect(exported).toBe(false);
+    expect(workflowExportMocks.downloadAllModeThemePackArchive).toHaveBeenCalledWith(
+      expect.any(Object),
+      { selectedModes: ['dark'] }
+    );
+    expect(consoleError).toHaveBeenCalledWith('Theme pack export failed', expect.any(Error));
   });
 });

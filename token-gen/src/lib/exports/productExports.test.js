@@ -34,7 +34,12 @@ vi.mock('jszip', () => ({ default: JSZipMock }));
 vi.mock('./workflowExports.js', () => ({
   addAllModeThemePackFiles: vi.fn(async (root, theme, options = {}) => {
     const slug = options.slug || String(theme.displayThemeName).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const modes = theme.variants ? ['dark', 'light', 'pop'].filter((mode) => theme.variants[mode]) : [theme.themeMode || theme.currentTheme?.themeMode || 'dark'];
+    const currentMode = theme.themeMode || theme.currentTheme?.themeMode || 'dark';
+    const confirmedModes = theme.variants ? ['dark', 'light', 'pop'].filter((mode) => theme.variants[mode]) : [];
+    const hasCurrentResolved = theme.finalTokens || theme.tokens || theme.currentTheme?.tokens;
+    const modes = confirmedModes.length
+      ? ['dark', 'light', 'pop'].filter((mode) => confirmedModes.includes(mode) || (mode === currentMode && hasCurrentResolved))
+      : [currentMode];
     modes.forEach((mode) => {
       root.folder(`modes/${mode}`)?.file('tokens.json', JSON.stringify({
         themeName: theme.displayThemeName,
@@ -174,6 +179,35 @@ describe('product export helpers', () => {
     expect(zip.files['partial-cobalt/README.md']).toContain('Includes confirmed reviewed light, dark modes only');
     expect(zip.files['partial-cobalt/README.md']).not.toContain('current/spec-derived');
     expect(zip.files['partial-cobalt/shop-listing.md']).toContain('confirmed reviewed light, dark modes');
+  });
+
+  it('labels partial confirmed variants plus the current resolved fallback truthfully', async () => {
+    const theme = {
+      ...makeTheme('Mixed Cobalt'),
+      themeMode: 'dark',
+      variants: {
+        light: { finalTokens: { brand: { cta: '#eeeeee' } } },
+      },
+    };
+
+    await productExports.buildProductPackageArchive({
+      offering: 'individual',
+      product: { ...product, title: 'Mixed Cobalt', slug: 'mixed-cobalt', shortDescription: '', longDescription: '' },
+      themes: [theme],
+    });
+
+    const zip = zipInstances[0];
+    const readme = zip.files['mixed-cobalt/README.md'];
+    const listing = zip.files['mixed-cobalt/shop-listing.md'];
+
+    expect(zip.files['mixed-cobalt/modes/light/tokens.json']).toBeTruthy();
+    expect(zip.files['mixed-cobalt/modes/dark/tokens.json']).toBeTruthy();
+    expect(readme).toContain('confirmed reviewed light mode plus the current resolved dark mode');
+    expect(readme).toContain('`modes/light/` - confirmed reviewed light mode tokens');
+    expect(readme).toContain('`modes/dark/` - current resolved dark mode tokens');
+    expect(readme).not.toContain('confirmed reviewed dark mode tokens');
+    expect(listing).toContain('confirmed reviewed light mode plus the current resolved dark mode');
+    expect(listing).not.toContain('confirmed reviewed light, dark modes only');
   });
 
   it('builds a bundle package with per-theme previews and theme pack zips', async () => {

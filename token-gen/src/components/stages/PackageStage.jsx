@@ -51,8 +51,14 @@ const PackageStage = ({
 
   const handleThemePackClick = async () => {
     setExportSuccessMessage('');
-    await onDownloadThemePack(exportCopy.selectedModes);
-    setExportSuccessMessage(exportCopy.successMessage);
+    try {
+      const exported = await onDownloadThemePack(exportCopy.selectedModes);
+      if (exported === true) {
+        setExportSuccessMessage(exportCopy.successMessage);
+      }
+    } catch {
+      // Export errors are reported by the export handler.
+    }
   };
 
   const toggleSelectedMode = (mode) => {

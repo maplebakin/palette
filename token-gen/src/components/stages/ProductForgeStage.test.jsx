@@ -36,6 +36,19 @@ const renderProductForgeStage = (props = {}) => render(
         },
         miniPalette: {},
       },
+      {
+        id: 'project-2',
+        label: 'Project Mixed',
+        themeMode: 'dark',
+        currentTheme: {
+          themeMode: 'dark',
+          tokens: { brand: { cta: '#eeeeee' } },
+        },
+        variants: {
+          light: { finalTokens: { brand: { cta: '#112233' } } },
+        },
+        miniPalette: {},
+      },
     ]}
     onExportProductPackage={vi.fn()}
     onDownloadThemePack={vi.fn()}
@@ -59,6 +72,7 @@ describe('ProductForgeStage', () => {
     expect(screen.getByText(/uses current\/spec-derived mode data/i)).toBeInTheDocument();
     expect(screen.getByText(/includes confirmed reviewed modes only/i)).toBeInTheDocument();
     expect(screen.getByText(/uses confirmed reviewed modes/i)).toBeInTheDocument();
+    expect(screen.getByText(/includes confirmed modes plus the current resolved mode/i)).toBeInTheDocument();
     expect(screen.getByText('Bundle Builder')).toBeInTheDocument();
     expect(screen.getByText('Mini Palette Freebies')).toBeInTheDocument();
     expect(screen.getByText('Product Library / Ready to Upload')).toBeInTheDocument();
