@@ -39,21 +39,29 @@ const renderBuildStage = (props = {}) => render(
     harmonyIntensity={120}
     neutralCurve={110}
     accentStrength={130}
+    accentHueShift={12}
+    accentSaturationShift={-8}
     apocalypseIntensity={90}
     popIntensity={80}
     harmonyInput={120}
     neutralInput={110}
     accentInput={130}
+    accentHueInput={12}
+    accentSaturationInput={-8}
     apocalypseInput={90}
     popInput={80}
     setHarmonyInput={vi.fn()}
     setNeutralInput={vi.fn()}
     setAccentInput={vi.fn()}
+    setAccentHueInput={vi.fn()}
+    setAccentSaturationInput={vi.fn()}
     setApocalypseInput={vi.fn()}
     setPopInput={vi.fn()}
     debouncedHarmonyChange={vi.fn()}
     debouncedNeutralChange={vi.fn()}
     debouncedAccentChange={vi.fn()}
+    debouncedAccentHueChange={vi.fn()}
+    debouncedAccentSaturationChange={vi.fn()}
     debouncedApocalypseChange={vi.fn()}
     debouncedPopChange={vi.fn()}
     resetFineTuneSliders={vi.fn()}
@@ -83,5 +91,20 @@ describe('BuildStage', () => {
     expect(screen.getByLabelText(/light confirmed/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/dark missing/i)).toBeInTheDocument();
     expect(screen.getByText(/exports include confirmed modes only/i)).toBeInTheDocument();
+  });
+
+  it('renders accent hue and saturation controls', () => {
+    const debouncedAccentHueChange = vi.fn();
+    const debouncedAccentSaturationChange = vi.fn();
+
+    renderBuildStage({ debouncedAccentHueChange, debouncedAccentSaturationChange });
+    fireEvent.change(screen.getByLabelText(/adjust accent hue/i), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText(/adjust accent saturation/i), { target: { value: '-12' } });
+
+    expect(screen.getByText('Accent Hue')).toBeInTheDocument();
+    expect(screen.getByText('Accent Saturation')).toBeInTheDocument();
+    expect(screen.getByText(/nudge buttons\/highlights warmer, cooler, softer, or stronger/i)).toBeInTheDocument();
+    expect(debouncedAccentHueChange).toHaveBeenCalledWith('20');
+    expect(debouncedAccentSaturationChange).toHaveBeenCalledWith('-12');
   });
 });

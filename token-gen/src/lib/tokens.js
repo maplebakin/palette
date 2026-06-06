@@ -6,6 +6,49 @@ const shiftToHue = (fromHue, toHue) => ((toHue - fromHue + 540) % 360) - 180;
 const wrapHue = (hue) => ((hue % 360) + 360) % 360;
 const chooseReadableText = (background, light = '#ffffff', dark = '#0b0b10') =>
   getContrastRatio(light, background) >= getContrastRatio(dark, background) ? light : dark;
+const adjustAccentColor = (color, hueShift = 0, saturationShift = 0) => {
+  if (typeof color !== 'string' || !color.startsWith('#')) return color;
+  const hsl = hexToHsl(color);
+  return hslToHex(
+    wrapHue(hsl.h + hueShift),
+    clamp(hsl.s + saturationShift, 0, 100),
+    hsl.l
+  );
+};
+const applyAccentTuning = (tokens, { hueShift = 0, saturationShift = 0 } = {}) => {
+  const safeHueShift = clamp(Number(hueShift) || 0, -60, 60);
+  const safeSaturationShift = clamp(Number(saturationShift) || 0, -40, 40);
+  if (safeHueShift === 0 && safeSaturationShift === 0) return tokens;
+
+  const tune = (color) => adjustAccentColor(color, safeHueShift, safeSaturationShift);
+  const tunedAccent = tune(tokens.brand.accent);
+  const tunedAccentStrong = tune(tokens.brand['accent-strong']);
+  const tunedCta = tune(tokens.brand.cta);
+  const tunedCtaHover = tune(tokens.brand['cta-hover']);
+  const tunedSecondary = tune(tokens.actions.secondary);
+
+  tokens.brand.accent = tunedAccent;
+  tokens.brand['accent-strong'] = tunedAccentStrong;
+  tokens.brand.cta = tunedCta;
+  tokens.brand['cta-hover'] = tunedCtaHover;
+  tokens.actions.primary = tunedCta;
+  tokens.actions['primary-hover'] = tunedCtaHover;
+  tokens.actions['primary-foreground'] = chooseReadableText(tunedCta);
+  if (tokens.pop?.['pop-cta']) {
+    tokens.pop['pop-cta'] = tunedCta;
+    tokens.pop['pop-cta-foreground'] = tokens.actions['primary-foreground'];
+  }
+  tokens.actions.secondary = tunedSecondary;
+  tokens.actions['secondary-border'] = tunedSecondary;
+  tokens.actions['secondary-foreground'] = chooseReadableText(tunedSecondary);
+  tokens.actions['brand-accent'] = tunedAccent;
+  tokens.cards['card-focus-outline'] = tunedAccent;
+  tokens.entity['entity-card-cta'] = tunedCta;
+  tokens.entity['entity-card-cta-hover'] = tunedCtaHover;
+  tokens.entity['entity-card-icon'] = tunedAccent;
+  tokens.aliases['sticker-border'] = tunedSecondary;
+  return tokens;
+};
 const roleDistance = (a, b) => {
   const hueDelta = Math.abs(shiftToHue(a.h, b.h)) / 180;
   const satDelta = Math.abs(a.s - b.s) / 100;
@@ -386,6 +429,8 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     harmonyIntensity = 100,
     neutralCurve = 100,
     accentStrength = 100,
+    accentHueShift = 0,
+    accentSaturationShift = 0,
     popIntensity = 100,
     printMode: printModeOverride = false,
   } = options;
@@ -1210,6 +1255,11 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       "prose-bg-strong": getColor(surfaceBase, 0, 1, 92),
     },
   };
+
+  applyAccentTuning(tokens, {
+    hueShift: accentHueShift,
+    saturationShift: accentSaturationShift,
+  });
 
   const bg = tokens.surfaces.background;
   const card = tokens.cards['card-panel-surface'];

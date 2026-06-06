@@ -32,6 +32,8 @@ export const buildTheme = (input = {}) => {
     harmonyIntensity = 100,
     neutralCurve = 100,
     accentStrength = 100,
+    accentHueShift = 0,
+    accentSaturationShift = 0,
     popIntensity = 100,
     importedOverrides = null,
   } = input;
@@ -40,6 +42,8 @@ export const buildTheme = (input = {}) => {
     harmonyIntensity,
     neutralCurve,
     accentStrength,
+    accentHueShift,
+    accentSaturationShift,
     popIntensity,
     printMode,
   });

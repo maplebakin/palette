@@ -59,7 +59,13 @@ export const sanitizeHexInput = (value, fallback = null) => {
 
 export const sanitizeThemeName = (value, fallback = '') => {
   if (typeof value !== "string") return fallback;
-  const clean = value.replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  const clean = value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60);
   return clean || fallback;
 };
 
@@ -327,6 +333,8 @@ export const normalizeImportedPalette = (palette, index) => {
     apocalypseIntensity: clampValue(palette.apocalypseIntensity ?? 100, 0, 200),
     neutralCurve: clampValue(palette.neutralCurve ?? 100, 60, 140),
     accentStrength: clampValue(palette.accentStrength ?? 100, 60, 140),
+    accentHueShift: clampValue(palette.accentHueShift ?? palette.fineTune?.accentHueShift ?? 0, -60, 60),
+    accentSaturationShift: clampValue(palette.accentSaturationShift ?? palette.fineTune?.accentSaturationShift ?? 0, -40, 40),
     popIntensity: clampValue(palette.popIntensity ?? 100, 60, 140),
     tokenPrefix: sanitizePrefix(palette.tokenPrefix || ''),
     importedOverrides: palette.importedOverrides ?? null,

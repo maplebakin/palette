@@ -1,6 +1,12 @@
 export const sanitizeFilename = (value, fallback = 'theme') => {
   if (typeof value !== 'string') return fallback;
-  const clean = value.replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  const clean = value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60);
   return clean || fallback;
 };
 

@@ -54,6 +54,7 @@ vi.mock('./workflowExports.js', () => ({
     });
     root.folder('combined')?.file('tokens.all-modes.json', '{}');
     root.folder('combined/css')?.file('variables.all-modes.css', ':root {}');
+    root.file(options.readmePath || 'README.md', `# ${theme.displayThemeName}\n\nTheme Pack README`);
   }),
   buildAllModeThemePackArchive: vi.fn(async (theme) => ({
     blob: new Blob([`all-mode-theme-pack:${theme.displayThemeName}`], { type: 'application/zip' }),
@@ -164,6 +165,7 @@ describe('product export helpers', () => {
     const zip = zipInstances[0];
     expect(Object.keys(zip.files)).toEqual(expect.arrayContaining([
       'hollys-light-blue/README.md',
+      'hollys-light-blue/theme-pack-README.md',
       'hollys-light-blue/USAGE.txt',
       'hollys-light-blue/LICENSE.txt',
       'hollys-light-blue/SUPPORT.txt',
@@ -183,6 +185,8 @@ describe('product export helpers', () => {
     expect(zip.files['hollys-light-blue/modes/light/tokens.json']).toBeUndefined();
     expect(zip.files['hollys-light-blue/modes/pop/tokens.json']).toBeUndefined();
     expect(zip.files['hollys-light-blue/README.md']).toContain('# Hollys Light Blue');
+    expect(zip.files['hollys-light-blue/README.md']).not.toContain('Theme Pack README');
+    expect(zip.files['hollys-light-blue/theme-pack-README.md']).toContain('Theme Pack README');
     expect(zip.files['hollys-light-blue/README.md']).toContain('current/spec-derived dark mode data');
     expect(zip.files['hollys-light-blue/README.md']).toContain('Missing modes are not regenerated');
     expect(zip.files['hollys-light-blue/README.md']).toContain('- Hollys Light Blue');
@@ -231,8 +235,61 @@ describe('product export helpers', () => {
     expect(tags).not.toContain('light mode palette');
     expect(tags).not.toContain('pop mode palette');
     expect(tags).toContain('website color kit');
-    expect(workflowExports.addAllModeThemePackFiles).toHaveBeenCalledWith(expect.any(FolderMock), theme, { slug: 'hollys-light-blue' });
+    expect(workflowExports.addAllModeThemePackFiles).toHaveBeenCalledWith(expect.any(FolderMock), theme, {
+      slug: 'hollys-light-blue',
+      readmePath: 'theme-pack-README.md',
+    });
     expect(workflowExports.buildAllModeThemePackArchive).not.toHaveBeenCalled();
+  });
+
+  it('normalizes accented product titles in docs, slugs, and marketplace previews', async () => {
+    const theme = makeTheme('Velvet Séance');
+    const individualProduct = {
+      ...product,
+      title: 'Velvet Séance Website Brand Color Kit',
+      slug: '',
+      shortDescription: '',
+      longDescription: '',
+      usageLicense: undefined,
+    };
+
+    const result = await productExports.buildProductPackageArchive({
+      offering: 'individual',
+      product: individualProduct,
+      themes: [theme],
+    });
+
+    const zip = zipInstances[0];
+    expect(result.filename).toBe('velvet-seance-website-brand-color-kit.zip');
+    expect(result.productSlug).toBe('velvet-seance-website-brand-color-kit');
+    expect(Object.keys(zip.files)).toEqual(expect.arrayContaining([
+      'velvet-seance-website-brand-color-kit/README.md',
+      'velvet-seance-website-brand-color-kit/theme-pack-README.md',
+      'velvet-seance-website-brand-color-kit/shop-listing.md',
+      'velvet-seance-website-brand-color-kit/LICENSE.txt',
+      'velvet-seance-website-brand-color-kit/SUPPORT.txt',
+      'velvet-seance-website-brand-color-kit/marketplace-preview/marketplace-cover.svg',
+    ]));
+
+    const readme = zip.files['velvet-seance-website-brand-color-kit/README.md'];
+    const listing = zip.files['velvet-seance-website-brand-color-kit/shop-listing.md'];
+    const license = zip.files['velvet-seance-website-brand-color-kit/LICENSE.txt'];
+    const support = zip.files['velvet-seance-website-brand-color-kit/SUPPORT.txt'];
+    const marketplaceCover = zip.files['velvet-seance-website-brand-color-kit/marketplace-preview/marketplace-cover.svg'];
+
+    expect(readme).toContain('# Velvet Seance Website Brand Color Kit');
+    expect(readme).toContain('## How to Use This Pack');
+    expect(readme).not.toContain('Velvet Sance');
+    expect(listing).toContain('Velvet Seance Website Brand Color Kit');
+    expect(listing).not.toContain('Velvet Sance');
+    expect(license).toContain('Velvet Seance Website Brand Color Kit - License Terms');
+    expect(support).toContain('Thank you for downloading Velvet Seance Website Brand Color Kit.');
+    expect(marketplaceCover).toContain('Velvet Seance Website Brand Color Kit');
+    expect(marketplaceCover).not.toContain('Velvet Sance');
+    expect(workflowExports.addAllModeThemePackFiles).toHaveBeenCalledWith(expect.any(FolderMock), theme, {
+      slug: 'velvet-seance-website-brand-color-kit',
+      readmePath: 'theme-pack-README.md',
+    });
   });
 
   it('labels partial confirmed product docs without implying a full confirmed family', async () => {

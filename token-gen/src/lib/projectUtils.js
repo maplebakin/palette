@@ -173,6 +173,8 @@ export const buildSectionSnapshotFromPalette = (paletteState) => {
   const harmonyIntensity = paletteState.harmonyIntensity ?? 100;
   const neutralCurve = paletteState.neutralCurve ?? 100;
   const accentStrength = paletteState.accentStrength ?? 100;
+  const accentHueShift = paletteState.accentHueShift ?? 0;
+  const accentSaturationShift = paletteState.accentSaturationShift ?? 0;
   const popIntensity = paletteState.popIntensity ?? 100;
   const confirmedVariants = normalizeConfirmedVariants(paletteState.confirmedVariants);
   const confirmedVariantPayload = Object.keys(confirmedVariants).length
@@ -184,6 +186,8 @@ export const buildSectionSnapshotFromPalette = (paletteState) => {
     harmonyIntensity,
     neutralCurve,
     accentStrength,
+    accentHueShift,
+    accentSaturationShift,
     popIntensity,
   });
 
@@ -210,6 +214,8 @@ export const buildSectionSnapshotFromPalette = (paletteState) => {
     apocalypseIntensity,
     neutralCurve,
     accentStrength,
+    accentHueShift,
+    accentSaturationShift,
     popIntensity,
     tokenPrefix: paletteState.tokenPrefix || '',
     importedOverrides: paletteState.importedOverrides ?? null,

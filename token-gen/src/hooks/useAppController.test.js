@@ -5,6 +5,7 @@ import { useExportStore } from '../store/exportStore.js';
 import { usePaletteStore } from '../store/paletteStore.js';
 import { useProjectStore } from '../store/projectStore.js';
 import { useUiStore } from '../store/uiStore.js';
+import { generateTokens } from '../lib/tokens.js';
 
 const workflowExportMocks = vi.hoisted(() => ({
   downloadAllModeThemePackArchive: vi.fn(async () => undefined),
@@ -153,6 +154,38 @@ describe('useAppController Theme Pack export wiring', () => {
     expect(workflowExportMocks.downloadAllModeThemePackArchive.mock.calls[0][1]).toEqual({
       selectedModes: ['dark'],
     });
+  });
+
+  it('exports tokens with manual accent tuning applied', async () => {
+    act(() => {
+      usePaletteStore.setState({
+        baseColor: '#ff9db8',
+        baseInput: '#ff9db8',
+        mode: 'Monochromatic',
+        themeMode: 'light',
+        printMode: false,
+        customThemeName: 'Tuned Export',
+        accentHueShift: -30,
+        accentSaturationShift: -18,
+        confirmedVariants: {},
+      });
+    });
+
+    const generated = generateTokens('#ff9db8', 'Monochromatic', 'light', 100);
+    const { result } = renderHook(() => useAppController());
+
+    await waitFor(() => {
+      expect(result.current.finalTokens.brand.cta).not.toBe(generated.brand.cta);
+    });
+
+    await act(async () => {
+      await result.current.handleDownloadThemePack(['light']);
+    });
+
+    const exportArg = workflowExportMocks.downloadAllModeThemePackArchive.mock.calls[0][0];
+    expect(exportArg.finalTokens.brand.cta).toBe(result.current.finalTokens.brand.cta);
+    expect(exportArg.finalTokens.actions.primary).toBe(result.current.finalTokens.actions.primary);
+    expect(exportArg.finalTokens.surfaces.background).toBe(generated.surfaces.background);
   });
 
   it('returns false when Theme Pack export fails', async () => {

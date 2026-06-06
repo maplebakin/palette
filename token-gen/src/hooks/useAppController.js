@@ -72,10 +72,14 @@ export default function useAppController() {
     apocalypseIntensity: state.apocalypseIntensity,
     neutralCurve: state.neutralCurve,
     accentStrength: state.accentStrength,
+    accentHueShift: state.accentHueShift,
+    accentSaturationShift: state.accentSaturationShift,
     popIntensity: state.popIntensity,
     harmonyInput: state.harmonyInput,
     neutralInput: state.neutralInput,
     accentInput: state.accentInput,
+    accentHueInput: state.accentHueInput,
+    accentSaturationInput: state.accentSaturationInput,
     apocalypseInput: state.apocalypseInput,
     popInput: state.popInput,
     tokenPrefix: state.tokenPrefix,
@@ -99,10 +103,14 @@ export default function useAppController() {
     setApocalypseIntensity: state.setApocalypseIntensity,
     setNeutralCurve: state.setNeutralCurve,
     setAccentStrength: state.setAccentStrength,
+    setAccentHueShift: state.setAccentHueShift,
+    setAccentSaturationShift: state.setAccentSaturationShift,
     setPopIntensity: state.setPopIntensity,
     setHarmonyInput: state.setHarmonyInput,
     setNeutralInput: state.setNeutralInput,
     setAccentInput: state.setAccentInput,
+    setAccentHueInput: state.setAccentHueInput,
+    setAccentSaturationInput: state.setAccentSaturationInput,
     setApocalypseInput: state.setApocalypseInput,
     setPopInput: state.setPopInput,
     setTokenPrefix: state.setTokenPrefix,
@@ -170,6 +178,8 @@ export default function useAppController() {
   const harmonyDebounceRef = useRef(null);
   const neutralDebounceRef = useRef(null);
   const accentDebounceRef = useRef(null);
+  const accentHueDebounceRef = useRef(null);
+  const accentSaturationDebounceRef = useRef(null);
   const apocalypseDebounceRef = useRef(null);
   const popDebounceRef = useRef(null);
   const savedPaletteInputRef = useRef(null);
@@ -217,6 +227,8 @@ export default function useAppController() {
     paletteState.apocalypseIntensity,
     paletteState.neutralCurve,
     paletteState.accentStrength,
+    paletteState.accentHueShift,
+    paletteState.accentSaturationShift,
     paletteState.popIntensity,
     paletteState.tokenPrefix,
     paletteState.importedOverrides,
@@ -302,6 +314,8 @@ export default function useAppController() {
       apocalypseIntensity: section.paletteSpec?.apocalypseIntensity ?? 100,
       neutralCurve: section.paletteSpec?.neutralCurve ?? 100,
       accentStrength: section.paletteSpec?.accentStrength ?? 100,
+      accentHueShift: section.paletteSpec?.accentHueShift ?? 0,
+      accentSaturationShift: section.paletteSpec?.accentSaturationShift ?? 0,
       popIntensity: section.paletteSpec?.popIntensity ?? 100,
       tokenPrefix: sanitizePrefix(section.paletteSpec?.tokenPrefix || ''),
       importedOverrides: section.paletteSpec?.importedOverrides ?? null,
@@ -443,6 +457,8 @@ export default function useAppController() {
         apocalypseIntensity: paletteState.apocalypseIntensity,
         neutralCurve: paletteState.neutralCurve,
         accentStrength: paletteState.accentStrength,
+        accentHueShift: paletteState.accentHueShift,
+        accentSaturationShift: paletteState.accentSaturationShift,
         popIntensity: paletteState.popIntensity,
         tokenPrefix: sanitizePrefix(paletteState.tokenPrefix),
         importedOverrides: paletteState.importedOverrides && Object.keys(paletteState.importedOverrides).length
@@ -471,6 +487,8 @@ export default function useAppController() {
     paletteState.apocalypseIntensity,
     paletteState.neutralCurve,
     paletteState.accentStrength,
+    paletteState.accentHueShift,
+    paletteState.accentSaturationShift,
     paletteState.popIntensity,
     paletteState.tokenPrefix,
     paletteState.importedOverrides,
@@ -488,7 +506,7 @@ export default function useAppController() {
     baseColorFrameRef.current = null;
     pendingBaseColorRef.current = null;
     pendingBaseInputRef.current = null;
-    [harmonyDebounceRef, neutralDebounceRef, accentDebounceRef, apocalypseDebounceRef, popDebounceRef].forEach((ref) => {
+    [harmonyDebounceRef, neutralDebounceRef, accentDebounceRef, accentHueDebounceRef, accentSaturationDebounceRef, apocalypseDebounceRef, popDebounceRef].forEach((ref) => {
       if (ref.current) clearTimeout(ref.current);
     });
   }, []);
@@ -514,6 +532,8 @@ export default function useAppController() {
     harmonyIntensity: paletteState.harmonyIntensity,
     neutralCurve: paletteState.neutralCurve,
     accentStrength: paletteState.accentStrength,
+    accentHueShift: paletteState.accentHueShift,
+    accentSaturationShift: paletteState.accentSaturationShift,
     popIntensity: paletteState.popIntensity,
     importedOverrides: paletteState.importedOverrides,
   }), [
@@ -527,6 +547,8 @@ export default function useAppController() {
     paletteState.harmonyIntensity,
     paletteState.neutralCurve,
     paletteState.accentStrength,
+    paletteState.accentHueShift,
+    paletteState.accentSaturationShift,
     paletteState.popIntensity,
     paletteState.importedOverrides,
   ]);
@@ -541,6 +563,8 @@ export default function useAppController() {
     apocalypseIntensity: paletteState.apocalypseIntensity,
     neutralCurve: paletteState.neutralCurve,
     accentStrength: paletteState.accentStrength,
+    accentHueShift: paletteState.accentHueShift,
+    accentSaturationShift: paletteState.accentSaturationShift,
     popIntensity: paletteState.popIntensity,
     importedOverrides: paletteState.importedOverrides || null,
   }), [
@@ -552,6 +576,8 @@ export default function useAppController() {
     paletteState.apocalypseIntensity,
     paletteState.neutralCurve,
     paletteState.accentStrength,
+    paletteState.accentHueShift,
+    paletteState.accentSaturationShift,
     paletteState.popIntensity,
     paletteState.importedOverrides,
   ]);
@@ -589,6 +615,8 @@ export default function useAppController() {
     apocalypseIntensity: paletteState.apocalypseIntensity,
     neutralCurve: paletteState.neutralCurve,
     accentStrength: paletteState.accentStrength,
+    accentHueShift: paletteState.accentHueShift,
+    accentSaturationShift: paletteState.accentSaturationShift,
     popIntensity: paletteState.popIntensity,
     tokenPrefix: sanitizePrefix(paletteState.tokenPrefix),
     importedOverrides: paletteState.importedOverrides && Object.keys(paletteState.importedOverrides).length
@@ -612,6 +640,8 @@ export default function useAppController() {
     paletteState.apocalypseIntensity,
     paletteState.neutralCurve,
     paletteState.accentStrength,
+    paletteState.accentHueShift,
+    paletteState.accentSaturationShift,
     paletteState.popIntensity,
     paletteState.tokenPrefix,
     paletteState.confirmedVariants,
@@ -633,6 +663,8 @@ export default function useAppController() {
       harmonyIntensity: spec.harmonyIntensity ?? 100,
       neutralCurve: spec.neutralCurve ?? 100,
       accentStrength: spec.accentStrength ?? 100,
+      accentHueShift: spec.accentHueShift ?? 0,
+      accentSaturationShift: spec.accentSaturationShift ?? 0,
       popIntensity: spec.popIntensity ?? 100,
       importedOverrides: spec.importedOverrides ?? null,
     });
@@ -654,6 +686,8 @@ export default function useAppController() {
       harmonyIntensity: spec.harmonyIntensity ?? 100,
       neutralCurve: spec.neutralCurve ?? 100,
       accentStrength: spec.accentStrength ?? 100,
+      accentHueShift: spec.accentHueShift ?? 0,
+      accentSaturationShift: spec.accentSaturationShift ?? 0,
       popIntensity: spec.popIntensity ?? 100,
       importedOverrides: spec.importedOverrides ?? null,
       variantCoverage: spec.variantCoverage,
@@ -690,6 +724,8 @@ export default function useAppController() {
       harmonyIntensity: paletteState.harmonyIntensity,
       neutralCurve: paletteState.neutralCurve,
       accentStrength: paletteState.accentStrength,
+      accentHueShift: paletteState.accentHueShift,
+      accentSaturationShift: paletteState.accentSaturationShift,
       popIntensity: paletteState.popIntensity,
       importedOverrides: paletteState.importedOverrides ?? null,
       miniPalette: {
@@ -727,6 +763,8 @@ export default function useAppController() {
     paletteState.harmonyIntensity,
     paletteState.neutralCurve,
     paletteState.accentStrength,
+    paletteState.accentHueShift,
+    paletteState.accentSaturationShift,
     paletteState.confirmedVariants,
     paletteState.popIntensity,
     paletteState.importedOverrides,
@@ -759,12 +797,16 @@ export default function useAppController() {
       apocalypseIntensity: paletteState.apocalypseIntensity,
       neutralCurve: paletteState.neutralCurve,
       accentStrength: paletteState.accentStrength,
+      accentHueShift: paletteState.accentHueShift,
+      accentSaturationShift: paletteState.accentSaturationShift,
       popIntensity: paletteState.popIntensity,
       fineTune: {
         harmonyIntensity: paletteState.harmonyIntensity,
         apocalypseIntensity: paletteState.apocalypseIntensity,
         neutralCurve: paletteState.neutralCurve,
         accentStrength: paletteState.accentStrength,
+        accentHueShift: paletteState.accentHueShift,
+        accentSaturationShift: paletteState.accentSaturationShift,
         popIntensity: paletteState.popIntensity,
       },
       tokenPrefix: sanitizePrefix(paletteState.tokenPrefix),
@@ -791,6 +833,8 @@ export default function useAppController() {
     paletteState.apocalypseIntensity,
     paletteState.neutralCurve,
     paletteState.accentStrength,
+    paletteState.accentHueShift,
+    paletteState.accentSaturationShift,
     paletteState.popIntensity,
     paletteState.tokenPrefix,
     paletteState.importedOverrides,
@@ -808,6 +852,8 @@ export default function useAppController() {
     apocalypseIntensity: paletteState.apocalypseIntensity,
     neutralCurve: paletteState.neutralCurve,
     accentStrength: paletteState.accentStrength,
+    accentHueShift: paletteState.accentHueShift,
+    accentSaturationShift: paletteState.accentSaturationShift,
     popIntensity: paletteState.popIntensity,
     tokenPrefix: sanitizePrefix(paletteState.tokenPrefix),
   }), [
@@ -820,6 +866,8 @@ export default function useAppController() {
     paletteState.apocalypseIntensity,
     paletteState.neutralCurve,
     paletteState.accentStrength,
+    paletteState.accentHueShift,
+    paletteState.accentSaturationShift,
     paletteState.popIntensity,
     paletteState.tokenPrefix,
     safeCustomThemeName,
@@ -1079,6 +1127,8 @@ export default function useAppController() {
       harmonyIntensity: paletteSpec.harmonyIntensity ?? 100,
       neutralCurve: paletteSpec.neutralCurve ?? 100,
       accentStrength: paletteSpec.accentStrength ?? 100,
+      accentHueShift: paletteSpec.accentHueShift ?? 0,
+      accentSaturationShift: paletteSpec.accentSaturationShift ?? 0,
       popIntensity: paletteSpec.popIntensity ?? 100,
       importedOverrides: paletteSpec.importedOverrides ?? null,
     });
@@ -1213,6 +1263,10 @@ export default function useAppController() {
     paletteState.setHarmonyIntensity(100);
     paletteState.setNeutralCurve(100);
     paletteState.setAccentStrength(100);
+    paletteState.setAccentHueInput(0);
+    paletteState.setAccentHueShift(0);
+    paletteState.setAccentSaturationInput(0);
+    paletteState.setAccentSaturationShift(0);
     paletteState.setApocalypseIntensity(100);
     setStatusMessage(`Preset "${preset.name}" applied`, 'success');
   }, [paletteState, setStatusMessage]);
@@ -1230,6 +1284,10 @@ export default function useAppController() {
     paletteState.setHarmonyIntensity(Math.round(70 + Math.random() * 80));
     paletteState.setNeutralCurve(Math.round(80 + Math.random() * 50));
     paletteState.setAccentStrength(Math.round(80 + Math.random() * 50));
+    paletteState.setAccentHueInput(0);
+    paletteState.setAccentHueShift(0);
+    paletteState.setAccentSaturationInput(0);
+    paletteState.setAccentSaturationShift(0);
 
     if (nextMode === 'Apocalypse') {
       paletteState.setApocalypseIntensity(Math.round(50 + Math.random() * 100));
@@ -1309,6 +1367,20 @@ export default function useAppController() {
     accentDebounceRef.current = setTimeout(() => paletteState.setAccentStrength(next), 120);
   }, [paletteState]);
 
+  const debouncedAccentHueChange = useCallback((value) => {
+    const next = clampValue(value, -60, 60);
+    paletteState.setAccentHueInput(next);
+    if (accentHueDebounceRef.current) clearTimeout(accentHueDebounceRef.current);
+    accentHueDebounceRef.current = setTimeout(() => paletteState.setAccentHueShift(next), 120);
+  }, [paletteState]);
+
+  const debouncedAccentSaturationChange = useCallback((value) => {
+    const next = clampValue(value, -40, 40);
+    paletteState.setAccentSaturationInput(next);
+    if (accentSaturationDebounceRef.current) clearTimeout(accentSaturationDebounceRef.current);
+    accentSaturationDebounceRef.current = setTimeout(() => paletteState.setAccentSaturationShift(next), 120);
+  }, [paletteState]);
+
   const debouncedApocalypseChange = useCallback((value) => {
     const next = clampValue(value, 20, 150);
     paletteState.setApocalypseInput(next);
@@ -1324,7 +1396,7 @@ export default function useAppController() {
   }, [paletteState]);
 
   const resetFineTuneSliders = useCallback(() => {
-    [harmonyDebounceRef, neutralDebounceRef, accentDebounceRef, apocalypseDebounceRef, popDebounceRef].forEach((ref) => {
+    [harmonyDebounceRef, neutralDebounceRef, accentDebounceRef, accentHueDebounceRef, accentSaturationDebounceRef, apocalypseDebounceRef, popDebounceRef].forEach((ref) => {
       if (ref.current) clearTimeout(ref.current);
       ref.current = null;
     });
@@ -1334,6 +1406,10 @@ export default function useAppController() {
     paletteState.setNeutralCurve(100);
     paletteState.setAccentInput(100);
     paletteState.setAccentStrength(100);
+    paletteState.setAccentHueInput(0);
+    paletteState.setAccentHueShift(0);
+    paletteState.setAccentSaturationInput(0);
+    paletteState.setAccentSaturationShift(0);
     paletteState.setApocalypseInput(100);
     paletteState.setApocalypseIntensity(100);
     paletteState.setPopInput(100);
@@ -1704,6 +1780,8 @@ export default function useAppController() {
           apocalypseIntensity: paletteState.apocalypseIntensity,
           neutralCurve: paletteState.neutralCurve,
           accentStrength: paletteState.accentStrength,
+          accentHueShift: paletteState.accentHueShift,
+          accentSaturationShift: paletteState.accentSaturationShift,
           popIntensity: paletteState.popIntensity,
         },
         rootFolder,
@@ -1726,6 +1804,8 @@ export default function useAppController() {
     paletteState.apocalypseIntensity,
     paletteState.neutralCurve,
     paletteState.accentStrength,
+    paletteState.accentHueShift,
+    paletteState.accentSaturationShift,
     paletteState.popIntensity,
     setStatusMessage,
     tokens,
@@ -2125,6 +2205,8 @@ export default function useAppController() {
     debouncedHarmonyChange,
     debouncedNeutralChange,
     debouncedAccentChange,
+    debouncedAccentHueChange,
+    debouncedAccentSaturationChange,
     debouncedApocalypseChange,
     debouncedPopChange,
     resetFineTuneSliders,

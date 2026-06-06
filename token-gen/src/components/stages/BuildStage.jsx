@@ -28,21 +28,29 @@ const BuildStage = ({
   harmonyIntensity,
   neutralCurve,
   accentStrength,
+  accentHueShift,
+  accentSaturationShift,
   apocalypseIntensity,
   popIntensity,
   harmonyInput,
   neutralInput,
   accentInput,
+  accentHueInput,
+  accentSaturationInput,
   apocalypseInput,
   popInput,
   setHarmonyInput,
   setNeutralInput,
   setAccentInput,
+  setAccentHueInput,
+  setAccentSaturationInput,
   setApocalypseInput,
   setPopInput,
   debouncedHarmonyChange,
   debouncedNeutralChange,
   debouncedAccentChange,
+  debouncedAccentHueChange,
+  debouncedAccentSaturationChange,
   debouncedApocalypseChange,
   debouncedPopChange,
   resetFineTuneSliders = () => {},
@@ -266,6 +274,62 @@ const BuildStage = ({
                     onChange={(e) => setAccentInput(e.target.value)}
                     className="w-16 text-xs text-center font-mono panel-surface-strong border rounded"
                     aria-label="Enter accent punch value"
+                  />
+                  <span className="text-xs w-6 text-right font-mono panel-muted">%</span>
+                </div>
+
+                <p className="text-[11px] leading-snug panel-muted">
+                  Use this to nudge buttons/highlights warmer, cooler, softer, or stronger without changing the whole palette.
+                </p>
+
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
+                  <span className="text-xs font-bold panel-muted">Accent Hue</span>
+                  <input
+                    type="range"
+                    min="-60"
+                    max="60"
+                    value={accentHueShift}
+                    onChange={(e) => debouncedAccentHueChange(e.target.value)}
+                    className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
+                    aria-label="Adjust accent hue"
+                    aria-valuemin={-60}
+                    aria-valuemax={60}
+                    aria-valuenow={accentHueShift}
+                  />
+                  <input
+                    type="number"
+                    min="-60"
+                    max="60"
+                    value={accentHueInput}
+                    onChange={(e) => setAccentHueInput(e.target.value)}
+                    className="w-16 text-xs text-center font-mono panel-surface-strong border rounded"
+                    aria-label="Enter accent hue value"
+                  />
+                  <span className="text-xs w-6 text-right font-mono panel-muted">°</span>
+                </div>
+
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg panel-surface-strong border">
+                  <span className="text-xs font-bold panel-muted">Accent Saturation</span>
+                  <input
+                    type="range"
+                    min="-40"
+                    max="40"
+                    value={accentSaturationShift}
+                    onChange={(e) => debouncedAccentSaturationChange(e.target.value)}
+                    className="w-32 focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)]"
+                    aria-label="Adjust accent saturation"
+                    aria-valuemin={-40}
+                    aria-valuemax={40}
+                    aria-valuenow={accentSaturationShift}
+                  />
+                  <input
+                    type="number"
+                    min="-40"
+                    max="40"
+                    value={accentSaturationInput}
+                    onChange={(e) => setAccentSaturationInput(e.target.value)}
+                    className="w-16 text-xs text-center font-mono panel-surface-strong border rounded"
+                    aria-label="Enter accent saturation value"
                   />
                   <span className="text-xs w-6 text-right font-mono panel-muted">%</span>
                 </div>

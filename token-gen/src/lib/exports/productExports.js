@@ -813,7 +813,7 @@ export const buildProductPackageArchive = async ({
     }
   } else {
     const theme = selectedThemes[0];
-    await addAllModeThemePackFiles(root, theme, { slug });
+    await addAllModeThemePackFiles(root, theme, { slug, readmePath: 'theme-pack-README.md' });
   }
 
   const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });

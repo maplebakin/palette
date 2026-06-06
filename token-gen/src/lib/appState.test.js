@@ -36,6 +36,7 @@ describe('appState helpers', () => {
 
   it('sanitizes theme names and token prefixes for storage-safe values', () => {
     expect(sanitizeThemeName('  Demo<> Theme   Name  ', 'Fallback')).toBe('Demo Theme Name');
+    expect(sanitizeThemeName('Velvet Séance', 'Fallback')).toBe('Velvet Seance');
     expect(sanitizeThemeName('', 'Fallback')).toBe('Fallback');
     expect(sanitizePrefix(' demo prefix!*._- ')).toBe('demoprefix._-');
   });
@@ -90,6 +91,8 @@ describe('appState helpers', () => {
       apocalypseIntensity: 0,
       neutralCurve: 140,
       accentStrength: 60,
+      accentHueShift: 0,
+      accentSaturationShift: 0,
       popIntensity: 140,
       tokenPrefix: 'demoprefix',
       importedOverrides: null,

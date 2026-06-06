@@ -104,6 +104,52 @@ describe('generateTokens', () => {
     expect(low.actions.primary).toBe(neutral.actions.primary);
   });
 
+  it('applies manual accent hue and saturation tuning to action colors only', () => {
+    const base = generateTokens('#FF9DB8', 'Monochromatic', 'light', 100);
+    const hueTuned = generateTokens('#FF9DB8', 'Monochromatic', 'light', 100, {
+      accentHueShift: -30,
+    });
+    const saturationTuned = generateTokens('#FF9DB8', 'Monochromatic', 'light', 100, {
+      accentSaturationShift: -24,
+    });
+
+    expect(hueTuned.brand.cta).not.toBe(base.brand.cta);
+    expect(hueTuned.actions.primary).toBe(hueTuned.brand.cta);
+    expect(hueTuned.brand.accent).not.toBe(base.brand.accent);
+    expect(hueTuned.surfaces.background).toBe(base.surfaces.background);
+    expect(hueTuned.typography['text-body']).toBe(base.typography['text-body']);
+    expect(hueTuned.brand.primary).toBe(base.brand.primary);
+
+    expect(saturationTuned.actions.primary).not.toBe(base.actions.primary);
+    expect(hexToHsl(saturationTuned.actions.primary).s).toBeLessThan(hexToHsl(base.actions.primary).s);
+    expect(saturationTuned.surfaces.background).toBe(base.surfaces.background);
+  });
+
+  it('leaves generated action colors unchanged when manual accent tuning is reset', () => {
+    const base = generateTokens('#FF9DB8', 'Monochromatic', 'light', 100);
+    const reset = generateTokens('#FF9DB8', 'Monochromatic', 'light', 100, {
+      accentHueShift: 0,
+      accentSaturationShift: 0,
+    });
+
+    expect(reset.brand.cta).toBe(base.brand.cta);
+    expect(reset.actions.primary).toBe(base.actions.primary);
+    expect(reset.brand.accent).toBe(base.brand.accent);
+  });
+
+  it('keeps pop CTA aliases tied together after manual accent tuning', () => {
+    const tuned = generateTokens('#FF9DB8', 'Monochromatic', 'pop', 100, {
+      accentHueShift: -20,
+      accentSaturationShift: -12,
+      popIntensity: 130,
+    });
+
+    expect(tuned.brand.cta).toBe(tuned.actions.primary);
+    expect(tuned.pop['pop-cta']).toBe(tuned.actions.primary);
+    expect(tuned.pop['pop-cta-foreground']).toBe(tuned.actions['primary-foreground']);
+    expect(getContrastRatio(tuned.pop['pop-cta-foreground'], tuned.pop['pop-cta'])).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('keeps complementary blue surfaces from drifting into green', () => {
     const tokens = generateTokens('#0000ff', 'Complementary', 'light', 100);
     const surfaceHue = hexToHsl(tokens.surfaces['surface-plain']).h;

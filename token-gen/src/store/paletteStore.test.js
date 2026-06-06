@@ -61,6 +61,8 @@ describe('paletteStore', () => {
         apocalypseIntensity: 130,
         neutralCurve: 90,
         accentStrength: 110,
+        accentHueShift: -18,
+        accentSaturationShift: 12,
         popIntensity: 120,
         tokenPrefix: 'demo prefix!*',
         importedOverrides: { 'brand.primary': '#123456' },
@@ -80,6 +82,10 @@ describe('paletteStore', () => {
     expect(result.current.apocalypseInput).toBe(130);
     expect(result.current.neutralInput).toBe(90);
     expect(result.current.accentInput).toBe(110);
+    expect(result.current.accentHueShift).toBe(-18);
+    expect(result.current.accentHueInput).toBe(-18);
+    expect(result.current.accentSaturationShift).toBe(12);
+    expect(result.current.accentSaturationInput).toBe(12);
     expect(result.current.popInput).toBe(120);
     expect(result.current.confirmedVariants).toEqual(confirmedVariants);
   });
@@ -143,6 +149,10 @@ describe('paletteStore', () => {
       result.current.setThemeMode('pop');
       result.current.setPrintMode(true);
       result.current.setCustomThemeName('Changed');
+      result.current.setAccentHueInput(18);
+      result.current.setAccentSaturationInput(-12);
+      result.current.setAccentHueShift(18);
+      result.current.setAccentSaturationShift(-12);
       result.current.resetPaletteState();
     });
 
@@ -151,6 +161,10 @@ describe('paletteStore', () => {
     expect(result.current.themeMode).toBe('dark');
     expect(result.current.printMode).toBe(false);
     expect(result.current.customThemeName).toBe('');
+    expect(result.current.accentHueShift).toBe(0);
+    expect(result.current.accentHueInput).toBe(0);
+    expect(result.current.accentSaturationShift).toBe(0);
+    expect(result.current.accentSaturationInput).toBe(0);
     expect(result.current.savedPalettes).toEqual([{ id: 1, name: 'Saved' }]);
     expect(result.current.confirmedVariants).toEqual({});
   });
@@ -168,6 +182,24 @@ describe('paletteStore', () => {
 
     act(() => {
       result.current.setAccentStrength(130);
+    });
+
+    expect(result.current.confirmedVariants).toEqual({});
+  });
+
+  it('clears confirmed variants when manual accent tuning changes', () => {
+    const { result } = renderHook(() => usePaletteStore());
+
+    act(() => {
+      result.current.setConfirmedVariant('dark', { signature: 'dark-1', finalTokens: { brand: { cta: '#111111' } } });
+      result.current.setAccentHueShift(24);
+    });
+
+    expect(result.current.confirmedVariants).toEqual({});
+
+    act(() => {
+      result.current.setConfirmedVariant('dark', { signature: 'dark-2', finalTokens: { brand: { cta: '#222222' } } });
+      result.current.setAccentSaturationShift(-16);
     });
 
     expect(result.current.confirmedVariants).toEqual({});

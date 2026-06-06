@@ -735,7 +735,7 @@ export const addAllModeThemePackFiles = async (root, theme, options = {}) => {
     introSentence = `${spec.name} is an Apocapalette Theme Pack exported from the current reviewed mode.`;
   }
 
-  root.file('README.md', [
+  root.file(options.readmePath || 'README.md', [
     `# ${spec.name}`,
     '',
     introSentence,
