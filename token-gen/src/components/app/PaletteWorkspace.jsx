@@ -9,6 +9,9 @@ import { isPrivateForge } from '../../lib/capabilities.js';
 const PackageStage = isPrivateForge
   ? lazy(() => import('../stages/PackageStage.jsx'))
   : null;
+const ProductForgeStage = isPrivateForge
+  ? lazy(() => import('../stages/ProductForgeStage.jsx'))
+  : null;
 const ExportStage = isPrivateForge
   ? lazy(() => import('../stages/ExportStage.jsx'))
   : null;
@@ -130,6 +133,19 @@ export default function PaletteWorkspace({ controller }) {
             onDownloadThemePack={controller.handleDownloadThemePack}
             canExport={controller.canExport}
             variantStatus={controller.confirmedVariantStatus}
+          />
+        </Suspense>
+      )}
+
+      {controller.canExport && ProductForgeStage && (
+        <Suspense fallback={null}>
+          <ProductForgeStage
+            isDev={controller.canExport}
+            tokens={controller.tokens}
+            primaryTextColor={controller.primaryTextColor}
+            productExportThemes={controller.productExportThemes}
+            onExportProductPackage={controller.handleExportProductPackage}
+            onDownloadThemePack={controller.handleDownloadThemePack}
           />
         </Suspense>
       )}
