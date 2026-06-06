@@ -119,6 +119,10 @@ const expectMarketplaceListingSections = (listing) => {
   expect(listing).toContain('## Personal Storefront Listing Draft');
 };
 
+const countOccurrences = (value, pattern) => (
+  (String(value).match(new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
+);
+
 const expectStandaloneBuyerDocs = (zip, rootPath, productTitle) => {
   const license = zip.files[`${rootPath}/LICENSE.txt`];
   const support = zip.files[`${rootPath}/SUPPORT.txt`];
@@ -220,9 +224,13 @@ describe('product export helpers', () => {
     expect(listing).toContain('Compatibility and file summary:');
     expect(listing).toContain('- CSS custom properties for websites and apps.');
     expect(listing).toContain('- Figma/Penpot token JSON for design workflows.');
-    expect(zip.files['hollys-light-blue/tags.txt']).toContain('adaptive color system');
-    expect(zip.files['hollys-light-blue/tags.txt']).toContain('dark mode palette');
-    expect(zip.files['hollys-light-blue/tags.txt']).toContain('website color kit');
+    expect(countOccurrences(listing, 'Includes current/spec-derived dark mode data. Missing modes are not regenerated during export.')).toBe(1);
+    const tags = zip.files['hollys-light-blue/tags.txt'];
+    expect(tags).toContain('adaptive color system');
+    expect(tags).toContain('dark mode palette');
+    expect(tags).not.toContain('light mode palette');
+    expect(tags).not.toContain('pop mode palette');
+    expect(tags).toContain('website color kit');
     expect(workflowExports.addAllModeThemePackFiles).toHaveBeenCalledWith(expect.any(FolderMock), theme, { slug: 'hollys-light-blue' });
     expect(workflowExports.buildAllModeThemePackArchive).not.toHaveBeenCalled();
   });
@@ -247,6 +255,28 @@ describe('product export helpers', () => {
     expect(zip.files['partial-cobalt/README.md']).toContain('Includes confirmed reviewed light, dark modes only');
     expect(zip.files['partial-cobalt/README.md']).not.toContain('current/spec-derived');
     expect(zip.files['partial-cobalt/shop-listing.md']).toContain('confirmed reviewed light, dark modes');
+  });
+
+  it('includes all mode tags for a full Light/Dark/Pop individual package', async () => {
+    const theme = {
+      ...makeTheme('Full Cobalt'),
+      variants: {
+        dark: { finalTokens: { brand: { cta: '#112233' } } },
+        light: { finalTokens: { brand: { cta: '#eeeeee' } } },
+        pop: { finalTokens: { brand: { cta: '#ff00aa' } } },
+      },
+    };
+
+    await productExports.buildProductPackageArchive({
+      offering: 'individual',
+      product: { ...product, title: 'Full Cobalt', slug: 'full-cobalt', shortDescription: '', longDescription: '' },
+      themes: [theme],
+    });
+
+    const tags = zipInstances[0].files['full-cobalt/tags.txt'];
+    expect(tags).toContain('light mode palette');
+    expect(tags).toContain('dark mode palette');
+    expect(tags).toContain('pop mode palette');
   });
 
   it('labels partial confirmed variants plus the current resolved fallback truthfully', async () => {
@@ -419,6 +449,10 @@ describe('product export helpers', () => {
     expect(listing).toContain('Digital download: after purchase, download the ZIP file and open the included README before using the files. No physical product is shipped.');
     expect(listing).toContain('This mini/freebie package is intentionally smaller than a full paid color kit.');
     expect(listing).toContain('See the full paid Apocapalette theme kit or bundle');
+    const tags = zip.files['mini-cobalt/tags.txt'];
+    expect(tags).not.toContain('dark mode palette');
+    expect(tags).not.toContain('light mode palette');
+    expect(tags).not.toContain('pop mode palette');
     expect(files.some((file) => file.includes('/modes/'))).toBe(false);
     expect(files.some((file) => file.includes('all-modes'))).toBe(false);
     expect(workflowExports.addAllModeThemePackFiles).not.toHaveBeenCalled();

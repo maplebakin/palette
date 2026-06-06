@@ -22,6 +22,26 @@ const normalizeLines = (value) => String(value || '')
   .map((line) => line.trim())
   .filter(Boolean);
 
+const MODE_TAGS = {
+  dark: 'dark mode palette',
+  light: 'light mode palette',
+  pop: 'pop mode palette',
+};
+
+const normalizeTags = (value) => normalizeLines(value)
+  .map((tag) => tag.toLowerCase())
+  .filter((tag) => !Object.values(MODE_TAGS).includes(tag));
+
+const getIncludedModesForTags = (offering, themes = []) => {
+  if (offering === 'mini') return [];
+  const modes = themes.flatMap((theme) => getThemeExportSourceInfo(theme).modes);
+  return THEME_MODE_ORDER.filter((mode) => modes.includes(mode));
+};
+
+const buildModeTags = (offering, themes = []) => (
+  getIncludedModesForTags(offering, themes).map((mode) => MODE_TAGS[mode]).filter(Boolean)
+);
+
 const humanizeName = (value, fallback = 'Theme') => {
   const clean = sanitizeThemeName(value || fallback, fallback)
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -217,15 +237,16 @@ const buildSupport = (product) => [
   ACCESSIBILITY_USAGE_NOTE,
 ].join('\n');
 
-const buildListingTags = (product, offering) => {
+const buildListingTags = (product, offering, themes = []) => {
   const offeringTags = offering === 'mini'
     ? ['mini palette', 'starter palette', 'website colors', 'brand colors']
     : offering === 'bundle'
       ? ['color palette bundle', 'brand kit bundle', 'website color kits', 'design token bundle']
       : ['website color kit', 'brand color kit', 'adaptive color system', 'design tokens'];
   return Array.from(new Set([
-    ...normalizeLines(product.tags),
+    ...normalizeTags(product.tags),
     ...offeringTags,
+    ...buildModeTags(offering, themes),
     'css variables',
     'digital product colors',
     'brand palette',
@@ -365,7 +386,7 @@ const buildMarketplaceDraftLines = ({
     ? `${shortDescription} This mini/freebie package is intentionally smaller than a full paid color kit.`
     : offering === 'bundle'
       ? `${shortDescription} Open each nested Theme Pack ZIP for that palette's complete files and README.`
-      : `${shortDescription} ${sourceInfo.modeLine}`;
+      : shortDescription;
   const downloadNote = offering === 'bundle'
     ? 'Digital download: after purchase, download the bundle ZIP, then open each nested Theme Pack ZIP for the included palette files. No physical product is shipped.'
     : 'Digital download: after purchase, download the ZIP file and open the included README before using the files. No physical product is shipped.';
@@ -458,7 +479,7 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
     ...(offering === 'bundle' ? [`${title} Brand Palette Bundle`] : []),
     ...(offering === 'mini' ? [`${title} Mini Website Palette`] : []),
   ];
-  const suggestedTags = buildListingTags(product, offering);
+  const suggestedTags = buildListingTags(product, offering, themes);
   const includedLines = buildListingIncludedLines({ offering, themes, sourceInfo });
   const suggestedUses = buildSuggestedUses(offering);
   const compatibilityLines = buildListingCompatibilityLines(offering);
@@ -481,10 +502,6 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
     '',
     longDescription,
     '',
-    ...(offering === 'individual' ? [
-      sourceInfo.modeLine,
-      '',
-    ] : []),
     '## What\'s Included',
     '',
     ...includedLines,
@@ -530,25 +547,29 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
   ].join('\n');
 };
 
-const buildTags = (product) => {
-  const baseTags = normalizeLines(product.tags);
+const buildTags = ({ product, offering, themes }) => {
+  const baseTags = normalizeTags(product.tags);
+  const modeTags = buildModeTags(offering, themes);
+  const fullKitTags = offering === 'mini'
+    ? []
+    : [
+      'figma tokens',
+      'penpot tokens',
+      'libreoffice palette',
+    ];
   const tags = [
     ...baseTags,
     'website color kit',
     'brand color kit',
     'adaptive color system',
-    'dark mode palette',
-    'light mode palette',
-    'pop mode palette',
+    ...modeTags,
     'design tokens',
     'css variables',
-    'figma tokens',
-    'penpot tokens',
-    'libreoffice palette',
+    ...fullKitTags,
     'web design palette',
     'brand kit',
   ];
-  return `${Array.from(new Set(tags.map((tag) => tag.toLowerCase()))).join('\n')}\n`;
+  return `${Array.from(new Set(tags)).join('\n')}\n`;
 };
 
 const deriveMiniPalette = (theme) => {
@@ -736,7 +757,7 @@ const addProductDocs = (root, { product, themes, offering }) => {
   root.file('LICENSE.txt', buildLicense(product));
   root.file('SUPPORT.txt', buildSupport(product));
   root.file('shop-listing.md', buildShopListing({ product, offering, themes }));
-  root.file('tags.txt', buildTags(product));
+  root.file('tags.txt', buildTags({ product, offering, themes }));
   addMarketplacePreviewAssets(root, { product, themes, offering });
 };
 
