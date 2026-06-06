@@ -15,6 +15,31 @@ const defaultProductState = {
 
 const miniRoles = ['background', 'text', 'primary', 'accent', 'surface'];
 
+const packageContentsByOffering = {
+  individual: [
+    'Buyer docs: README.md, USAGE.txt, LICENSE.txt, SUPPORT.txt.',
+    'Listing docs: shop-listing.md and tags.txt.',
+    'Marketplace preview: marketplace-preview/marketplace-cover.svg.',
+    'Mode files and previews for the selected theme.',
+    'CSS, JSON, Figma/Penpot tokens, and LibreOffice palettes.',
+  ],
+  bundle: [
+    'Buyer docs: README.md, USAGE.txt, LICENSE.txt, SUPPORT.txt.',
+    'Listing docs: shop-listing.md and tags.txt.',
+    'Marketplace previews: marketplace-preview/marketplace-cover.svg and marketplace-preview/bundle-comparison.svg.',
+    'Nested Theme Pack ZIPs for selected kits.',
+    'Root preview assets for comparing included palettes.',
+  ],
+  mini: [
+    'Buyer docs: README.md, USAGE.txt, LICENSE.txt, SUPPORT.txt.',
+    'Listing docs: shop-listing.md and tags.txt.',
+    'Marketplace preview: marketplace-preview/marketplace-cover.svg.',
+    'Mini CSS and mini JSON files.',
+    'SVG preview for quick visual reference.',
+    'Lightweight starter palette, not a full Theme Pack.',
+  ],
+};
+
 const slugifyInput = (value) => String(value || '')
   .trim()
   .toLowerCase()
@@ -88,6 +113,7 @@ export default function ProductExportBuilder({
 
   const selectedCount = selectedIds.length;
   const canExport = Boolean(product.title.trim() && product.slug.trim() && selectedCount);
+  const packageContents = packageContentsByOffering[product.offering] || packageContentsByOffering.individual;
 
   return (
     <div className="mt-5 rounded-lg border panel-surface-soft p-4 space-y-4" data-testid="product-export-builder">
@@ -95,9 +121,9 @@ export default function ProductExportBuilder({
         <div>
           <div className="flex items-center gap-2 text-sm font-bold panel-text">
             <Package size={16} />
-            Product Export Builder
+            Product Package Builder
           </div>
-          <p className="text-xs panel-muted">DEV ONLY - sale-ready product packages, separate from normal theme pack export.</p>
+          <p className="text-xs panel-muted">Build seller-ready ZIPs with buyer docs, listing copy, license/support notes, and marketplace preview SVGs.</p>
         </div>
         <span className="rounded-md border px-2 py-1 text-[10px] font-bold uppercase panel-muted">Product packaging</span>
       </div>
@@ -124,13 +150,25 @@ export default function ProductExportBuilder({
           />
         </label>
         <label className="text-xs font-bold panel-text">
-          Product slug
+          Product filename slug
           <input
             value={product.slug}
             onChange={(event) => updateProduct('slug', slugifyInput(event.target.value))}
             className="mt-1 w-full rounded-md border panel-surface-strong px-3 py-2 text-sm panel-text"
           />
+          <span className="mt-1 block text-[11px] font-normal panel-muted">
+            Used for the downloaded ZIP/folder name.
+          </span>
         </label>
+      </div>
+
+      <div className="rounded-lg border panel-surface-strong p-3" data-testid="included-package-summary">
+        <p className="text-xs font-bold panel-text">Included in this package</p>
+        <ul className="mt-2 grid gap-1 text-xs panel-muted md:grid-cols-2">
+          {packageContents.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
       </div>
 
       <div className="grid gap-3 md:grid-cols-[140px_1fr_1fr]">

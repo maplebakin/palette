@@ -65,9 +65,15 @@ describe('ProductForgeStage', () => {
     expect(screen.getAllByText('Product Forge')).toHaveLength(2);
     expect(screen.getByText('Saved Kits')).toBeInTheDocument();
     expect(screen.getByText('Individual Theme Kit')).toBeInTheDocument();
-    expect(screen.getByText('Creator Trio / Multi-Kit Bundle')).toBeInTheDocument();
+    expect(screen.getByText('Multi-Kit Bundle')).toBeInTheDocument();
+    expect(screen.queryByText(/Creator Trio/i)).not.toBeInTheDocument();
     expect(screen.getByText('Mini Website Palette')).toBeInTheDocument();
-    expect(screen.getByText('Available Export Kits')).toBeInTheDocument();
+    expect(screen.getAllByText(/buyer docs/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/marketplace preview SVGs/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/license\/support/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/listing docs/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/shop-listing\.md/i).length).toBeGreaterThan(0);
+    expect(screen.getByText('Available Theme Kits')).toBeInTheDocument();
     expect(screen.getByText('Current Theme')).toBeInTheDocument();
     expect(screen.getByText(/uses current\/spec-derived mode data/i)).toBeInTheDocument();
     expect(screen.getByText(/includes confirmed reviewed modes only/i)).toBeInTheDocument();

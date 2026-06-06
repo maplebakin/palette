@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ProductExportBuilder from './ProductExportBuilder.jsx';
 
@@ -61,6 +61,55 @@ const renderBuilder = (props = {}) => {
 };
 
 describe('ProductExportBuilder', () => {
+  it('renders seller-ready product package builder copy', () => {
+    renderBuilder();
+
+    expect(screen.getByText('Product Package Builder')).toBeInTheDocument();
+    expect(screen.queryByText(/DEV ONLY/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/buyer docs, listing copy, license\/support notes, and marketplace preview SVGs/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Product filename slug/i)).toBeInTheDocument();
+    expect(screen.getByText('Used for the downloaded ZIP/folder name.')).toBeInTheDocument();
+  });
+
+  it('summarizes included files for individual theme kits', () => {
+    renderBuilder();
+
+    const summary = within(screen.getByTestId('included-package-summary'));
+    expect(summary.getByText('Included in this package')).toBeInTheDocument();
+    expect(summary.getByText(/README\.md, USAGE\.txt, LICENSE\.txt, SUPPORT\.txt/i)).toBeInTheDocument();
+    expect(summary.getByText(/shop-listing\.md and tags\.txt/i)).toBeInTheDocument();
+    expect(summary.getByText(/marketplace-preview\/marketplace-cover\.svg/i)).toBeInTheDocument();
+    expect(summary.getByText(/mode files and previews/i)).toBeInTheDocument();
+    expect(summary.getByText(/CSS, JSON, Figma\/Penpot tokens, and LibreOffice palettes/i)).toBeInTheDocument();
+  });
+
+  it('summarizes bundle package contents', () => {
+    renderBuilder();
+
+    fireEvent.change(screen.getByLabelText(/offering type/i), { target: { value: 'bundle' } });
+
+    const summary = within(screen.getByTestId('included-package-summary'));
+    expect(summary.getByText(/Nested Theme Pack ZIPs/i)).toBeInTheDocument();
+    expect(summary.getByText(/bundle-comparison\.svg/i)).toBeInTheDocument();
+    expect(summary.getByText(/Root preview assets/i)).toBeInTheDocument();
+  });
+
+  it('summarizes mini package contents without full kit extras', () => {
+    renderBuilder();
+
+    fireEvent.change(screen.getByLabelText(/offering type/i), { target: { value: 'mini' } });
+
+    const summaryElement = screen.getByTestId('included-package-summary');
+    const summary = within(summaryElement);
+    expect(summary.getByText(/Mini CSS and mini JSON files/i)).toBeInTheDocument();
+    expect(summary.getByText(/SVG preview/i)).toBeInTheDocument();
+    expect(summary.getByText(/Lightweight starter palette, not a full Theme Pack/i)).toBeInTheDocument();
+    expect(summary.queryByText(/Figma/i)).not.toBeInTheDocument();
+    expect(summary.queryByText(/Penpot/i)).not.toBeInTheDocument();
+    expect(summary.queryByText(/LibreOffice/i)).not.toBeInTheDocument();
+    expect(summaryElement).not.toHaveTextContent(/full Theme Pack contents/i);
+  });
+
   it('allows bundle exports to select multiple saved/project kits', () => {
     const { onExport } = renderBuilder();
 

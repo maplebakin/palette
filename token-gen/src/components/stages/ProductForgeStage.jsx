@@ -11,17 +11,17 @@ const ProductExportBuilder = isPrivateForge
 const forgeSections = [
   {
     title: 'Individual Theme Kit',
-    description: 'Package one saved theme kit with docs, preview SVGs, tags, license notes, and the full theme pack ZIP.',
+    description: 'Package one saved theme kit with buyer docs, mode files, shop-listing.md, LICENSE.txt, SUPPORT.txt, and marketplace-preview SVGs.',
     icon: PackageOpen,
   },
   {
-    title: 'Creator Trio / Multi-Kit Bundle',
-    description: 'Combine multiple saved kits into one bundle with per-theme preview assets and included theme pack ZIPs.',
+    title: 'Multi-Kit Bundle',
+    description: 'Combine saved kits into one seller bundle with buyer docs, shop-listing.md, license/support notes, marketplace-preview assets, and nested Theme Pack ZIPs.',
     icon: Layers,
   },
   {
     title: 'Mini Website Palette',
-    description: 'Export a lightweight sample palette with CSS, JSON, preview art, and a paid-product CTA.',
+    description: 'Export a lightweight starter palette with CSS, JSON, buyer docs, shop-listing.md, license/support notes, and a marketplace cover SVG.',
     icon: Sparkles,
   },
 ];
@@ -33,7 +33,7 @@ const workflowSteps = [
   },
   {
     title: 'Product Forge',
-    description: 'Build sale-ready individual kits, bundles, and mini palette freebies from saved theme kits.',
+    description: 'Build seller-ready ZIPs with buyer docs, listing copy, license/support notes, and marketplace preview SVGs.',
   },
   {
     title: 'Bundles / Freebies',
@@ -41,7 +41,7 @@ const workflowSteps = [
   },
   {
     title: 'Ready to Upload',
-    description: 'Move generated ZIPs and docs into the product library pattern after export.',
+    description: 'Move generated ZIPs, listing docs, and preview SVGs into the product library pattern after export.',
   },
 ];
 
@@ -68,7 +68,7 @@ export default function ProductForgeStage({
       id="product-forge"
       title="Product Forge"
       eyebrow="Project Manager"
-      subtitle="Build sale-ready individual kits, bundles, and mini palette freebies from saved theme kits."
+      subtitle="Build seller-ready individual kits, bundles, and mini palette freebies from saved theme kits."
       collapsible
       data-testid="product-forge-stage"
     >
@@ -104,9 +104,9 @@ export default function ProductForgeStage({
             <div>
               <div className="flex items-center gap-2 text-sm font-bold panel-text">
                 <FolderOpen size={16} />
-                Available Export Kits
+                Available Theme Kits
               </div>
-              <p className="text-xs panel-muted">These kits can be selected inside Product Export Builder.</p>
+              <p className="text-xs panel-muted">Choose these as the source palettes for product packages.</p>
             </div>
             <span className="text-xs panel-muted">{safeThemes.length} available</span>
           </div>
@@ -170,7 +170,7 @@ export default function ProductForgeStage({
               Bundle Builder
             </div>
             <p className="text-xs panel-muted">
-              Multi-kit bundles are managed by choosing the bundle offering type below, then selecting every kit that belongs in the package.
+              Choose the bundle offering type below, select every kit that belongs in the package, and export a seller-ready bundle with nested Theme Pack ZIPs.
             </p>
           </div>
           <div className="rounded-lg border panel-surface-strong p-4">
@@ -179,7 +179,7 @@ export default function ProductForgeStage({
               Mini Palette Freebies
             </div>
             <p className="text-xs panel-muted">
-              Freebies export lightweight sample palettes and previews without the paid full token files.
+              Freebies export lightweight CSS/JSON sample palettes with buyer docs and marketplace cover SVGs, without the paid full token files.
             </p>
           </div>
         </div>
@@ -200,7 +200,7 @@ export default function ProductForgeStage({
             Product Library / Ready to Upload
           </div>
           <p className="text-xs panel-muted">
-            Export history is not stored yet. After generating a product package, keep the ZIP and listing docs with the intended library pattern: products/&lt;product-slug&gt;/.
+            Export history is not stored yet. After generating a product package, keep the ZIP, generated listing docs, and marketplace preview SVGs with the intended library pattern: products/&lt;product-slug&gt;/.
           </p>
         </div>
       </div>
