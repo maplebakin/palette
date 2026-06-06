@@ -12,7 +12,10 @@ const tokens = {
 const themes = [
   {
     id: 'current',
-    label: 'Current Theme',
+    label: 'Monochromatic Light',
+    baseColor: '#6633ff',
+    mode: 'Monochromatic',
+    themeMode: 'dark',
     miniPalette: {
       background: '#101827',
       text: '#f8fafc',
@@ -23,7 +26,15 @@ const themes = [
   },
   {
     id: 'saved-1',
-    label: 'Saved Cobalt',
+    label: 'Monochromatic Light',
+    baseColor: '#2563eb',
+    mode: 'Monochromatic',
+    themeMode: 'light',
+    variants: {
+      light: { finalTokens: {} },
+      dark: { finalTokens: {} },
+      pop: { finalTokens: {} },
+    },
     miniPalette: {
       background: '#020617',
       text: '#e2e8f0',
@@ -34,7 +45,13 @@ const themes = [
   },
   {
     id: 'project-launch',
-    label: 'Project Launch',
+    label: 'Monochromatic Light',
+    baseColor: '#16a34a',
+    mode: 'Analogous',
+    themeMode: 'pop',
+    variants: {
+      light: { finalTokens: {} },
+    },
     miniPalette: {
       background: '#f8fafc',
       text: '#0f172a',
@@ -69,6 +86,15 @@ describe('ProductExportBuilder', () => {
     expect(screen.getByText(/buyer docs, listing copy, license\/support notes, and marketplace preview SVGs/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Product filename slug/i)).toBeInTheDocument();
     expect(screen.getByText('Used for the downloaded ZIP/folder name.')).toBeInTheDocument();
+  });
+
+  it('renders duplicate source names with distinct accessible metadata', () => {
+    renderBuilder();
+
+    expect(screen.getAllByText('Monochromatic Light')).toHaveLength(3);
+    expect(screen.getByText(/Current palette • Current mode only • Base #6633FF • Monochromatic • Dark mode/i)).toBeInTheDocument();
+    expect(screen.getByText(/Saved kit • Full Light\/Dark\/Pop • Base #2563EB • Monochromatic • Light mode/i)).toBeInTheDocument();
+    expect(screen.getByText(/Project snapshot • Partial confirmed • Base #16A34A • Analogous • Pop mode/i)).toBeInTheDocument();
   });
 
   it('summarizes included files for individual theme kits', () => {
@@ -114,8 +140,8 @@ describe('ProductExportBuilder', () => {
     const { onExport } = renderBuilder();
 
     fireEvent.change(screen.getByLabelText(/offering type/i), { target: { value: 'bundle' } });
-    fireEvent.click(screen.getByLabelText('Saved Cobalt'));
-    fireEvent.click(screen.getByLabelText('Project Launch'));
+    fireEvent.click(screen.getByLabelText(/Saved kit • Full Light\/Dark\/Pop/i));
+    fireEvent.click(screen.getByLabelText(/Project snapshot • Partial confirmed/i));
     fireEvent.click(screen.getByRole('button', { name: /export product package/i }));
 
     expect(onExport).toHaveBeenCalledWith(expect.objectContaining({
@@ -128,7 +154,7 @@ describe('ProductExportBuilder', () => {
     const { onExport } = renderBuilder();
 
     fireEvent.change(screen.getByLabelText(/offering type/i), { target: { value: 'mini' } });
-    fireEvent.click(screen.getByLabelText('Saved Cobalt'));
+    fireEvent.click(screen.getByLabelText(/Saved kit • Full Light\/Dark\/Pop/i));
     fireEvent.click(screen.getByRole('button', { name: /export product package/i }));
 
     expect(onExport).toHaveBeenCalledWith(expect.objectContaining({

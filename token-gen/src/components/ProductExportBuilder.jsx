@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Download, Package } from 'lucide-react';
-import { PRODUCT_OFFERINGS, DEFAULT_USAGE_LICENSE } from '../lib/exports/productExports.js';
+import { PRODUCT_OFFERINGS, DEFAULT_USAGE_LICENSE, getThemeExportSourceInfo } from '../lib/exports/productExports.js';
 
 const defaultProductState = {
   offering: 'individual',
@@ -45,6 +45,38 @@ const slugifyInput = (value) => String(value || '')
   .toLowerCase()
   .replace(/[^a-z0-9]+/g, '-')
   .replace(/^-+|-+$/g, '');
+
+const modeLabel = (mode) => (
+  mode ? `${mode[0].toUpperCase()}${mode.slice(1)}` : ''
+);
+
+const getThemeSourceLabel = (id = '') => {
+  if (id === 'current') return 'Current palette';
+  if (id.startsWith('saved-')) return 'Saved kit';
+  if (id.startsWith('project-')) return 'Project snapshot';
+  return 'Theme source';
+};
+
+const getThemeCoverageLabel = (theme = {}) => {
+  const sourceInfo = getThemeExportSourceInfo(theme);
+  if (sourceInfo.isFullConfirmed) return 'Full Light/Dark/Pop';
+  if (sourceInfo.includesCurrentFallback) return 'Partial confirmed + current fallback';
+  if (sourceInfo.isPartialConfirmed) return 'Partial confirmed';
+  if (sourceInfo.isSpecDerived) return 'Current mode only';
+  const modes = sourceInfo.modes.map(modeLabel).filter(Boolean).join('/');
+  return modes || 'Current mode only';
+};
+
+const getThemeMetaLine = (theme = {}) => {
+  const meta = [
+    getThemeSourceLabel(theme.id),
+    getThemeCoverageLabel(theme),
+  ];
+  if (theme.baseColor) meta.push(`Base ${String(theme.baseColor).toUpperCase()}`);
+  if (theme.mode) meta.push(theme.mode);
+  if (theme.themeMode) meta.push(`${modeLabel(theme.themeMode)} mode`);
+  return meta.filter(Boolean).join(' • ');
+};
 
 export default function ProductExportBuilder({
   isDev = false,
@@ -227,13 +259,19 @@ export default function ProductExportBuilder({
         </legend>
         <div className="grid gap-2 md:grid-cols-2">
           {themes.map((theme) => (
-            <label key={theme.id} className="flex items-center gap-2 rounded-md border panel-surface-strong px-3 py-2 text-sm panel-text">
+            <label key={theme.id} className="flex items-start gap-2 rounded-md border panel-surface-strong px-3 py-2 text-sm panel-text">
               <input
                 type={product.offering === 'bundle' ? 'checkbox' : 'radio'}
                 checked={selectedIds.includes(theme.id)}
                 onChange={() => toggleTheme(theme.id)}
+                className="mt-1"
               />
-              {theme.label}
+              <span className="min-w-0">
+                <span className="block font-semibold">{theme.label}</span>
+                <span className="mt-0.5 block text-[11px] font-normal panel-muted">
+                  {getThemeMetaLine(theme)}
+                </span>
+              </span>
             </label>
           ))}
         </div>
