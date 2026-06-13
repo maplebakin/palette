@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Palette, Printer } from 'lucide-react';
 import ColorSwatch from '../ColorSwatch';
 import ConfirmedVariantsStatus from '../ConfirmedVariantsStatus.jsx';
@@ -24,14 +24,19 @@ const PackageStage = ({
   canExport = Boolean(onDownloadThemePack),
   variantStatus,
 }) => {
-  const availableModes = variantStatus?.availableModes || [];
-  const missingModes = variantStatus?.missingModes || THEME_PACK_MODES.filter((mode) => !availableModes.includes(mode));
+  const availableModes = useMemo(
+    () => variantStatus?.availableModes || [],
+    [variantStatus?.availableModes]
+  );
+  const missingModes = useMemo(
+    () => variantStatus?.missingModes || THEME_PACK_MODES.filter((mode) => !availableModes.includes(mode)),
+    [availableModes, variantStatus?.missingModes]
+  );
   const [selectedModes, setSelectedModes] = useState(() => [...availableModes]);
   const [exportSuccessMessage, setExportSuccessMessage] = useState('');
   const previousAvailableModes = useRef(availableModes);
   const exportCopy = buildThemePackSelectionCopy({ availableModes, missingModes }, selectedModes);
   const coverageKey = `${availableModes.join('|')}|${missingModes.join('|')}`;
-  const selectionKey = selectedModes.join('|');
 
   useEffect(() => {
     const previousAvailable = previousAvailableModes.current;
@@ -41,11 +46,7 @@ const PackageStage = ({
     )));
     previousAvailableModes.current = availableModes;
     setExportSuccessMessage('');
-  }, [coverageKey]);
-
-  useEffect(() => {
-    setExportSuccessMessage('');
-  }, [selectionKey]);
+  }, [availableModes, coverageKey]);
 
   if (!canExport) return null;
 
@@ -62,6 +63,7 @@ const PackageStage = ({
   };
 
   const toggleSelectedMode = (mode) => {
+    setExportSuccessMessage('');
     setSelectedModes((current) => (
       current.includes(mode)
         ? current.filter((selectedMode) => selectedMode !== mode)

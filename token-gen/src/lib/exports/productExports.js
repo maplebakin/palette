@@ -10,12 +10,22 @@ export const PRODUCT_OFFERINGS = {
   mini: 'Mini Website Palette / Freebie',
 };
 
+const DISPLAY_PRODUCT_TYPES = {
+  individual: 'Website & Brand Color Kit',
+  bundle: 'Multi-Kit Bundle',
+  mini: 'Mini Website Palette',
+};
+
 export const DEFAULT_USAGE_LICENSE = [
   'Personal and commercial use is allowed for finished designs, prototypes, websites, apps, documents, and client work.',
-  'Do not resell, redistribute, repackage, upload, or claim the raw theme pack files as your own.',
+  'You may modify, adapt, recolor, and customize the kit assets for your own finished work.',
+  'Do not resell, redistribute, repackage, sublicense, upload, share, or claim the kit itself as your own product.',
 ].join('\n\n');
 
 const ACCESSIBILITY_USAGE_NOTE = 'Please review contrast and accessibility in your final design context before publishing or sharing.';
+const SUPPORT_EMAIL = 'streamthreadsystems@gmail.com';
+const COPYRIGHT_HOLDER = 'StreamThread Systems';
+const COPYRIGHT_YEAR = '2026';
 
 const normalizeLines = (value) => String(value || '')
   .split('\n')
@@ -52,6 +62,55 @@ const humanizeName = (value, fallback = 'Theme') => {
   return clean || fallback;
 };
 
+const normalizeDisplayName = (value, fallback = 'Product') => {
+  if (typeof value !== 'string') return fallback;
+  const clean = value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s&/+-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 90);
+  return clean || fallback;
+};
+
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const productTypeVariants = (productType) => Array.from(new Set([
+  productType,
+  productType.replace(/\s*&\s*/g, ' '),
+  productType.replace(/\s*&\s*/g, ' and '),
+  productType.replace(/\s*\/\s*Freebie$/i, ''),
+].map((value) => normalizeDisplayName(value, '').trim()).filter(Boolean)));
+
+const stripProductType = (title, productType) => {
+  const normalizedTitle = normalizeDisplayName(title, '');
+  const variants = productTypeVariants(productType)
+    .sort((a, b) => b.length - a.length);
+  return variants.reduce((current, variant) => (
+    current.replace(new RegExp(`\\s+${escapeRegExp(variant)}$`, 'i'), '')
+  ), normalizedTitle).replace(/\s+/g, ' ').trim();
+};
+
+const getProductTitleMetadata = ({ product = {}, offering = 'individual', themes = [] }) => {
+  const productType = DISPLAY_PRODUCT_TYPES[offering] || PRODUCT_OFFERINGS[offering] || 'Theme Pack';
+  const explicitBaseName = product.themeName || product.baseName;
+  const rawName = explicitBaseName
+    || stripProductType(product.title, productType)
+    || themeLabel(themes[0], PRODUCT_OFFERINGS[offering] || 'Product');
+  const baseName = normalizeDisplayName(humanizeName(rawName, PRODUCT_OFFERINGS[offering] || 'Product'), PRODUCT_OFFERINGS[offering] || 'Product');
+  const productTitle = productTypeVariants(productType)
+    .some((variant) => new RegExp(`\\s+${escapeRegExp(variant)}$`, 'i').test(normalizeDisplayName(product.title, '')))
+    ? `${baseName} ${productType}`
+    : `${baseName} ${productType}`;
+
+  return {
+    baseName,
+    productType,
+    productTitle: normalizeDisplayName(productTitle, `${baseName} ${productType}`),
+  };
+};
+
 const productSlug = (product) => (
   slugifyFilename(product?.slug || product?.title || 'product', 'product')
 );
@@ -69,25 +128,29 @@ const THEME_MODE_ORDER = ['light', 'dark', 'pop'];
 const buildHowToUseLines = (offering) => {
   if (offering === 'bundle') {
     return [
+      '- Open the extracted product folder, then unzip each nested Theme Pack ZIP for that palette\'s files.',
       '- Each included Theme Pack ZIP contains its own README and mode files.',
-      '- Open each nested Theme Pack ZIP for that palette\'s full files.',
       '- Use the root previews and listing docs to compare the included palettes.',
     ];
   }
 
   if (offering === 'mini') {
     return [
+      '- Open the extracted product folder first.',
       '- Use the included CSS, JSON, and preview as a lightweight starter palette.',
       '- This mini package is smaller than a full Theme Pack.',
     ];
   }
 
   return [
-    '- Start with `README.md` and `USAGE.txt` for the product overview and usage notes.',
-    '- Use the CSS variables for websites, apps, landing pages, and interface prototypes.',
-    '- Use the Figma/Penpot token files for design workflows and handoff.',
-    '- Use the LibreOffice palettes for document, drawing, and presentation color picking.',
-    '- Use preview images and swatch strips as quick visual references.',
+    '- Open the extracted product folder first.',
+    '- Start with `README.md`, `USAGE.txt`, and `LICENSE.txt` for the product overview, usage notes, and license terms.',
+    '- Use `modes/<mode>/css/variables.css` for websites, apps, landing pages, and interface prototypes.',
+    '- Use `modes/<mode>/tokens.json` or `combined/tokens.all-modes.json` as JSON token references.',
+    '- Use `modes/<mode>/figma/tokens.json` for Figma token workflows and handoff.',
+    '- Use `modes/<mode>/penpot/tokens.json` for Penpot token workflows and handoff.',
+    '- Use `modes/<mode>/libreoffice/*.soc` for LibreOffice/OpenOffice document, drawing, and presentation color picking.',
+    '- Use preview files and swatch strips as quick visual references.',
   ];
 };
 
@@ -148,13 +211,14 @@ export const getThemeExportSourceInfo = (theme = {}) => {
 };
 
 const buildReadme = ({ product, themes, offering }) => {
-  const title = humanizeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
+  const { baseName, productType, productTitle } = getProductTitleMetadata({ product, offering, themes });
+  const slug = productSlug(product);
   const themeNames = themes.map((theme) => themeLabel(theme));
   const firstThemeInfo = getThemeExportSourceInfo(themes[0] || {});
   const firstThemeModes = firstThemeInfo.modes;
   const intro = offering === 'individual'
-    ? product.shortDescription || `${title} is a Website & Brand Color Kit exported from ${firstThemeInfo.shortDescriptor}.`
-    : product.shortDescription || `${title} packaged from Apocapalette.`;
+    ? product.shortDescription || `${productTitle} is exported from ${firstThemeInfo.shortDescriptor}.`
+    : product.shortDescription || `${productTitle} packaged from Apocapalette.`;
   const themePackLines = offering === 'mini'
     ? [
       '- `mini-palette.css` - lightweight CSS variables for the sample palette.',
@@ -171,15 +235,22 @@ const buildReadme = ({ product, themes, offering }) => {
       const info = getThemeExportSourceInfo(theme);
       return `- \`${themeSlug(theme)}-theme-pack-v1.zip\` - included ${info.shortDescriptor} theme pack ZIP`;
     });
+  const insideZip = offering === 'individual'
+    ? `Open the extracted \`${slug}/\` folder. The product docs are at the top level, generated assets are organized by mode, and all-mode references live in \`combined/\`.`
+    : offering === 'mini'
+      ? `Open the extracted \`${slug}/\` folder. The product docs are at the top level, with lightweight CSS, JSON, and preview files beside them.`
+      : `Open the extracted \`${slug}/\` folder. The product docs and comparison previews are at the top level, with each included palette delivered as a nested Theme Pack ZIP.`;
 
   return [
-    `# ${title}`,
+    `# ${productTitle}`,
+    '',
+    '## Product Overview',
     '',
     intro,
     '',
     '## Product Type',
     '',
-    PRODUCT_OFFERINGS[offering],
+    productType,
     ...(offering === 'individual' ? [
       '',
       '## Included Modes',
@@ -190,47 +261,128 @@ const buildReadme = ({ product, themes, offering }) => {
     '## Source Theme Kit(s)',
     '',
     ...themeNames.map((name) => `- ${name}`),
+    ...(themeNames.length ? [] : [`- ${baseName}`]),
     '',
     '## What You Get',
     '',
     '- `README.md` - product overview.',
     '- `USAGE.txt` - usage and license notes.',
-    '- `shop-listing.md` - draft marketplace listing copy.',
+    '- `LICENSE.txt` - license terms.',
+    '- `SUPPORT.txt` - support contact details.',
+    '- `shop-listing.md` - marketplace listing copy.',
     '- `tags.txt` - marketplace/search tags.',
     ...themePackLines,
+    '',
+    '## Inside the ZIP',
+    '',
+    insideZip,
     '',
     '## How to Use This Pack',
     '',
     ...buildHowToUseLines(offering),
     '',
+    '## CSS Variables',
+    '',
+    offering === 'individual'
+      ? 'Use `modes/<mode>/css/variables.css` for a single mode, or `combined/css/variables.all-modes.css` when you want all included modes in one CSS file.'
+      : offering === 'mini'
+        ? 'Use `mini-palette.css` for lightweight CSS custom properties.'
+        : 'Open each nested Theme Pack ZIP and use the CSS files documented inside that kit.',
+    '',
+    '## JSON Tokens',
+    '',
+    offering === 'individual'
+      ? 'Use `modes/<mode>/tokens.json` for one mode, or `combined/tokens.all-modes.json` for an all-mode reference.'
+      : offering === 'mini'
+        ? 'Use `mini-palette.json` as a small JSON color reference.'
+        : 'Open each nested Theme Pack ZIP and use the JSON token files documented inside that kit.',
+    '',
+    '## Figma Tokens',
+    '',
+    offering === 'mini'
+      ? 'This mini package does not include Figma token files.'
+      : 'Use `figma/tokens.json` files inside each mode folder or nested Theme Pack ZIP for Figma token workflows.',
+    '',
+    '## Penpot Tokens',
+    '',
+    offering === 'mini'
+      ? 'This mini package does not include Penpot token files.'
+      : 'Use `penpot/tokens.json` files inside each mode folder or nested Theme Pack ZIP for Penpot token workflows.',
+    '',
+    '## LibreOffice / OpenOffice Palette',
+    '',
+    offering === 'mini'
+      ? 'This mini package does not include LibreOffice/OpenOffice palette files.'
+      : 'Use `.soc` files in each `libreoffice/` folder for LibreOffice/OpenOffice color palettes.',
+    '',
+    '## Preview Files',
+    '',
+    offering === 'bundle'
+      ? 'Use the root preview files to compare the included palettes, and use nested Theme Pack previews for individual palette references.'
+      : 'Use the preview SVG files as quick visual references and listing image starting points.',
+    '',
+    '## License Summary',
+    '',
+    'Personal and commercial use is allowed for finished projects. You may modify the kit assets for your own work. You may not resell, redistribute, repackage, share, or claim the kit itself as your own product. The kit is provided as-is, without warranty. See `LICENSE.txt` for the full terms.',
+    '',
+    '## Support',
+    '',
+    `For support, contact ${SUPPORT_EMAIL}.`,
+    '',
     'Made with Apocapalette.',
   ].join('\n');
 };
 
-const buildUsage = (product) => [
-  `${humanizeName(product.title || 'Apocapalette Product', 'Apocapalette Product')} - Usage and License Notes`,
+const buildUsage = ({ product, offering, themes }) => {
+  const additionalTerms = String(product.usageLicense || '').trim();
+  const { productTitle } = getProductTitleMetadata({ product, offering, themes });
+
+  return [
+    `${productTitle} - Usage and License Notes`,
+    '',
+    'What you can use this kit for:',
+    '- Personal websites, blogs, landing pages, and digital products.',
+    '- Commercial websites, client projects, brand assets, templates, documents, and finished designs.',
+    '- Design mockups, product UI concepts, social graphics, and launch assets.',
+    '',
+    'What you may do:',
+    '- Use the kit assets in personal and commercial finished projects.',
+    '- Modify, adapt, recolor, and customize the assets for your own work.',
+    '',
+    'What you may not do:',
+    '- Resell, redistribute, repackage, sublicense, upload, share, or claim the kit itself as your own product.',
+    '- Sell or give away the raw files as a standalone palette, token pack, theme pack, or competing digital product.',
+    ...(additionalTerms ? [
+      '',
+      'Additional usage note:',
+      additionalTerms,
+    ] : []),
+    '',
+    'Warranty:',
+    'The kit is provided as-is, without warranty. Review contrast and accessibility in your final design context before publishing or sharing.',
+    '',
+    `For support, contact ${SUPPORT_EMAIL}.`,
+  ].join('\n');
+};
+
+const buildLicense = ({ product, offering, themes }) => [
+  `${getProductTitleMetadata({ product, offering, themes }).productTitle} - License Terms`,
   '',
-  product.usageLicense || DEFAULT_USAGE_LICENSE,
+  `Copyright (c) ${COPYRIGHT_YEAR} ${COPYRIGHT_HOLDER}. All rights reserved.`,
   '',
-  ACCESSIBILITY_USAGE_NOTE,
+  'Permission is granted to use this kit in personal and commercial finished projects, including websites, apps, graphics, documents, templates, client work, and other completed designs.',
+  '',
+  'You may modify, adapt, recolor, and customize the included assets for your own finished projects.',
+  '',
+  'You may not resell, redistribute, repackage, sublicense, upload, share, or claim the kit itself as your own product. You may not sell or give away the raw files as a standalone palette, token pack, theme pack, or competing digital product.',
+  '',
+  'The kit is provided as-is, without warranty of any kind, express or implied. The copyright holder is not liable for any claim, damages, or other liability arising from use of the kit.',
 ].join('\n');
 
-const buildLicense = (product) => [
-  `${humanizeName(product.title || 'Apocapalette Product', 'Apocapalette Product')} - License Terms`,
+const buildSupport = ({ product, offering, themes }) => [
+  `Thank you for downloading ${getProductTitleMetadata({ product, offering, themes }).productTitle}.`,
   '',
-  'Personal and commercial use is allowed in finished projects, including websites, apps, graphics, documents, templates, client work, and other completed designs.',
-  '',
-  'You may edit, customize, recolor, and adapt the included colors and files for your own projects.',
-  '',
-  'You may not resell, redistribute, sublicense, repackage, upload, or share the included files as a standalone palette, token pack, theme pack, or competing digital product.',
-  '',
-  'Editable seller note before publishing: replace this file with your final shop license if your product needs different terms.',
-].join('\n');
-
-const buildSupport = (product) => [
-  `Thank you for downloading ${humanizeName(product.title || 'this Apocapalette product', 'this Apocapalette product')}.`,
-  '',
-  'For support, contact: [seller support email or shop contact link]',
+  `For support, contact: ${SUPPORT_EMAIL}`,
   '',
   'Please include your order number, platform, and a short description of the issue.',
   '',
@@ -278,7 +430,7 @@ const buildListingIncludedLines = ({ offering, themes, sourceInfo }) => {
       '- `mini-palette.css` - lightweight CSS variables for the starter palette.',
       '- `mini-palette.json` - five-color JSON reference.',
       '- `preview/mini-palette-preview.svg` - visual preview for quick reference.',
-      '- `README.md`, `USAGE.txt`, `shop-listing.md`, and `tags.txt`.',
+      '- `README.md`, `USAGE.txt`, `LICENSE.txt`, `SUPPORT.txt`, `shop-listing.md`, and `tags.txt`.',
     ];
   }
 
@@ -287,7 +439,7 @@ const buildListingIncludedLines = ({ offering, themes, sourceInfo }) => {
       '- Multiple nested Theme Pack ZIPs, one for each included palette.',
       '- Each nested Theme Pack ZIP includes its own README and mode files.',
       '- Root preview SVGs for comparing the included palettes.',
-      '- `README.md`, `USAGE.txt`, `shop-listing.md`, and `tags.txt`.',
+      '- `README.md`, `USAGE.txt`, `LICENSE.txt`, `SUPPORT.txt`, `shop-listing.md`, and `tags.txt`.',
       ...themes.map((theme) => `- \`${themeSlug(theme)}-theme-pack-v1.zip\` - ${themeLabel(theme)} Theme Pack ZIP.`),
     ];
   }
@@ -298,7 +450,7 @@ const buildListingIncludedLines = ({ offering, themes, sourceInfo }) => {
     '- JSON tokens plus Figma/Penpot token files for design workflows.',
     '- LibreOffice/OpenOffice palette files for document and presentation color picking.',
     '- Preview images and swatch strips for quick visual reference.',
-    '- `README.md`, `USAGE.txt`, `shop-listing.md`, and `tags.txt`.',
+    '- `README.md`, `USAGE.txt`, `LICENSE.txt`, `SUPPORT.txt`, `shop-listing.md`, and `tags.txt`.',
   ];
 };
 
@@ -308,7 +460,7 @@ const buildListingCompatibilityLines = (offering) => {
       '- CSS custom properties in `mini-palette.css`.',
       '- JSON color reference in `mini-palette.json`.',
       '- SVG preview artwork.',
-      '- Buyer notes and draft listing copy.',
+      '- Buyer notes, license terms, support contact, and listing copy.',
     ];
   }
 
@@ -316,7 +468,7 @@ const buildListingCompatibilityLines = (offering) => {
     return [
       '- Nested Theme Pack ZIP files for each included palette.',
       '- Root SVG preview assets for palette comparison.',
-      '- README, usage notes, listing draft, and marketplace tags.',
+      '- README, usage notes, license terms, support contact, listing copy, and marketplace tags.',
       '- Full file compatibility is documented inside each nested Theme Pack ZIP.',
     ];
   }
@@ -353,35 +505,36 @@ const buildListingAltTextLines = (title, offering) => {
 };
 
 const buildMarketplaceDraftLines = ({
-  title,
+  baseName,
+  productTitle,
+  productType,
   offering,
   shortDescription,
   suggestedTags,
   includedLines,
   suggestedUses,
   compatibilityLines,
-  sourceInfo,
 }) => {
   const etsyTitle = offering === 'mini'
-    ? `${title} Mini Website Palette, Digital Color Palette, CSS and JSON Starter Colors`
+    ? `${productTitle}, Digital Color Palette, CSS and JSON Starter Colors`
     : offering === 'bundle'
-      ? `${title} Color Palette Bundle, Website Theme Kits, Digital Brand Color Pack`
-      : `${title} Website and Brand Color Kit, Digital Palette, CSS Variables and Design Tokens`;
+      ? `${productTitle}, Website Theme Kits, Digital Brand Color Pack`
+      : `${productTitle}, Digital Palette, CSS Variables and Design Tokens`;
   const directTitle = offering === 'mini'
-    ? `${title} Mini Website Palette`
+    ? productTitle
     : offering === 'bundle'
-      ? `${title} Multi-Kit Color Bundle`
-      : `${title} Website & Brand Color Kit`;
+      ? productTitle
+      : productTitle;
   const storefrontTitle = offering === 'mini'
-    ? `${title} Starter Color Palette`
+    ? `${baseName} Starter Color Palette`
     : offering === 'bundle'
-      ? `${title} Theme Kit Bundle`
-      : `${title} Adaptive Color Kit`;
+      ? productTitle
+      : `${baseName} Adaptive Color Kit`;
   const etsyOpening = offering === 'mini'
-    ? `${title} is a lightweight digital palette for starting a website, blog, template, or brand direction.`
+    ? `${productTitle} is a lightweight digital palette for starting a website, blog, template, or brand direction.`
     : offering === 'bundle'
-      ? `${title} is a digital color palette bundle with multiple nested Theme Pack ZIPs for comparing and using several included theme kits.`
-      : `${title} is a digital website and brand color kit with CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, and preview references.`;
+      ? `${productTitle} is a digital color palette bundle with multiple nested Theme Pack ZIPs for comparing and using several included theme kits.`
+      : `${productTitle} is a digital ${productType.toLowerCase()} with CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, and preview references.`;
   const directSummary = offering === 'mini'
     ? `${shortDescription} This mini/freebie package is intentionally smaller than a full paid color kit.`
     : offering === 'bundle'
@@ -395,7 +548,7 @@ const buildMarketplaceDraftLines = ({
     : 'Access note: download the ZIP file, unzip it, and start with README.md for file guidance.';
 
   return [
-    '## Etsy Listing Draft',
+    '## Etsy Listing Copy',
     '',
     `Title: ${etsyTitle}`,
     '',
@@ -409,7 +562,7 @@ const buildMarketplaceDraftLines = ({
     'Suggested Etsy tags:',
     ...suggestedTags.slice(0, 13).map((tag) => `- ${tag}`),
     '',
-    '## Gumroad / Ko-fi Listing Draft',
+    '## Gumroad / Ko-fi Listing Copy',
     '',
     `Title: ${directTitle}`,
     '',
@@ -423,43 +576,43 @@ const buildMarketplaceDraftLines = ({
     '',
     accessNote,
     '',
-    '## Personal Storefront Listing Draft',
+    '## Personal Storefront Listing Copy',
     '',
     `Title: ${storefrontTitle}`,
     '',
     offering === 'mini'
-      ? `${title} is a compact starter palette for lightweight digital projects, early brand direction, and simple website color exploration.`
+      ? `${productTitle} is a compact starter palette for lightweight digital projects, early brand direction, and simple website color exploration.`
       : offering === 'bundle'
-        ? `${title} brings multiple coordinated theme kits together as nested Theme Pack ZIPs with preview assets and seller-ready listing notes.`
-        : `${title} is a flexible color system for websites, product interfaces, brand assets, and design handoff workflows.`,
+        ? `${productTitle} brings multiple coordinated theme kits together as nested Theme Pack ZIPs with preview assets and seller-ready listing notes.`
+        : `${productTitle} is a flexible color system for websites, product interfaces, brand assets, and design handoff workflows.`,
     '',
     'Compatibility and file summary:',
     ...compatibilityLines,
     '',
-    'Support and license note: see `SUPPORT.txt` and `LICENSE.txt` before publishing, sharing, or using the files in client work.',
+    'Support and license note: see `SUPPORT.txt` and `LICENSE.txt` for contact details, allowed uses, restrictions, and warranty terms.',
   ];
 };
 
 const buildShopListing = ({ product, offering, themes = [] }) => {
-  const title = humanizeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
+  const { baseName, productType, productTitle } = getProductTitleMetadata({ product, offering, themes });
   const sourceInfo = getThemeExportSourceInfo(themes[0] || {});
-  const individualShort = `${title} is a Website & Brand Color Kit exported from ${sourceInfo.shortDescriptor} for polished digital products, landing pages, and brand systems.`;
+  const individualShort = `${productTitle} is exported from ${sourceInfo.shortDescriptor} for polished digital products, landing pages, and brand systems.`;
   const individualLong = [
-    `${title} is a ready-to-use adaptive color kit for websites, product UI, launch pages, and brand systems.`,
+    `${productTitle} is a ready-to-use adaptive color kit for websites, product UI, launch pages, and brand systems.`,
     '',
     `${sourceInfo.modeLine} Includes CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes.`,
     '',
     'Use the mode folders for implementation, the combined files for system-wide references, and the preview assets for quick QA or shop listing visuals.',
   ].join('\n');
-  const bundleShort = `${title} is a multi-kit color palette bundle with nested Theme Pack ZIPs and root preview assets for comparing the included palettes.`;
+  const bundleShort = `${productTitle} includes nested Theme Pack ZIPs and root preview assets for comparing the included palettes.`;
   const bundleLong = [
-    `${title} includes multiple Apocapalette theme kits packaged as nested Theme Pack ZIP files.`,
+    `${productTitle} includes multiple Apocapalette theme kits packaged as nested Theme Pack ZIP files.`,
     '',
-    'Open each nested Theme Pack ZIP for that palette\'s README, mode files, CSS variables, JSON tokens, design-tool files, LibreOffice palettes, and previews. Use the root preview assets and listing docs to compare the included palettes before publishing your product page.',
+    'Open each nested Theme Pack ZIP for that palette\'s README, mode files, CSS variables, JSON tokens, design-tool files, LibreOffice palettes, and previews. Use the root preview assets and listing docs to compare the included palettes while preparing your product page.',
   ].join('\n');
-  const miniShort = `${title} is a lightweight starter palette with CSS, JSON, and preview artwork for quick website and brand direction.`;
+  const miniShort = `${productTitle} is a lightweight starter palette with CSS, JSON, and preview artwork for quick website and brand direction.`;
   const miniLong = [
-    `${title} is a small starter palette for websites, blogs, digital product concepts, and simple brand direction.`,
+    `${productTitle} is a small starter palette for websites, blogs, digital product concepts, and simple brand direction.`,
     '',
     'This mini/freebie package includes lightweight CSS variables, a five-color JSON reference, and preview artwork. It is smaller than a full Theme Pack and does not include full token, Figma/Penpot, or LibreOffice files.',
   ].join('\n');
@@ -474,10 +627,10 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
   const shortDescription = product.shortDescription
     || (offering === 'mini' ? miniShort : offering === 'bundle' ? bundleShort : individualShort);
   const titleVariants = [
-    `${title} Digital Color Palette`,
-    `${title} Website Color Kit`,
-    ...(offering === 'bundle' ? [`${title} Brand Palette Bundle`] : []),
-    ...(offering === 'mini' ? [`${title} Mini Website Palette`] : []),
+    `${baseName} Digital Color Palette`,
+    ...(offering === 'individual' ? [`${baseName} Website Color Kit`] : []),
+    ...(offering === 'bundle' ? [`${baseName} Brand Palette Bundle`] : []),
+    ...(offering === 'mini' ? [`${baseName} Starter Website Palette`] : []),
   ];
   const suggestedTags = buildListingTags(product, offering, themes);
   const includedLines = buildListingIncludedLines({ offering, themes, sourceInfo });
@@ -485,11 +638,11 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
   const compatibilityLines = buildListingCompatibilityLines(offering);
 
   return [
-    `# ${title}`,
+    `# ${productTitle}`,
     '',
     '## Suggested Listing Title',
     '',
-    title,
+    productTitle,
     '',
     'Optional title variants:',
     ...titleVariants.map((variant) => `- ${variant}`),
@@ -520,14 +673,16 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
     '',
     '## Suggested Image Alt Text',
     '',
-    ...buildListingAltTextLines(title, offering),
+    ...buildListingAltTextLines(baseName, offering),
     '',
     '## Buyer Note / Accessibility Note',
     '',
     ACCESSIBILITY_USAGE_NOTE,
     '',
     ...buildMarketplaceDraftLines({
-      title,
+      baseName,
+      productTitle,
+      productType,
       offering,
       shortDescription,
       suggestedTags,
@@ -539,11 +694,11 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
     '',
     '## Suggested Price',
     '',
-    product.price ? `Suggested price: ${product.price}` : 'Suggested price: add before publishing.',
+    product.price ? `Suggested price: ${product.price}` : 'Suggested price: set for your shop before listing.',
     '',
     '## Product Type',
     '',
-    PRODUCT_OFFERINGS[offering],
+    productType,
   ].join('\n');
 };
 
@@ -648,7 +803,7 @@ const buildCoverSwatches = (swatches, y = 820) => swatches.slice(0, 6).map((colo
 }).join('\n');
 
 const buildMarketplaceCoverSvg = ({ product, offering, themes }) => {
-  const title = humanizeName(product.title || PRODUCT_OFFERINGS[offering], PRODUCT_OFFERINGS[offering]);
+  const { baseName, productType, productTitle } = getProductTitleMetadata({ product, offering, themes });
   const primaryTheme = themes[0] || {};
   const sourceInfo = getThemeExportSourceInfo(primaryTheme);
   const miniPalette = offering === 'mini' ? (product.miniPalette || deriveMiniPalette(primaryTheme)) : null;
@@ -658,11 +813,7 @@ const buildMarketplaceCoverSvg = ({ product, offering, themes }) => {
   const primary = swatches[0] || '#6366f1';
   const secondary = swatches[1] || '#8b5cf6';
   const accent = swatches[2] || '#22d3ee';
-  const packageType = offering === 'mini'
-    ? 'Mini Website Palette'
-    : offering === 'bundle'
-      ? 'Multi-Kit Bundle'
-      : 'Website & Brand Color Kit';
+  const packageType = productType;
   const detailLine = offering === 'mini'
     ? 'CSS • JSON • Preview'
     : offering === 'bundle'
@@ -677,8 +828,8 @@ const buildMarketplaceCoverSvg = ({ product, offering, themes }) => {
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1200" height="1200" viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="marketplace-cover-title marketplace-cover-desc">
-  <title id="marketplace-cover-title">${escapeXml(title)} ${escapeXml(packageType)} marketplace cover</title>
-  <desc id="marketplace-cover-desc">Marketplace cover for ${escapeXml(title)}, a ${escapeXml(packageType)} with ${escapeXml(detailLine)}.</desc>
+  <title id="marketplace-cover-title">${escapeXml(productTitle)} marketplace cover</title>
+  <desc id="marketplace-cover-desc">Marketplace cover for ${escapeXml(baseName)}, a ${escapeXml(packageType)} with ${escapeXml(detailLine)}.</desc>
   <defs>
     <linearGradient id="marketplaceCoverBg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="${primary}"/>
@@ -692,7 +843,7 @@ const buildMarketplaceCoverSvg = ({ product, offering, themes }) => {
   <rect width="1200" height="1200" fill="url(#marketplaceCoverBg)"/>
   <rect x="72" y="72" width="1056" height="1056" rx="56" fill="#101827" fill-opacity="0.72" stroke="#ffffff" stroke-opacity="0.18" stroke-width="2" filter="url(#marketplaceCoverShadow)"/>
   <text x="132" y="180" fill="#ffffff" fill-opacity="0.78" font-family="Inter, system-ui" font-size="26" font-weight="900" letter-spacing="3">APOCAPALETTE</text>
-  <text x="132" y="285" fill="#ffffff" font-family="Inter, system-ui" font-size="76" font-weight="950">${escapeXml(title)}</text>
+  <text x="132" y="285" fill="#ffffff" font-family="Inter, system-ui" font-size="76" font-weight="950">${escapeXml(baseName)}</text>
   <text x="136" y="356" fill="#ffffff" fill-opacity="0.88" font-family="Inter, system-ui" font-size="34" font-weight="850">${escapeXml(packageType)}</text>
   <rect x="132" y="430" width="936" height="156" rx="34" fill="#ffffff" fill-opacity="0.1" stroke="#ffffff" stroke-opacity="0.16" stroke-width="1.5"/>
   <text x="172" y="494" fill="#ffffff" font-family="Inter, system-ui" font-size="30" font-weight="900">${escapeXml(detailLine)}</text>
@@ -704,7 +855,7 @@ const buildMarketplaceCoverSvg = ({ product, offering, themes }) => {
 };
 
 const buildBundleComparisonSvg = ({ product, themes }) => {
-  const title = humanizeName(product.title || PRODUCT_OFFERINGS.bundle, PRODUCT_OFFERINGS.bundle);
+  const { productTitle } = getProductTitleMetadata({ product, offering: 'bundle', themes });
   const displayedThemes = themes.slice(0, 6);
   const extraCount = Math.max(0, themes.length - displayedThemes.length);
   const rows = displayedThemes.map((theme, index) => {
@@ -725,8 +876,8 @@ const buildBundleComparisonSvg = ({ product, themes }) => {
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1600" height="900" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bundle-comparison-title bundle-comparison-desc">
-  <title id="bundle-comparison-title">${escapeXml(title)} bundle comparison</title>
-  <desc id="bundle-comparison-desc">Bundle Comparison preview for ${escapeXml(title)}, showing included theme names and compact swatch rows.</desc>
+  <title id="bundle-comparison-title">${escapeXml(productTitle)} bundle comparison</title>
+  <desc id="bundle-comparison-desc">Bundle Comparison preview for ${escapeXml(productTitle)}, showing included theme names and compact swatch rows.</desc>
   <defs>
     <linearGradient id="bundleComparisonBg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#111827"/>
@@ -736,7 +887,7 @@ const buildBundleComparisonSvg = ({ product, themes }) => {
   </defs>
   <rect width="1600" height="900" fill="url(#bundleComparisonBg)"/>
   <text x="96" y="104" fill="#ffffff" fill-opacity="0.72" font-family="Inter, system-ui" font-size="22" font-weight="900" letter-spacing="3">MULTI-KIT BUNDLE</text>
-  <text x="96" y="168" fill="#ffffff" font-family="Inter, system-ui" font-size="58" font-weight="950">${escapeXml(title)}</text>
+  <text x="96" y="168" fill="#ffffff" font-family="Inter, system-ui" font-size="58" font-weight="950">${escapeXml(productTitle)}</text>
   <text x="98" y="208" fill="#ffffff" fill-opacity="0.72" font-family="Inter, system-ui" font-size="22" font-weight="800">Bundle Comparison • Nested Theme Pack ZIPs • ${themes.length} included kit${themes.length === 1 ? '' : 's'}</text>
   ${rows}
   ${extraCount ? `<text x="136" y="846" fill="#ffffff" fill-opacity="0.74" font-family="Inter, system-ui" font-size="24" font-weight="850">+ ${extraCount} more included kit${extraCount === 1 ? '' : 's'} in this bundle</text>` : ''}
@@ -753,9 +904,9 @@ const addMarketplacePreviewAssets = (root, { product, themes, offering }) => {
 
 const addProductDocs = (root, { product, themes, offering }) => {
   root.file('README.md', buildReadme({ product, themes, offering }));
-  root.file('USAGE.txt', buildUsage(product));
-  root.file('LICENSE.txt', buildLicense(product));
-  root.file('SUPPORT.txt', buildSupport(product));
+  root.file('USAGE.txt', buildUsage({ product, themes, offering }));
+  root.file('LICENSE.txt', buildLicense({ product, themes, offering }));
+  root.file('SUPPORT.txt', buildSupport({ product, themes, offering }));
   root.file('shop-listing.md', buildShopListing({ product, offering, themes }));
   root.file('tags.txt', buildTags({ product, offering, themes }));
   addMarketplacePreviewAssets(root, { product, themes, offering });

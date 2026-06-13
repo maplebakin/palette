@@ -115,28 +115,81 @@ const expectMarketplaceListingSections = (listing) => {
   expect(listing).toContain('## Suggested Tags');
   expect(listing).toContain('## Suggested Image Alt Text');
   expect(listing).toContain('Please review contrast and accessibility in your final design context before publishing or sharing.');
-  expect(listing).toContain('## Etsy Listing Draft');
-  expect(listing).toContain('## Gumroad / Ko-fi Listing Draft');
-  expect(listing).toContain('## Personal Storefront Listing Draft');
+  expect(listing).toContain('## Etsy Listing Copy');
+  expect(listing).toContain('## Gumroad / Ko-fi Listing Copy');
+  expect(listing).toContain('## Personal Storefront Listing Copy');
 };
 
 const countOccurrences = (value, pattern) => (
   (String(value).match(new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length
 );
 
+const FORBIDDEN_BUYER_DOC_PATTERNS = [
+  /\[your support email\]/i,
+  /review before publishing/i,
+  /\bdraft\b/i,
+  /\binternal\b/i,
+  /placeholder/i,
+  /final-shop/i,
+];
+
+const expectBuyerFacingDocsReady = (zip, rootPath) => {
+  [
+    'README.md',
+    'USAGE.txt',
+    'LICENSE.txt',
+    'SUPPORT.txt',
+    'shop-listing.md',
+    'tags.txt',
+  ].forEach((path) => {
+    const contents = zip.files[`${rootPath}/${path}`];
+    expect(contents, `${rootPath}/${path} should exist`).toBeTruthy();
+    FORBIDDEN_BUYER_DOC_PATTERNS.forEach((pattern) => {
+      expect(contents, `${rootPath}/${path} should not contain ${pattern}`).not.toMatch(pattern);
+    });
+  });
+};
+
 const expectStandaloneBuyerDocs = (zip, rootPath, productTitle) => {
+  const readme = zip.files[`${rootPath}/README.md`];
+  const usage = zip.files[`${rootPath}/USAGE.txt`];
   const license = zip.files[`${rootPath}/LICENSE.txt`];
   const support = zip.files[`${rootPath}/SUPPORT.txt`];
 
+  expect(readme).toContain(`Open the extracted \`${rootPath}/\` folder.`);
+  expect(readme).toContain('## Product Overview');
+  expect(readme).toContain('## What You Get');
+  expect(readme).toContain('## Inside the ZIP');
+  expect(readme).toContain('## CSS Variables');
+  expect(readme).toContain('## JSON Tokens');
+  expect(readme).toContain('## Figma Tokens');
+  expect(readme).toContain('## Penpot Tokens');
+  expect(readme).toContain('## LibreOffice / OpenOffice Palette');
+  expect(readme).toContain('## Preview Files');
+  expect(readme).toContain('## License Summary');
+  expect(readme).toContain('## Support');
+  expect(readme).toContain('For support, contact streamthreadsystems@gmail.com.');
+  expect(readme).toContain('Made with Apocapalette.');
+
+  expect(usage).toContain('What you can use this kit for:');
+  expect(usage).toContain('What you may do:');
+  expect(usage).toContain('What you may not do:');
+  expect(usage).toContain('The kit is provided as-is, without warranty.');
+  expect(usage).toContain('For support, contact streamthreadsystems@gmail.com.');
+
   expect(license).toContain(`${productTitle} - License Terms`);
-  expect(license).toContain('Personal and commercial use is allowed in finished projects');
-  expect(license).toContain('You may edit, customize, recolor, and adapt the included colors and files for your own projects.');
-  expect(license).toContain('You may not resell, redistribute, sublicense, repackage, upload, or share the included files as a standalone palette, token pack, theme pack, or competing digital product.');
+  expect(license).toContain('Copyright (c) 2026 StreamThread Systems. All rights reserved.');
+  expect(license).toContain('Permission is granted to use this kit in personal and commercial finished projects');
+  expect(license).toContain('You may modify, adapt, recolor, and customize the included assets for your own finished projects.');
+  expect(license).toContain('You may not resell, redistribute, repackage, sublicense, upload, share, or claim the kit itself as your own product.');
+  expect(license).toContain('The kit is provided as-is, without warranty of any kind');
 
   expect(support).toContain(`Thank you for downloading ${productTitle}.`);
-  expect(support).toContain('For support, contact: [seller support email or shop contact link]');
+  expect(support).toContain('For support, contact: streamthreadsystems@gmail.com');
   expect(support).toContain('Please include your order number, platform, and a short description of the issue.');
   expect(support).toContain('Please review contrast and accessibility in your final design context before publishing or sharing.');
+
+  expectBuyerFacingDocsReady(zip, rootPath);
 };
 
 describe('product export helpers', () => {
@@ -191,13 +244,13 @@ describe('product export helpers', () => {
     expect(zip.files['hollys-light-blue/README.md']).toContain('Missing modes are not regenerated');
     expect(zip.files['hollys-light-blue/README.md']).toContain('- Hollys Light Blue');
     expect(zip.files['hollys-light-blue/README.md']).toContain('## How to Use This Pack');
-    expect(zip.files['hollys-light-blue/README.md']).toContain('Use the CSS variables for websites, apps, landing pages, and interface prototypes.');
-    expect(zip.files['hollys-light-blue/README.md']).toContain('Use the Figma/Penpot token files for design workflows and handoff.');
-    expect(zip.files['hollys-light-blue/README.md']).toContain('Use the LibreOffice palettes for document, drawing, and presentation color picking.');
-    expect(zip.files['hollys-light-blue/README.md']).toContain('Use preview images and swatch strips as quick visual references.');
+    expect(zip.files['hollys-light-blue/README.md']).toContain('Use `modes/<mode>/css/variables.css` for websites, apps, landing pages, and interface prototypes.');
+    expect(zip.files['hollys-light-blue/README.md']).toContain('Use `modes/<mode>/figma/tokens.json` for Figma token workflows and handoff.');
+    expect(zip.files['hollys-light-blue/README.md']).toContain('Use `.soc` files in each `libreoffice/` folder for LibreOffice/OpenOffice color palettes.');
+    expect(zip.files['hollys-light-blue/README.md']).toContain('Use the preview SVG files as quick visual references and listing image starting points.');
     expect(zip.files['hollys-light-blue/USAGE.txt']).not.toContain('Final shop license language should be reviewed before publishing.');
-    expect(zip.files['hollys-light-blue/USAGE.txt']).toContain('Please review contrast and accessibility in your final design context before publishing or sharing.');
-    expectStandaloneBuyerDocs(zip, 'hollys-light-blue', 'Hollys Light Blue');
+    expect(zip.files['hollys-light-blue/USAGE.txt']).toContain('Review contrast and accessibility in your final design context before publishing or sharing.');
+    expectStandaloneBuyerDocs(zip, 'hollys-light-blue', 'Hollys Light Blue Website & Brand Color Kit');
     const marketplaceCover = zip.files['hollys-light-blue/marketplace-preview/marketplace-cover.svg'];
     expect(marketplaceCover).toContain('<svg width="1200" height="1200" viewBox="0 0 1200 1200"');
     expect(marketplaceCover).toContain('role="img"');
@@ -221,9 +274,11 @@ describe('product export helpers', () => {
     expect(listing).toContain('- Websites, blogs, and landing pages');
     expect(listing).toContain('- css variables');
     expect(listing).toContain('Hollys Light Blue website and brand color kit preview with key palette swatches and hex values.');
-    expect(listing).toContain('Title: Hollys Light Blue Website and Brand Color Kit, Digital Palette, CSS Variables and Design Tokens');
+    expect(listing).toContain('Title: Hollys Light Blue Website & Brand Color Kit, Digital Palette, CSS Variables and Design Tokens');
     expect(listing).toContain('Title: Hollys Light Blue Website & Brand Color Kit');
     expect(listing).toContain('Title: Hollys Light Blue Adaptive Color Kit');
+    expect(listing).not.toContain('Website Brand Color Kit Website and Brand Color Kit');
+    expect(listing).not.toContain('Website & Brand Color Kit Website');
     expect(listing).toContain('Digital download: after purchase, download the ZIP file and open the included README before using the files. No physical product is shipped.');
     expect(listing).toContain('Compatibility and file summary:');
     expect(listing).toContain('- CSS custom properties for websites and apps.');
@@ -277,19 +332,60 @@ describe('product export helpers', () => {
     const support = zip.files['velvet-seance-website-brand-color-kit/SUPPORT.txt'];
     const marketplaceCover = zip.files['velvet-seance-website-brand-color-kit/marketplace-preview/marketplace-cover.svg'];
 
-    expect(readme).toContain('# Velvet Seance Website Brand Color Kit');
+    expect(readme).toContain('# Velvet Seance Website & Brand Color Kit');
     expect(readme).toContain('## How to Use This Pack');
     expect(readme).not.toContain('Velvet Sance');
-    expect(listing).toContain('Velvet Seance Website Brand Color Kit');
+    expect(listing).toContain('Velvet Seance Website & Brand Color Kit');
     expect(listing).not.toContain('Velvet Sance');
-    expect(license).toContain('Velvet Seance Website Brand Color Kit - License Terms');
-    expect(support).toContain('Thank you for downloading Velvet Seance Website Brand Color Kit.');
-    expect(marketplaceCover).toContain('Velvet Seance Website Brand Color Kit');
+    expect(listing).not.toContain('Velvet Seance Website Brand Color Kit Website and Brand Color Kit');
+    expect(license).toContain('Velvet Seance Website & Brand Color Kit - License Terms');
+    expect(support).toContain('Thank you for downloading Velvet Seance Website & Brand Color Kit.');
+    expect(marketplaceCover).toContain('Velvet Seance Website &amp; Brand Color Kit');
     expect(marketplaceCover).not.toContain('Velvet Sance');
     expect(workflowExports.addAllModeThemePackFiles).toHaveBeenCalledWith(expect.any(FolderMock), theme, {
       slug: 'velvet-seance-website-brand-color-kit',
       readmePath: 'theme-pack-README.md',
     });
+  });
+
+  it('keeps base name, product type, and product title separate for full product titles', async () => {
+    const theme = makeTheme('Beef Ritual');
+
+    await productExports.buildProductPackageArchive({
+      offering: 'individual',
+      product: {
+        ...product,
+        title: 'Beef Ritual Website & Brand Color Kit',
+        slug: 'beef-ritual',
+        shortDescription: '',
+        longDescription: '',
+        usageLicense: undefined,
+      },
+      themes: [theme],
+    });
+
+    const zip = zipInstances[0];
+    const readme = zip.files['beef-ritual/README.md'];
+    const usage = zip.files['beef-ritual/USAGE.txt'];
+    const license = zip.files['beef-ritual/LICENSE.txt'];
+    const support = zip.files['beef-ritual/SUPPORT.txt'];
+    const listing = zip.files['beef-ritual/shop-listing.md'];
+    const marketplaceCover = zip.files['beef-ritual/marketplace-preview/marketplace-cover.svg'];
+
+    expect(readme).toContain('# Beef Ritual Website & Brand Color Kit');
+    expect(readme).toContain('Website & Brand Color Kit');
+    expect(usage).toContain('Beef Ritual Website & Brand Color Kit - Usage and License Notes');
+    expect(license).toContain('Beef Ritual Website & Brand Color Kit - License Terms');
+    expect(support).toContain('Thank you for downloading Beef Ritual Website & Brand Color Kit.');
+    expect(listing).toContain('# Beef Ritual Website & Brand Color Kit');
+    expect(listing).toContain('Title: Beef Ritual Website & Brand Color Kit, Digital Palette, CSS Variables and Design Tokens');
+    expect(listing).toContain('Title: Beef Ritual Website & Brand Color Kit');
+    expect(listing).toContain('Title: Beef Ritual Adaptive Color Kit');
+    expect(listing).not.toContain('Beef Ritual Website Brand Color Kit Website and Brand Color Kit');
+    expect(listing).not.toContain('Beef Ritual Website & Brand Color Kit Website');
+    expect(listing).not.toContain('Beef Ritual Website & Brand Color Kit Website & Brand Color Kit');
+    expect(marketplaceCover).toContain('<title id="marketplace-cover-title">Beef Ritual Website &amp; Brand Color Kit marketplace cover</title>');
+    expect(marketplaceCover).toContain('Marketplace cover for Beef Ritual, a Website &amp; Brand Color Kit');
   });
 
   it('labels partial confirmed product docs without implying a full confirmed family', async () => {
@@ -394,9 +490,9 @@ describe('product export helpers', () => {
     expect(zip.files['starter-pair/README.md']).toContain('- Cobalt Chapel');
     expect(zip.files['starter-pair/README.md']).toContain('## How to Use This Pack');
     expect(zip.files['starter-pair/README.md']).toContain('Each included Theme Pack ZIP contains its own README and mode files.');
-    expect(zip.files['starter-pair/README.md']).toContain('Open each nested Theme Pack ZIP for that palette\'s full files.');
+    expect(zip.files['starter-pair/README.md']).toContain('Open the extracted product folder, then unzip each nested Theme Pack ZIP for that palette\'s files.');
     expect(zip.files['starter-pair/README.md']).toContain('Use the root previews and listing docs to compare the included palettes.');
-    expectStandaloneBuyerDocs(zip, 'starter-pair', 'Starter Pair');
+    expectStandaloneBuyerDocs(zip, 'starter-pair', 'Starter Pair Multi-Kit Bundle');
     const marketplaceCover = zip.files['starter-pair/marketplace-preview/marketplace-cover.svg'];
     const bundleComparison = zip.files['starter-pair/marketplace-preview/bundle-comparison.svg'];
     expect(marketplaceCover).toContain('<svg width="1200" height="1200" viewBox="0 0 1200 1200"');
@@ -408,8 +504,8 @@ describe('product export helpers', () => {
     expect(marketplaceCover).toContain('Beef Ritual • Cobalt Chapel');
     expect(bundleComparison).toContain('<svg width="1600" height="900" viewBox="0 0 1600 900"');
     expect(bundleComparison).toContain('role="img"');
-    expect(bundleComparison).toContain('<title id="bundle-comparison-title">Starter Pair bundle comparison</title>');
-    expect(bundleComparison).toContain('<desc id="bundle-comparison-desc">Bundle Comparison preview for Starter Pair, showing included theme names and compact swatch rows.</desc>');
+    expect(bundleComparison).toContain('<title id="bundle-comparison-title">Starter Pair Multi-Kit Bundle bundle comparison</title>');
+    expect(bundleComparison).toContain('<desc id="bundle-comparison-desc">Bundle Comparison preview for Starter Pair Multi-Kit Bundle, showing included theme names and compact swatch rows.</desc>');
     expect(bundleComparison).toContain('Bundle Comparison');
     expect(bundleComparison).toContain('Nested Theme Pack ZIPs');
     expect(bundleComparison).toContain('Beef Ritual');
@@ -423,9 +519,8 @@ describe('product export helpers', () => {
     expect(listing).toContain('- `cobalt-chapel-theme-pack-v1.zip` - Cobalt Chapel Theme Pack ZIP.');
     expect(listing).toContain('- Nested Theme Pack ZIP files for each included palette.');
     expect(listing).toContain('Starter Pair color palette bundle preview showing multiple included theme kits.');
-    expect(listing).toContain('Title: Starter Pair Color Palette Bundle, Website Theme Kits, Digital Brand Color Pack');
-    expect(listing).toContain('Title: Starter Pair Multi-Kit Color Bundle');
-    expect(listing).toContain('Title: Starter Pair Theme Kit Bundle');
+    expect(listing).toContain('Title: Starter Pair Multi-Kit Bundle, Website Theme Kits, Digital Brand Color Pack');
+    expect(listing).toContain('Title: Starter Pair Multi-Kit Bundle');
     expect(listing).toContain('Digital download: after purchase, download the bundle ZIP, then open each nested Theme Pack ZIP for the included palette files. No physical product is shipped.');
     expect(listing).toContain('Access note: download the bundle ZIP, then open each nested Theme Pack ZIP to access the files for each included palette.');
     expect(workflowExports.buildAllModeThemePackArchive).toHaveBeenCalledTimes(2);
@@ -469,7 +564,7 @@ describe('product export helpers', () => {
     expect(zip.files['mini-cobalt/README.md']).toContain('## How to Use This Pack');
     expect(zip.files['mini-cobalt/README.md']).toContain('Use the included CSS, JSON, and preview as a lightweight starter palette.');
     expect(zip.files['mini-cobalt/README.md']).toContain('This mini package is smaller than a full Theme Pack.');
-    expectStandaloneBuyerDocs(zip, 'mini-cobalt', 'Mini Cobalt');
+    expectStandaloneBuyerDocs(zip, 'mini-cobalt', 'Mini Cobalt Mini Website Palette');
     const marketplaceCover = zip.files['mini-cobalt/marketplace-preview/marketplace-cover.svg'];
     expect(marketplaceCover).toContain('<svg width="1200" height="1200" viewBox="0 0 1200 1200"');
     expect(marketplaceCover).toContain('role="img"');

@@ -15,6 +15,8 @@ Reusable checklist for turning a generated Apocapalette theme pack into a shop-r
 
 - [ ] ZIP root folder uses the expected theme slug.
 - [ ] `README.md` is present.
+- [ ] `LICENSE.txt` is present.
+- [ ] Support contact is present in buyer-facing docs and uses a real email/contact.
 - [ ] `tokens.json` is present.
 - [ ] `css/variables.css` is present.
 - [ ] `figma/tokens.json` is present.
@@ -36,7 +38,8 @@ Reusable checklist for turning a generated Apocapalette theme pack into a shop-r
 - [ ] Penpot token note is included.
 - [ ] LibreOffice `.soc` usage is included.
 - [ ] Preview file note is included.
-- [ ] License/usage placeholder or final terms are included.
+- [ ] Final license/usage terms are included.
+- [ ] Support contact uses the real seller contact.
 - [ ] Footer says `Made with Apocapalette`.
 
 ## Preview Image Checks
@@ -65,6 +68,7 @@ Reusable checklist for turning a generated Apocapalette theme pack into a shop-r
 - [ ] License allows the intended customer uses.
 - [ ] Resale/redistribution boundaries are explicit.
 - [ ] Any required attribution terms are clear.
+- [ ] Buyer-facing docs do not contain draft, placeholder, internal, review, or final-shop language.
 
 ## Final Release Checks
 

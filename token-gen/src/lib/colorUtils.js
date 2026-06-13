@@ -202,34 +202,6 @@ export const normalizeHex = (hex, fallback = '#111827') => {
 };
 
 /**
- * Parse RGBA string to RGB object
- * @param {string} rgba - RGBA color string like "rgba(255, 255, 255, 0.8)"
- * @returns {RGB|null} RGB values or null if parsing fails
- */
-const parseRgba = (rgba) => {
-  if (typeof rgba !== 'string') return null;
-
-  const match = rgba.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)$/);
-  if (!match) return null;
-
-  return {
-    r: parseInt(match[1], 10),
-    g: parseInt(match[2], 10),
-    b: parseInt(match[3], 10)
-  };
-};
-
-/**
- * Convert RGB object to hex string
- * @param {RGB} rgb - RGB values
- * @returns {string} Hex color string
- */
-const rgbToHex = (rgb) => {
-  const toHex = (value) => Math.min(255, Math.max(0, Math.round(value))).toString(16).padStart(2, '0');
-  return `#${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`;
-};
-
-/**
  * Safely converts hex to RGB object, with fallback for invalid inputs
  * @param {any} hex - Hex color string
  * @param {RGB} fallback - Fallback RGB values if conversion fails

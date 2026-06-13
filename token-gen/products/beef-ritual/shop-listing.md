@@ -1,32 +1,33 @@
-# Beef Ritual - Apocapalette Theme Pack
+# Beef Ritual Website & Brand Color Kit
 
 ## Product Title
 
-Beef Ritual - Apocapalette Theme Pack
+Beef Ritual Website & Brand Color Kit
 
 ## Short Description
 
-Beef Ritual is a dark, strange, high-contrast Apocapalette theme pack built for dramatic interfaces, game UI, occult dashboards, and product concepts that need a little heat under the floorboards.
+A dark, high-contrast website and brand color kit with CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palette support, and SVG previews.
 
 ## Long Description
 
-Beef Ritual is a complete Apocapalette theme pack built around a deep burnt-red base, electric cyan accents, and smoky dark surfaces. It is polished for designers, developers, and digital makers who want a ready-to-use color system instead of a loose pile of swatches.
+Beef Ritual is a complete Apocapalette color kit built around a deep burnt-red base, electric cyan accents, and smoky dark surfaces. It is designed for makers who want a ready-to-use visual system with a strong point of view instead of a loose pile of swatches.
 
-The pack includes CSS variables for web projects, structured JSON tokens, Figma-friendly token JSON, Penpot-compatible tokens, a LibreOffice/OpenOffice `.soc` palette, and preview SVGs for quick visual reference. Use it as a starting point for dark product UI, tabletop tools, game interfaces, experimental editorial pages, or any interface that should feel ritualistic, intense, and carefully controlled.
-
-It is weird enough to have a point of view, but organized enough to ship.
+The kit includes CSS variables for web projects, structured JSON tokens, Figma-friendly token JSON, Penpot-compatible tokens, a LibreOffice/OpenOffice `.soc` palette, usage notes, license terms, and preview SVGs for quick visual reference. Use it as a starting point for dark product UI, tabletop tools, game interfaces, experimental editorial pages, dashboards, or dramatic landing pages.
 
 ## What Is Included
 
-- Complete theme pack ZIP
+- Complete downloadable ZIP
 - Customer README
+- Usage notes
+- License terms
 - CSS variables
 - Canonical JSON tokens
 - Figma token JSON
 - Penpot-compatible token JSON
 - LibreOffice/OpenOffice `.soc` palette
-- Polished palette-card SVG preview
+- Palette-card SVG preview
 - Swatch-strip SVG reference
+- Marketplace/search tags
 
 ## Who It Is For
 
@@ -40,9 +41,9 @@ It is weird enough to have a point of view, but organized enough to ship.
 
 ## Usage and License Note
 
-Personal and commercial use is allowed for finished designs, prototypes, websites, apps, documents, and client work. Do not resell, redistribute, repackage, or claim the raw theme pack files as your own.
+Personal and commercial use is allowed for finished projects. Buyers may modify, adapt, recolor, and customize the included assets for their own work.
 
-Final shop license language should be reviewed before publishing.
+The kit itself may not be resold, redistributed, repackaged, shared, uploaded, or claimed as the buyer's own product. The kit is provided as-is, without warranty.
 
 ## Suggested Price
 

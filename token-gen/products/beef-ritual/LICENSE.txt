@@ -1,0 +1,11 @@
+Beef Ritual Website & Brand Color Kit - License Terms
+
+Copyright (c) 2026 StreamThread Systems. All rights reserved.
+
+Permission is granted to use the included Beef Ritual kit assets in personal and commercial projects, including websites, apps, prototypes, graphics, documents, presentations, games, dashboards, client work, and other finished designs.
+
+You may modify, adapt, recolor, and customize the included files, colors, and tokens for your own personal or commercial projects.
+
+You may not resell, redistribute, repackage, sublicense, upload, share, or claim the Beef Ritual kit itself as your own product. This restriction includes selling or distributing the raw files, modified raw files, token files, palette files, preview files, or a substantially similar repackaged kit as a standalone digital product, template bundle, palette pack, token pack, or asset library.
+
+No warranty is provided. The kit is provided "AS IS", without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, non-infringement, accessibility compliance, platform compatibility, or error-free operation. In no event shall the copyright holder be liable for any claim, damages, or other liability arising from the kit or its use.

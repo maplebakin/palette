@@ -930,7 +930,7 @@ export default function useAppController() {
       setStatusMessage('No saved palettes to export', 'warn');
       return;
     }
-    const { exportSavedPalettesJson } = await loadTokenExports?.();
+    const { exportSavedPalettesJson } = await loadTokenExports();
     exportSavedPalettesJson(paletteState.savedPalettes);
     setStatusMessage('Saved palettes exported', 'success');
   }, [canExport, paletteState.savedPalettes, setStatusMessage]);
@@ -1478,7 +1478,7 @@ export default function useAppController() {
 
   const exportGenericJson = useCallback(async () => {
     if (!canExport) return;
-    const { exportGenericJsonTokens } = await loadTokenExports?.();
+    const { exportGenericJsonTokens } = await loadTokenExports();
     exportGenericJsonTokens({
       finalTokens,
       themeName: displayThemeName,
@@ -1492,7 +1492,7 @@ export default function useAppController() {
 
   const exportWitchcraftJson = useCallback(async () => {
     if (!canExport) return;
-    const { exportWitchcraftJsonTokens } = await loadTokenExports?.();
+    const { exportWitchcraftJsonTokens } = await loadTokenExports();
     exportWitchcraftJsonTokens({
       finalTokens,
       themeName: displayThemeName,
@@ -1503,7 +1503,7 @@ export default function useAppController() {
 
   const exportFigmaTokensFile = useCallback(async () => {
     if (!canExport) return;
-    const { exportFigmaTokensJson } = await loadTokenExports?.();
+    const { exportFigmaTokensJson } = await loadTokenExports();
     exportFigmaTokensJson({
       finalTokens,
       tokenPrefix: paletteState.tokenPrefix,
@@ -1512,7 +1512,7 @@ export default function useAppController() {
 
   const exportStyleDictionaryFile = useCallback(async () => {
     if (!canExport) return;
-    const { exportStyleDictionaryJson } = await loadTokenExports?.();
+    const { exportStyleDictionaryJson } = await loadTokenExports();
     exportStyleDictionaryJson({
       finalTokens,
       tokenPrefix: paletteState.tokenPrefix,
@@ -1521,7 +1521,7 @@ export default function useAppController() {
 
   const exportCssVars = useCallback(async () => {
     if (!canExport) return;
-    const { exportCssVariablesFile } = await loadTokenExports?.();
+    const { exportCssVariablesFile } = await loadTokenExports();
     exportCssVariablesFile({
       themeMaster,
       themeName: displayThemeName,
@@ -1717,7 +1717,7 @@ export default function useAppController() {
 
   const exportUiThemeCss = useCallback(async () => {
     if (!canExport) return;
-    const { exportUiThemeCssFile } = await loadTokenExports?.();
+    const { exportUiThemeCssFile } = await loadTokenExports();
     exportUiThemeCssFile({
       uiTheme,
       themeClass,
@@ -1764,7 +1764,7 @@ export default function useAppController() {
       return;
     }
     try {
-      const { generateListingAssetsArchive } = await loadWorkflowExports?.();
+      const { generateListingAssetsArchive } = await loadWorkflowExports();
       await generateListingAssetsArchive({
         coverNode,
         swatchNode,
@@ -1818,7 +1818,7 @@ export default function useAppController() {
       return false;
     }
     try {
-      const { downloadAllModeThemePackArchive } = await loadWorkflowExports?.();
+      const { downloadAllModeThemePackArchive } = await loadWorkflowExports();
       const themePackData = {
         finalTokens,
         themeMaster,
@@ -1936,7 +1936,7 @@ export default function useAppController() {
       await new Promise((resolve) => setTimeout(resolve, 0));
       const tokenExporters = await loadTokenExports?.();
       const buildDesignTokenPayload = tokenExporters?.[['build', 'Pen', 'pot', 'ExportPayload'].join('')];
-      const { exportAllAssetsPack } = await loadWorkflowExports?.();
+      const { exportAllAssetsPack } = await loadWorkflowExports();
       const designTokenPayload = buildDesignTokenPayload?.({
         finalTokens,
         orderedStack,
@@ -1983,7 +1983,7 @@ export default function useAppController() {
     projectState.setProjectExporting(true);
     projectState.setProjectExportStatus('Preparing print assets…');
     try {
-      const { exportProjectPrintAssetsArchive } = await loadWorkflowExports?.();
+      const { exportProjectPrintAssetsArchive } = await loadWorkflowExports();
       const skipped = await exportProjectPrintAssetsArchive({
         projectName: projectContext.projectName || 'project',
         sections,
@@ -2070,7 +2070,7 @@ export default function useAppController() {
     try {
       const tokenExporters = await loadTokenExports?.();
       const buildDesignTokenPayload = tokenExporters?.[['build', 'Pen', 'pot', 'ExportPayload'].join('')];
-      const { downloadThemePackWithPrintArchive } = await loadWorkflowExports?.();
+      const { downloadThemePackWithPrintArchive } = await loadWorkflowExports();
       const designTokenPayload = buildDesignTokenPayload?.({
         finalTokens,
         orderedStack,

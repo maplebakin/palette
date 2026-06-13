@@ -82,7 +82,7 @@ describe('workflow export helpers', () => {
   beforeEach(() => {
     zipInstances.length = 0;
     vi.clearAllMocks();
-    global.fetch = vi.fn(async () => ({
+    globalThis.fetch = vi.fn(async () => ({
       arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
     }));
   });
