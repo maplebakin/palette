@@ -5,26 +5,28 @@ describe('app capabilities', () => {
     vi.unstubAllEnvs();
   });
 
-  it('enables private forge exports in dev', async () => {
+  it('enables the private forge in dev while keeping the Theme Pack public', async () => {
     vi.resetModules();
     vi.stubEnv('DEV', true);
     vi.stubEnv('VITE_PRIVATE_FORGE', '');
 
-    const { canExport, isPrivateForge } = await import('./capabilities.js');
+    const { canDownloadThemePack, canExport, isPrivateForge } = await import('./capabilities.js');
 
     expect(isPrivateForge).toBe(true);
     expect(canExport).toBe(true);
+    expect(canDownloadThemePack).toBe(true);
   });
 
-  it('disables exports for launched production play builds by default', async () => {
+  it('keeps the vetted Theme Pack public while broad exports stay private in production', async () => {
     vi.resetModules();
     vi.stubEnv('DEV', false);
     vi.stubEnv('VITE_PRIVATE_FORGE', '');
 
-    const { canExport, isPrivateForge } = await import('./capabilities.js');
+    const { canDownloadThemePack, canExport, isPrivateForge } = await import('./capabilities.js');
 
     expect(isPrivateForge).toBe(false);
     expect(canExport).toBe(false);
+    expect(canDownloadThemePack).toBe(true);
   });
 
   it('allows an explicit private forge production build', async () => {
@@ -32,9 +34,10 @@ describe('app capabilities', () => {
     vi.stubEnv('DEV', false);
     vi.stubEnv('VITE_PRIVATE_FORGE', 'true');
 
-    const { canExport, isPrivateForge } = await import('./capabilities.js');
+    const { canDownloadThemePack, canExport, isPrivateForge } = await import('./capabilities.js');
 
     expect(isPrivateForge).toBe(true);
     expect(canExport).toBe(true);
+    expect(canDownloadThemePack).toBe(true);
   });
 });

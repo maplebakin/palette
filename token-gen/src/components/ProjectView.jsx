@@ -111,6 +111,13 @@ function ProjectView({
   };
 
   const safeSections = Array.isArray(sections) ? sections : [];
+  const handleCreateNewProject = () => {
+    const hasProjectData = safeSections.length > 0 || (Array.isArray(project?.moodBoards) && project.moodBoards.length > 0);
+    if (hasProjectData && !window.confirm('Create a new project? This will replace the current project, including its saved sections and mood boards in this browser.')) {
+      return;
+    }
+    createNewProject();
+  };
   const hasCapturedData = (section) => {
     const hasTokens = section?.tokens && Object.keys(section.tokens).length > 0;
     const hasTokenSet = section?.tokenSet && typeof section.tokenSet === 'object';
@@ -174,7 +181,7 @@ function ProjectView({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <button onClick={createNewProject} className="btn-primary">New Project</button>
+              <button onClick={handleCreateNewProject} className="btn-primary">New Project</button>
               <input type="file" accept=".apocaproject.json" onChange={handleFileLoad} className="hidden" id="load-project-file" />
               <label htmlFor="load-project-file" className="btn-secondary cursor-pointer">Load Project</label>
               <input

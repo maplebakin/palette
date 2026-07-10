@@ -198,7 +198,10 @@ const MoodBoard = ({
                     <h4 className="font-semibold panel-text">{moodBoard.title}</h4>
                     <button
                       type="button"
-                      onClick={() => deleteMoodBoard(moodBoard.id)}
+                      onClick={() => {
+                        if (!window.confirm(`Delete "${moodBoard.title}"? This removes the saved mood board from this browser.`)) return;
+                        deleteMoodBoard(moodBoard.id);
+                      }}
                       className="text-xs p-1 rounded-full hover:bg-red-500/20 hover:text-red-500"
                       aria-label="Delete mood board"
                     >

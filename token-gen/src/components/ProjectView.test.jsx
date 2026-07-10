@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ProjectView from './ProjectView.jsx';
 import { PaletteContext } from '../context/PaletteContext.jsx';
@@ -69,6 +69,17 @@ const renderProjectView = (props = {}) => render(
 );
 
 describe('ProjectView export capability gating', () => {
+  it('confirms before replacing a non-empty project', () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderProjectView();
+
+    fireEvent.click(screen.getByRole('button', { name: /new project/i }));
+
+    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/replace the current project/i));
+    expect(projectValue.createNewProject).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
   it('keeps public Project Manager focused on saved kits without export controls', () => {
     renderProjectView();
 

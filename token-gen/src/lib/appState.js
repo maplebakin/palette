@@ -6,7 +6,7 @@ import {
 } from './colorUtils.js';
 import { orderedSwatchSpec } from './tokens.js';
 import { nestTokens } from './theme/paths.js';
-import { canExport } from './capabilities.js';
+import { canExport, canDownloadThemePack } from './capabilities.js';
 
 export const STORAGE_KEYS = {
   current: 'token-gen/current-palette',
@@ -18,17 +18,15 @@ const BASE_STAGE_DEFS = [
   { id: 'build', label: 'Refine' },
   { id: 'validate', label: 'Review' },
 ];
-const privatePrintTab = ['Print', 'assets'].join(' ');
+const packageTab = 'Package';
 const privateExportLabel = ['Ex', 'port'].join('');
 const privateExportsTab = ['Ex', 'ports'].join('');
 
-export const STAGE_DEFS = canExport
-  ? [
-    ...BASE_STAGE_DEFS,
-    { id: 'package', label: 'Package', tab: privatePrintTab },
-    { id: 'export', label: privateExportLabel, tab: privateExportsTab },
-  ]
-  : BASE_STAGE_DEFS;
+export const STAGE_DEFS = [
+  ...BASE_STAGE_DEFS,
+  ...(canDownloadThemePack ? [{ id: 'package', label: 'Package', tab: packageTab }] : []),
+  ...(canExport ? [{ id: 'export', label: privateExportLabel, tab: privateExportsTab }] : []),
+];
 
 export const PRESETS = [
   { name: 'Midnight Indigo', base: '#6366f1', mode: 'Monochromatic', dark: true },

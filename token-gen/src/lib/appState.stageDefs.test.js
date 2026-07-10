@@ -19,11 +19,11 @@ describe('stage definitions', () => {
       expect.objectContaining({ id: 'build', label: 'Refine' }),
       expect.objectContaining({ id: 'validate', label: 'Review' }),
       expect.objectContaining({ id: 'export', label: 'Export' }),
-      expect.objectContaining({ id: 'package', label: 'Package', tab: 'Print assets' }),
+      expect.objectContaining({ id: 'package', label: 'Package', tab: 'Package' }),
     ]));
   });
 
-  it('keeps package and export stages out of public play navigation', async () => {
+  it('keeps the public Package stage while excluding the private Export stage', async () => {
     vi.resetModules();
     vi.stubEnv('DEV', false);
     vi.stubEnv('VITE_PRIVATE_FORGE', '');
@@ -34,9 +34,9 @@ describe('stage definitions', () => {
       expect.objectContaining({ id: 'identity', label: 'Create' }),
       expect.objectContaining({ id: 'build', label: 'Refine' }),
       expect.objectContaining({ id: 'validate', label: 'Review' }),
+      expect.objectContaining({ id: 'package', label: 'Package', tab: 'Package' }),
     ]);
     expect(STAGE_DEFS).not.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'package' }),
       expect.objectContaining({ id: 'export' }),
     ]));
   });

@@ -32,6 +32,13 @@ const renderPackageStage = (props = {}) => render(
 );
 
 describe('PackageStage', () => {
+  it('keeps print packaging controls private by default', () => {
+    renderPackageStage({ onDownloadThemePack: vi.fn() });
+
+    expect(screen.queryByRole('checkbox', { name: /toggle print mode/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/print asset pack preview/i)).not.toBeInTheDocument();
+  });
+
   it('renders an optional theme pack download button', async () => {
     const onDownloadThemePack = vi.fn(async () => true);
 

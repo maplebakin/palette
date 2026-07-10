@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import PaletteWorkspace from './PaletteWorkspace.jsx';
 
 vi.mock('../../lib/capabilities.js', () => ({
+  canDownloadThemePack: true,
   isPrivateForge: true,
 }));
 
@@ -131,6 +132,7 @@ const createController = (overrides = {}) => ({
   applyMoodBoardSpec: vi.fn(),
   saveMoodBoardDraft: vi.fn(),
   canExport: true,
+  canDownloadThemePack: true,
   exportSingleMoodBoardFromProject: vi.fn(),
   exportAllMoodBoardsFromProject: vi.fn(),
   displayThemeName: 'Launch Theme',
@@ -197,11 +199,12 @@ describe('PaletteWorkspace', () => {
     expect(controller.handleExportProductPackage).toHaveBeenCalledWith({ offering: 'individual' });
   });
 
-  it('does not render Product Forge, Package, or Export when exports are unavailable', () => {
+  it('keeps the public Theme Pack while hiding Product Forge and broad exports', async () => {
     render(<PaletteWorkspace controller={createController({ canExport: false })} />);
 
     expect(screen.queryByTestId('product-forge-stage')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('package-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('export-stage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('listing-assets-canvas')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('package-stage')).toBeInTheDocument();
   });
 });

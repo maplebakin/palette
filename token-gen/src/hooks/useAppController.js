@@ -31,7 +31,11 @@ import {
 import { buildTheme } from '../lib/theme/engine.js';
 import { buildThemeCss, getThemeClassName, THEME_CLASSNAMES } from '../lib/themeStyles.js';
 import { buildSectionSnapshotFromPalette, toGeneratorMode } from '../lib/projectUtils.js';
-import { canExport as exportCapability, isPrivateForge } from '../lib/capabilities.js';
+import {
+  canDownloadThemePack as themePackCapability,
+  canExport as exportCapability,
+  isPrivateForge,
+} from '../lib/capabilities.js';
 import { buildPreviewPaletteRow, buildPreviewQuickEssentials, buildPreviewRoleTokens } from '../lib/previewTokens.js';
 import { useExportStore } from '../store/exportStore.js';
 import { usePaletteStore } from '../store/paletteStore.js';
@@ -44,10 +48,11 @@ const loadTokenExports = isPrivateForge
 const loadWorkflowExports = isPrivateForge
   ? () => import('../lib/exports/workflowExports.js')
   : null;
+const loadThemePackExports = () => import('../lib/exports/workflowExports.js');
 const loadMoodBoardExports = isPrivateForge
   ? () => import('../lib/exportMoodBoards.js')
   : null;
-const PRIVATE_PRINT_TAB = ['Print', 'assets'].join(' ');
+const PACKAGE_TAB = 'Package';
 const PRIVATE_EXPORT_TAB = ['Ex', 'ports'].join('');
 const PRIVATE_EXPORT_STAGE = ['Ex', 'port'].join('');
 
@@ -56,6 +61,7 @@ export default function useAppController() {
   const projectContext = useContext(ProjectContext);
   const isDev = import.meta.env.DEV;
   const canExport = exportCapability;
+  const canDownloadThemePack = themePackCapability;
   const isForgeMode = isPrivateForge;
   const isInternal = import.meta.env.VITE_INTERNAL === 'true';
 
@@ -267,7 +273,7 @@ export default function useAppController() {
   }, [uiState.headerOpen, uiState.setChaosMenuOpen, uiState.setOverflowOpen]);
 
   useEffect(() => {
-    if (!canExport && [PRIVATE_EXPORT_TAB, PRIVATE_PRINT_TAB].includes(uiState.activeTab)) {
+    if (!canExport && uiState.activeTab === PRIVATE_EXPORT_TAB) {
       uiState.setActiveTab('Quick view');
     }
   }, [canExport, uiState.activeTab, uiState.setActiveTab]);
@@ -285,7 +291,7 @@ export default function useAppController() {
         uiState.setCurrentStage('Create');
         return;
       }
-      if (uiState.activeTab === PRIVATE_PRINT_TAB && canExport) {
+      if (uiState.activeTab === PACKAGE_TAB && canDownloadThemePack) {
         uiState.setCurrentStage('Package');
         return;
       }
@@ -298,7 +304,7 @@ export default function useAppController() {
     updateStage();
     window.addEventListener('hashchange', updateStage);
     return () => window.removeEventListener('hashchange', updateStage);
-  }, [canExport, uiState.activeTab, uiState.view, uiState.setCurrentStage]);
+  }, [canDownloadThemePack, canExport, uiState.activeTab, uiState.view, uiState.setCurrentStage]);
 
   const buildSpecFromSection = useCallback((section) => {
     if (!section || typeof section !== 'object') return null;
@@ -886,20 +892,22 @@ export default function useAppController() {
   );
 
   const tabOptions = useMemo(() => (
-    canExport ? ['Quick view', 'Full system', PRIVATE_PRINT_TAB, PRIVATE_EXPORT_TAB]
-      : ['Quick view', 'Full system']
-  ), [canExport]);
+    [
+      'Quick view',
+      'Full system',
+      ...(canDownloadThemePack ? [PACKAGE_TAB] : []),
+      ...(canExport ? [PRIVATE_EXPORT_TAB] : []),
+    ]
+  ), [canDownloadThemePack, canExport]);
 
   const tabIds = useMemo(() => ({
     'Quick view': 'tab-quick',
     'Full system': 'tab-full',
-    [PRIVATE_PRINT_TAB]: 'tab-print',
+    [PACKAGE_TAB]: 'tab-package',
     [PRIVATE_EXPORT_TAB]: 'tab-exports',
   }), []);
 
-  const stageDefs = useMemo(() => (
-    canExport ? STAGE_DEFS : STAGE_DEFS.filter((stage) => stage.id !== 'export')
-  ), [canExport]);
+  const stageDefs = useMemo(() => STAGE_DEFS, []);
 
   const getTabId = useCallback(
     (tab) => tabIds[tab] || `tab-${tab.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`,
@@ -1014,6 +1022,9 @@ export default function useAppController() {
   }, [paletteState, serializePalette, setStatusMessage]);
 
   const clearSavedData = useCallback(() => {
+    if (!window.confirm('Clear saved palettes and the current palette from this browser? Project and mood board data will not be deleted.')) {
+      return;
+    }
     try {
       localStorage.removeItem(STORAGE_KEYS.saved);
       localStorage.removeItem(STORAGE_KEYS.current);
@@ -1812,13 +1823,13 @@ export default function useAppController() {
   ]);
 
   const handleDownloadThemePack = useCallback(async (selectedModes) => {
-    if (!canExport) return false;
+    if (!canDownloadThemePack) return false;
     if (typeof Blob === 'undefined') {
       notify('File export is not supported in this browser', 'error');
       return false;
     }
     try {
-      const { downloadAllModeThemePackArchive } = await loadWorkflowExports();
+      const { downloadAllModeThemePackArchive } = await loadThemePackExports();
       const themePackData = {
         finalTokens,
         themeMaster,
@@ -1846,7 +1857,7 @@ export default function useAppController() {
     }
   }, [
     currentTheme,
-    canExport,
+    canDownloadThemePack,
     displayThemeName,
     finalTokens,
     isDark,
@@ -2164,6 +2175,7 @@ export default function useAppController() {
   return {
     isDev,
     canExport,
+    canDownloadThemePack,
     isPrivateForge: isForgeMode,
     isInternal,
     isDark,

@@ -4,9 +4,9 @@ import ListingAssetsCanvas from '../ListingAssetsCanvas.jsx';
 import ValidateStage from '../stages/ValidateStage.jsx';
 import BuildStage from '../stages/BuildStage.jsx';
 import { StageNav } from '../stages/StageLayout.jsx';
-import { isPrivateForge } from '../../lib/capabilities.js';
+import { canDownloadThemePack, isPrivateForge } from '../../lib/capabilities.js';
 
-const PackageStage = isPrivateForge
+const PackageStage = canDownloadThemePack
   ? lazy(() => import('../stages/PackageStage.jsx'))
   : null;
 const ProductForgeStage = isPrivateForge
@@ -127,7 +127,7 @@ export default function PaletteWorkspace({ controller }) {
         isInternal={controller.isInternal}
       />
 
-      {controller.canExport && PackageStage && (
+      {controller.canDownloadThemePack && PackageStage && (
         <Suspense fallback={null}>
           <PackageStage
             activeTab={controller.uiState.activeTab}
@@ -139,7 +139,8 @@ export default function PaletteWorkspace({ controller }) {
             printAssetPack={controller.printAssetPack}
             canvaPrintHexes={controller.canvaPrintHexes}
             onDownloadThemePack={controller.handleDownloadThemePack}
-            canExport={controller.canExport}
+            canExport={controller.canDownloadThemePack}
+            showPrintTools={controller.canExport}
             variantStatus={controller.confirmedVariantStatus}
           />
         </Suspense>

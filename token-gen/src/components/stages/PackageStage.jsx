@@ -22,6 +22,7 @@ const PackageStage = ({
   canvaPrintHexes,
   onDownloadThemePack,
   canExport = Boolean(onDownloadThemePack),
+  showPrintTools = false,
   variantStatus,
 }) => {
   const availableModes = useMemo(
@@ -81,22 +82,24 @@ const PackageStage = ({
     <section
       id="tab-panel-2"
       role="tabpanel"
-      aria-labelledby={getTabId('Print assets')}
+      aria-labelledby={getTabId('Package')}
       className="space-y-4"
     >
       <>
         <div className="flex flex-wrap items-start gap-3 px-3 py-2 rounded-lg panel-surface-strong border">
-          <label className="flex items-center gap-2 text-xs font-semibold panel-muted">
-            <input
-              type="checkbox"
-              checked={printMode}
-              onChange={(e) => setPrintMode(e.target.checked)}
-              className="h-4 w-4"
-              style={{ accentColor: tokens.brand.accent }}
-              aria-label="Toggle print mode"
-            />
-            Print
-          </label>
+          {showPrintTools && (
+            <label className="flex items-center gap-2 text-xs font-semibold panel-muted">
+              <input
+                type="checkbox"
+                checked={printMode}
+                onChange={(event) => setPrintMode(event.target.checked)}
+                className="h-4 w-4"
+                style={{ accentColor: tokens.brand.accent }}
+                aria-label="Toggle print mode"
+              />
+              Print
+            </label>
+          )}
           {onDownloadThemePack && (
             <div className="flex min-w-[240px] flex-1 flex-col gap-1">
               <button
@@ -159,7 +162,7 @@ const PackageStage = ({
             </div>
           )}
         </div>
-        <div className="space-y-4">
+        {showPrintTools && <div className="space-y-4">
           {printMode ? (
             <div
               className="print:hidden p-6 rounded-2xl border shadow-sm panel-surface-soft backdrop-blur-sm"
@@ -231,7 +234,7 @@ const PackageStage = ({
               </button>
             </div>
           )}
-        </div>
+        </div>}
       </>
     </section>
   </StageSection>
