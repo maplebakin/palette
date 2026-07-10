@@ -1,20 +1,39 @@
-Apocapalette
+apocapalette
 dark theme
 design tokens
-CSS variables
-Figma tokens
-Penpot tokens
-LibreOffice palette
-OpenOffice palette
-game UI
-horror UI
+css variables
+figma tokens
+penpot tokens
+libreoffice palette
+game ui
+horror ui
 fantasy interface
 apocalypse palette
 red and cyan palette
 marketplace theme
 design system
-UI color palette
-dark UI
-TTRPG tools
+ui color palette
+dark ui
+ritual theme
+ttrpg tools
 dashboard design
-web design
+editorial web design
+beef theme
+occult ui
+gothic ui
+moody dashboard
+app interface
+saas ui
+portfolio design
+cyan palette
+red palette
+dark palette
+green palette
+website color kit
+brand color kit
+adaptive color system
+light mode palette
+dark mode palette
+pop mode palette
+web design palette
+brand kit

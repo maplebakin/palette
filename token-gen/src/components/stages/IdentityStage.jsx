@@ -117,11 +117,11 @@ const IdentityStage = ({
               </div>
               <div className="flex flex-col items-start gap-3 w-full lg:w-auto">
                 <div className="w-full">
-                  <div className="flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mx-2 px-2 lg:flex-wrap lg:overflow-visible lg:pb-0 lg:px-0 lg:mx-0">
+                  <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-start lg:justify-end">
                     <button
                       type="button"
                       onClick={saveCurrentPalette}
-                      className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold hover:opacity-90 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2 shrink-0 whitespace-nowrap"
+                      className="flex min-w-0 items-center justify-center gap-2 px-3 py-2 rounded-full text-xs font-bold hover:opacity-90 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2 whitespace-nowrap sm:w-auto"
                       style={{
                         backgroundColor: tokens.brand.primary,
                         color: primaryTextColor,
@@ -133,11 +133,11 @@ const IdentityStage = ({
                       <Save size={14} />
                       Save
                     </button>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border shrink-0 min-w-[180px]">
+                    <div className="flex min-w-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold panel-surface-strong sm:min-w-[180px]">
                       <FolderOpen size={14} className="panel-muted" aria-hidden />
                       <select
                         onChange={(e) => { loadSavedPalette(e.target.value); e.target.value = ''; }}
-                        className="bg-transparent outline-none text-xs"
+                        className="min-w-0 w-full bg-transparent text-xs outline-none"
                         defaultValue=""
                         aria-label="Load a saved palette"
                         disabled={storageAvailable !== true || storageCorrupt}
@@ -154,7 +154,7 @@ const IdentityStage = ({
                       <button
                         type="button"
                         onClick={exportSavedPalettes}
-                        className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border shrink-0 whitespace-nowrap hover:opacity-90 disabled:opacity-60"
+                        className="flex min-w-0 items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-bold panel-surface-strong whitespace-nowrap hover:opacity-90 disabled:opacity-60 sm:w-auto"
                         disabled={savedPalettes.length === 0}
                         title={savedPalettes.length === 0 ? 'No saved palettes to export' : 'Export saved palettes'}
                       >
@@ -165,7 +165,7 @@ const IdentityStage = ({
                     <button
                       type="button"
                       onClick={triggerSavedPalettesImport}
-                      className="flex items-center gap-2 px-3 py-2 rounded-full panel-surface-strong text-xs font-bold border shrink-0 whitespace-nowrap hover:opacity-90"
+                      className="flex min-w-0 items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-bold panel-surface-strong whitespace-nowrap hover:opacity-90 sm:w-auto"
                       title="Import saved palettes"
                     >
                       <Upload size={14} />

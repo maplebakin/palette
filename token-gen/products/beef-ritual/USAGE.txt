@@ -1,24 +1,19 @@
-Beef Ritual Website & Brand Color Kit - Usage Notes
+Beef Ritual Website & Brand Color Kit - Usage and License Notes
 
 What you can use this kit for:
-- Personal and commercial projects
-- Websites, apps, prototypes, games, dashboards, documents, decks, and client work
-- Figma, Penpot, CSS, JSON token, and LibreOffice/OpenOffice workflows
-- Modified designs and derivative finished work built with the colors, tokens, or included files
+- Personal websites, blogs, landing pages, and digital products.
+- Commercial websites, client projects, brand assets, templates, documents, and finished designs.
+- Design mockups, product UI concepts, social graphics, and launch assets.
 
 What you may do:
-- Use the kit assets in finished personal and commercial work
-- Modify, adapt, recolor, and customize the kit assets for your own projects
-- Use the kit in client work as part of a finished deliverable
+- Use the kit assets in personal and commercial finished projects.
+- Modify, adapt, recolor, and customize the assets for your own work.
 
 What you may not do:
-- Resell the kit itself
-- Redistribute or share the raw kit files
-- Repackage the kit as another digital product, template bundle, palette pack, token pack, or asset library
-- Upload the kit files to marketplaces, freebie sites, shared drives, or public repositories
-- Claim the Beef Ritual kit itself as your own product
+- Resell, redistribute, repackage, sublicense, upload, share, or claim the kit itself as your own product.
+- Sell or give away the raw files as a standalone palette, token pack, theme pack, or competing digital product.
 
 Warranty:
-The kit is provided as-is, without warranty of any kind. You are responsible for checking final contrast, accessibility, and implementation details in your own project context.
+The kit is provided as-is, without warranty. Review contrast and accessibility in your final design context before publishing or sharing.
 
 For support, contact streamthreadsystems@gmail.com.

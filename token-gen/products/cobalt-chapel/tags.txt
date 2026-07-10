@@ -1,20 +1,34 @@
-Apocapalette
+apocapalette
 cobalt palette
-blue UI
+blue ui
 design tokens
-CSS variables
-Figma tokens
-Penpot tokens
-LibreOffice palette
-OpenOffice palette
-SaaS theme
+css variables
+figma tokens
+penpot tokens
+libreoffice palette
+saas theme
 dashboard design
 developer tools
-AI tools
-fintech UI
+ai tools
+fintech ui
 portfolio design
 gallery website
-music branding
-nightlife branding
 sacred tech
-premium UI
+premium ui
+saas ui
+cobalt theme
+chapel theme
+app interface
+editorial web design
+blue palette
+teal palette
+gold palette
+dark palette
+website color kit
+brand color kit
+adaptive color system
+light mode palette
+dark mode palette
+pop mode palette
+web design palette
+brand kit

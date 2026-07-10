@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="marketplace-cover-title marketplace-cover-desc">
+  <title id="marketplace-cover-title">Cobalt Chapel Website &amp; Brand Color Kit marketplace cover</title>
+  <desc id="marketplace-cover-desc">Marketplace cover for Cobalt Chapel, a Website &amp; Brand Color Kit with CSS • JSON • Figma • Penpot • LibreOffice.</desc>
+  <defs>
+    <linearGradient id="marketplaceCoverBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2447ff"/>
+      <stop offset="55%" stop-color="#2d9fb3"/>
+      <stop offset="100%" stop-color="#d4a84f"/>
+    </linearGradient>
+    <filter id="marketplaceCoverShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="30" stdDeviation="30" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#marketplaceCoverBg)"/>
+  <rect x="72" y="72" width="1056" height="1056" rx="56" fill="#101827" fill-opacity="0.72" stroke="#ffffff" stroke-opacity="0.18" stroke-width="2" filter="url(#marketplaceCoverShadow)"/>
+  <text x="132" y="180" fill="#ffffff" fill-opacity="0.78" font-family="Inter, system-ui" font-size="26" font-weight="900" letter-spacing="3">APOCAPALETTE</text>
+  <text x="132" y="285" fill="#ffffff" font-family="Inter, system-ui" font-size="76" font-weight="950">Cobalt Chapel</text>
+  <text x="136" y="356" fill="#ffffff" fill-opacity="0.88" font-family="Inter, system-ui" font-size="34" font-weight="850">Website &amp; Brand Color Kit</text>
+  <rect x="132" y="430" width="936" height="156" rx="34" fill="#ffffff" fill-opacity="0.1" stroke="#ffffff" stroke-opacity="0.16" stroke-width="1.5"/>
+  <text x="172" y="494" fill="#ffffff" font-family="Inter, system-ui" font-size="30" font-weight="900">CSS • JSON • Figma • Penpot • LibreOffice</text>
+  <text x="172" y="548" fill="#ffffff" fill-opacity="0.76" font-family="Inter, system-ui" font-size="24" font-weight="750">Included modes: Light • Dark • Pop</text>
+  
+  <g>
+    <rect x="150" y="820" width="118" height="118" rx="26" fill="#2447ff" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2"/>
+    <text x="209" y="972" fill="#ffffff" fill-opacity="0.82" font-family="Inter, system-ui" font-size="18" font-weight="800" text-anchor="middle">#2447FF</text>
+  </g>
+<g>
+    <rect x="300" y="820" width="118" height="118" rx="26" fill="#2d9fb3" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2"/>
+    <text x="359" y="972" fill="#ffffff" fill-opacity="0.82" font-family="Inter, system-ui" font-size="18" font-weight="800" text-anchor="middle">#2D9FB3</text>
+  </g>
+<g>
+    <rect x="450" y="820" width="118" height="118" rx="26" fill="#d4a84f" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2"/>
+    <text x="509" y="972" fill="#ffffff" fill-opacity="0.82" font-family="Inter, system-ui" font-size="18" font-weight="800" text-anchor="middle">#D4A84F</text>
+  </g>
+<g>
+    <rect x="600" y="820" width="118" height="118" rx="26" fill="#101123" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2"/>
+    <text x="659" y="972" fill="#ffffff" fill-opacity="0.82" font-family="Inter, system-ui" font-size="18" font-weight="800" text-anchor="middle">#101123</text>
+  </g>
+<g>
+    <rect x="750" y="820" width="118" height="118" rx="26" fill="#18273a" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2"/>
+    <text x="809" y="972" fill="#ffffff" fill-opacity="0.82" font-family="Inter, system-ui" font-size="18" font-weight="800" text-anchor="middle">#18273A</text>
+  </g>
+<g>
+    <rect x="900" y="820" width="118" height="118" rx="26" fill="#c7c9d1" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2"/>
+    <text x="959" y="972" fill="#ffffff" fill-opacity="0.82" font-family="Inter, system-ui" font-size="18" font-weight="800" text-anchor="middle">#C7C9D1</text>
+  </g>
+  <text x="600" y="1102" fill="#ffffff" fill-opacity="0.72" font-family="Inter, system-ui" font-size="22" font-weight="800" text-anchor="middle">Digital download • Preview assets • Buyer docs</text>
+</svg>

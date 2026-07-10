@@ -1,5 +1,5 @@
-import { downloadFile } from './download';
-import { buildExportFilename } from './naming';
+import { downloadFile } from './download.js';
+import { buildExportFilename } from './naming.js';
 
 export const exportJson = (themeName, suffix = '', obj = {}, options = {}) => {
   const filename = buildExportFilename(themeName, suffix, 'json', options);
@@ -17,5 +17,5 @@ export const exportThemePack = ({ data, filename, mime = 'application/octet-stre
   downloadFile({ data, filename, mime });
 };
 
-export { downloadFile } from './download';
-export { sanitizeFilename, slugifyFilename, buildExportFilename } from './naming';
+export { downloadFile } from './download.js';
+export { sanitizeFilename, slugifyFilename, buildExportFilename } from './naming.js';

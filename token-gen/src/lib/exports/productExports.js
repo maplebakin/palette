@@ -111,6 +111,39 @@ const getProductTitleMetadata = ({ product = {}, offering = 'individual', themes
   };
 };
 
+const normalizeTermList = (...values) => values.flatMap((value) => {
+  if (Array.isArray(value)) return normalizeTermList(...value);
+  return String(value || '')
+    .split(/[\n,;]+/)
+    .map((term) => term.trim().toLowerCase())
+    .filter(Boolean);
+});
+
+const uniqueTerms = (terms) => Array.from(new Set(
+  terms
+    .map((term) => String(term || '').trim().toLowerCase())
+    .filter(Boolean)
+));
+
+const sentenceList = (items = []) => {
+  if (!items.length) return '';
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+};
+
+const formatTermDisplay = (term) => String(term || '')
+  .split(/\s+/)
+  .map((word, index) => {
+    const upper = word.toUpperCase();
+    if (['AI', 'UI', 'CSS', 'JSON', 'TTRPG', 'RPG', 'SAAS'].includes(upper)) return upper === 'SAAS' ? 'SaaS' : upper;
+    if (index > 0 && ['and', 'or', 'for', 'of', 'the', 'with'].includes(word)) return word;
+    return `${word.slice(0, 1).toUpperCase()}${word.slice(1)}`;
+  })
+  .join(' ');
+
+const displayTerms = (terms = []) => terms.map(formatTermDisplay);
+
 const productSlug = (product) => (
   slugifyFilename(product?.slug || product?.title || 'product', 'product')
 );
@@ -124,6 +157,198 @@ const themeLabel = (theme, fallback = 'Theme') => (
 );
 
 const THEME_MODE_ORDER = ['light', 'dark', 'pop'];
+
+const modeLabel = (mode) => (
+  mode ? `${mode[0].toUpperCase()}${mode.slice(1)}` : ''
+);
+
+const getThemeTextSource = ({ product = {}, themes = [], baseName = '' }) => [
+  baseName,
+  product.title,
+  product.shortDescription,
+  product.longDescription,
+  product.description,
+  product.themeNotes,
+  product.tags,
+  product.aestheticTags,
+  product.themeTags,
+  product.moodTags,
+  product.useCases,
+  product.useCaseTags,
+  ...themes.flatMap((theme) => [
+    theme?.displayThemeName,
+    theme?.name,
+    theme?.currentTheme?.name,
+    theme?.description,
+    theme?.notes,
+    theme?.tags,
+  ]),
+].filter(Boolean).join(' ').toLowerCase();
+
+const keywordTagRules = [
+  { pattern: /\b(s[eé]ance|occult|ritual|coven|witch|tarot|oracle|arcane|spirit|haunt)/i, tags: ['occult UI', 'gothic UI', 'fantasy interface', 'TTRPG tools', 'moody dashboard', 'editorial web design'] },
+  { pattern: /\b(gothic|goth|noir|shadow|midnight|grave|crypt|vampire)/i, tags: ['gothic UI', 'dark UI', 'moody dashboard', 'editorial web design'] },
+  { pattern: /\b(fantasy|myth|lore|dragon|dungeon|rpg|ttrpg|tabletop)/i, tags: ['fantasy interface', 'TTRPG tools', 'game UI'] },
+  { pattern: /\b(apocalypse|wasteland|doomsday|survival|horror|blood|beef)/i, tags: ['horror UI', 'game UI', 'dark UI', 'dashboard design'] },
+  { pattern: /\b(dashboard|admin|crm|analytics|operations)/i, tags: ['dashboard design', 'app interface', 'SaaS UI'] },
+  { pattern: /\b(editorial|magazine|portfolio|blog|publication)/i, tags: ['editorial web design', 'portfolio design'] },
+  { pattern: /\b(velvet|silk|plush|jewel|luxury)/i, tags: ['moody palette', 'editorial web design'] },
+];
+
+const colorKeywordTags = [
+  ['purple', 'purple palette'],
+  ['violet', 'purple palette'],
+  ['lavender', 'purple palette'],
+  ['indigo', 'indigo palette'],
+  ['blue', 'blue palette'],
+  ['cobalt', 'blue palette'],
+  ['cyan', 'cyan palette'],
+  ['teal', 'teal palette'],
+  ['green', 'green palette'],
+  ['red', 'red palette'],
+  ['crimson', 'red palette'],
+  ['rose', 'rose palette'],
+  ['pink', 'pink palette'],
+  ['orange', 'orange palette'],
+  ['amber', 'amber palette'],
+  ['gold', 'gold palette'],
+  ['black', 'dark palette'],
+  ['dark', 'dark palette'],
+];
+
+const hexToHue = (hex) => {
+  const clean = String(hex || '').replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(clean)) return null;
+  const r = parseInt(clean.slice(0, 2), 16) / 255;
+  const g = parseInt(clean.slice(2, 4), 16) / 255;
+  const b = parseInt(clean.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  if (delta === 0) return 0;
+  const hue = max === r
+    ? ((g - b) / delta) % 6
+    : max === g
+      ? (b - r) / delta + 2
+      : (r - g) / delta + 4;
+  return Math.round(hue * 60 + (hue < 0 ? 360 : 0));
+};
+
+const collectThemeHexValues = (themes = []) => themes.flatMap((theme) => {
+  const tokens = theme?.finalTokens || theme?.tokens || theme?.currentTheme?.tokens || {};
+  const values = [];
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    Object.values(node).forEach((value) => {
+      if (typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)) {
+        values.push(value);
+      } else if (value && typeof value === 'object') {
+        visit(value);
+      }
+    });
+  };
+  visit(tokens);
+  return values.slice(0, 24);
+});
+
+const deriveColorTags = (textSource, themes = []) => {
+  const keywordTags = colorKeywordTags
+    .filter(([keyword]) => new RegExp(`\\b${escapeRegExp(keyword)}\\b`, 'i').test(textSource))
+    .map(([, tag]) => tag);
+  const hueTags = collectThemeHexValues(themes)
+    .map(hexToHue)
+    .filter((hue) => hue !== null)
+    .map((hue) => {
+      if (hue >= 255 && hue <= 300) return 'purple palette';
+      if (hue > 210 && hue < 255) return 'blue palette';
+      if (hue > 170 && hue <= 210) return 'cyan palette';
+      if (hue > 130 && hue <= 170) return 'green palette';
+      if (hue >= 330 || hue <= 20) return 'red palette';
+      if (hue > 20 && hue <= 50) return 'orange palette';
+      return '';
+    })
+    .filter(Boolean);
+  return uniqueTerms([...keywordTags, ...hueTags]).slice(0, 4);
+};
+
+const deriveNameTags = (baseName) => normalizeTermList(baseName)
+  .flatMap((name) => name.split(/\s+/))
+  .filter((word) => word.length > 3 && !['website', 'brand', 'color', 'palette', 'theme', 'pack', 'kit', 'light', 'dark', 'mini', 'full', 'partial', 'mixed'].includes(word))
+  .slice(0, 3)
+  .map((word) => `${word} theme`);
+
+const deriveThemeTags = ({ product = {}, themes = [], baseName = '' }) => {
+  const textSource = getThemeTextSource({ product, themes, baseName });
+  const keywordTags = keywordTagRules.flatMap((rule) => (
+    rule.pattern.test(textSource) ? rule.tags : []
+  ));
+  return uniqueTerms([
+    ...deriveNameTags(baseName),
+    ...keywordTags,
+    ...deriveColorTags(textSource, themes),
+  ]);
+};
+
+const getProductCopyMetadata = ({ product = {}, offering = 'individual', themes = [] }) => {
+  const title = getProductTitleMetadata({ product, offering, themes });
+  const suppliedAestheticTags = normalizeTermList(product.aestheticTags, product.themeTags, product.moodTags);
+  const suppliedUseCaseTags = normalizeTermList(product.useCases, product.useCaseTags);
+  const productTags = normalizeTags(product.tags);
+  const derivedTags = deriveThemeTags({ product, themes, baseName: title.baseName });
+  const themeTags = uniqueTerms([
+    ...suppliedAestheticTags,
+    ...suppliedUseCaseTags,
+    ...derivedTags,
+  ]);
+  const useCaseTags = uniqueTerms([
+    ...suppliedUseCaseTags,
+    ...themeTags.filter((tag) => /ui|interface|dashboard|tools|design|website|app|game|ttrpg|editorial|portfolio/i.test(tag)),
+  ]).slice(0, 8);
+  const aestheticTags = uniqueTerms([
+    ...suppliedAestheticTags,
+    ...themeTags.filter((tag) => !suppliedUseCaseTags.includes(tag) && /palette|gothic|occult|fantasy|horror|dark|moody|editorial|theme/i.test(tag)),
+  ]).slice(0, 8);
+  return {
+    ...title,
+    productTags,
+    themeTags,
+    useCaseTags,
+    aestheticTags,
+    description: String(product.shortDescription || product.description || '').trim(),
+    longDescription: String(product.longDescription || '').trim(),
+    themeNotes: String(product.themeNotes || product.notes || '').trim(),
+  };
+};
+
+const firstParagraph = (value) => String(value || '').split(/\n\s*\n/)[0]?.trim() || '';
+
+const buildThemeOverview = ({ metadata, sourceInfo, offering }) => {
+  const provided = metadata.description || firstParagraph(metadata.longDescription) || metadata.themeNotes;
+  if (provided) return provided;
+  if (offering === 'bundle') {
+    return `${metadata.productTitle} collects coordinated Apocapalette theme kits for comparing palette directions, building storefront previews, and packaging multiple buyer-ready color systems together.`;
+  }
+  if (offering === 'mini') {
+    const style = sentenceList(displayTerms(metadata.aestheticTags.slice(0, 2)));
+    return `${metadata.productTitle} is a lightweight starter palette${style ? ` with a ${style} direction` : ''} for quick website, brand, and digital product concepts.`;
+  }
+  const style = sentenceList(displayTerms(metadata.aestheticTags.slice(0, 3)));
+  const uses = sentenceList(displayTerms(metadata.useCaseTags.slice(0, 3)));
+  return `${metadata.productTitle} is a buyer-ready color system${style ? ` with a ${style} direction` : ''}${uses ? ` for ${uses}` : ' for websites, product interfaces, and brand assets'}. It is exported from ${sourceInfo.shortDescriptor}.`;
+};
+
+const buildModeCoverageLines = (sourceInfo) => {
+  const labels = sourceInfo.modes.map(modeLabel);
+  const modeList = sentenceList(labels);
+  const hasMultipleModes = sourceInfo.modes.length > 1;
+  return [
+    sourceInfo.modeLine,
+    hasMultipleModes
+      ? `This is a multi-mode kit with separate ${modeList} mode folders. Each mode folder contains matching CSS, JSON, Figma, Penpot, LibreOffice/OpenOffice, and preview files for that mode.`
+      : `This kit includes the ${modeList || 'current'} mode folder with matching CSS, JSON, Figma, Penpot, LibreOffice/OpenOffice, and preview files.`,
+    '`combined/tokens.all-modes.json` and `combined/css/variables.all-modes.css` provide all included modes in one reference layer.',
+  ];
+};
 
 const buildHowToUseLines = (offering) => {
   if (offering === 'bundle') {
@@ -211,14 +436,14 @@ export const getThemeExportSourceInfo = (theme = {}) => {
 };
 
 const buildReadme = ({ product, themes, offering }) => {
-  const { baseName, productType, productTitle } = getProductTitleMetadata({ product, offering, themes });
+  const metadata = getProductCopyMetadata({ product, offering, themes });
+  const { baseName, productType, productTitle } = metadata;
   const slug = productSlug(product);
   const themeNames = themes.map((theme) => themeLabel(theme));
   const firstThemeInfo = getThemeExportSourceInfo(themes[0] || {});
   const firstThemeModes = firstThemeInfo.modes;
-  const intro = offering === 'individual'
-    ? product.shortDescription || `${productTitle} is exported from ${firstThemeInfo.shortDescriptor}.`
-    : product.shortDescription || `${productTitle} packaged from Apocapalette.`;
+  const intro = buildThemeOverview({ metadata, sourceInfo: firstThemeInfo, offering });
+  const modeCoverageLines = offering === 'individual' ? buildModeCoverageLines(firstThemeInfo) : [];
   const themePackLines = offering === 'mini'
     ? [
       '- `mini-palette.css` - lightweight CSS variables for the sample palette.',
@@ -230,6 +455,8 @@ const buildReadme = ({ product, themes, offering }) => {
       ...firstThemeModes.map((mode) => `- \`modes/${mode}/\` - ${firstThemeInfo.folderLineForMode(mode)} ${mode} mode tokens, CSS, design-tool files, LibreOffice palette, and previews.`),
       '- `combined/tokens.all-modes.json` - all included modes in one JSON reference.',
       '- `combined/css/variables.all-modes.css` - scoped CSS variables for all included modes.',
+      '- `marketplace-preview/marketplace-cover.svg` - square product preview artwork.',
+      '- `theme-pack-README.md` - technical theme-pack file guide.',
     ]
     : themes.map((theme) => {
       const info = getThemeExportSourceInfo(theme);
@@ -253,9 +480,15 @@ const buildReadme = ({ product, themes, offering }) => {
     productType,
     ...(offering === 'individual' ? [
       '',
-      '## Included Modes',
+      '## Mode Coverage',
       '',
-      firstThemeInfo.modeLine,
+      ...modeCoverageLines,
+    ] : []),
+    ...(metadata.themeTags.length ? [
+      '',
+      '## Theme Direction',
+      '',
+      `Useful direction tags: ${displayTerms(metadata.themeTags.slice(0, 8)).join(', ')}.`,
     ] : []),
     '',
     '## Source Theme Kit(s)',
@@ -390,14 +623,17 @@ const buildSupport = ({ product, offering, themes }) => [
 ].join('\n');
 
 const buildListingTags = (product, offering, themes = []) => {
+  const metadata = getProductCopyMetadata({ product, offering, themes });
   const offeringTags = offering === 'mini'
     ? ['mini palette', 'starter palette', 'website colors', 'brand colors']
     : offering === 'bundle'
       ? ['color palette bundle', 'brand kit bundle', 'website color kits', 'design token bundle']
       : ['website color kit', 'brand color kit', 'adaptive color system', 'design tokens'];
   return Array.from(new Set([
-    ...normalizeTags(product.tags),
+    ...metadata.productTags,
     ...offeringTags,
+    ...metadata.themeTags,
+    ...metadata.useCaseTags,
     ...buildModeTags(offering, themes),
     'css variables',
     'digital product colors',
@@ -405,9 +641,11 @@ const buildListingTags = (product, offering, themes = []) => {
   ].map((tag) => tag.toLowerCase())));
 };
 
-const buildSuggestedUses = (offering) => {
+const buildSuggestedUses = (offering, metadata = {}) => {
+  const suppliedUses = uniqueTerms(metadata.useCaseTags || []).map((tag) => `- ${formatTermDisplay(tag)}`);
   if (offering === 'mini') {
     return [
+      ...suppliedUses,
       '- Websites, blogs, and simple landing pages',
       '- Lightweight brand direction',
       '- Digital product starter concepts',
@@ -416,6 +654,7 @@ const buildSuggestedUses = (offering) => {
   }
 
   return [
+    ...suppliedUses,
     '- Websites, blogs, and landing pages',
     '- Digital products and app interfaces',
     '- Planners, templates, and brand kits',
@@ -514,6 +753,7 @@ const buildMarketplaceDraftLines = ({
   includedLines,
   suggestedUses,
   compatibilityLines,
+  modeCoverageLines,
 }) => {
   const etsyTitle = offering === 'mini'
     ? `${productTitle}, Digital Color Palette, CSS and JSON Starter Colors`
@@ -556,6 +796,7 @@ const buildMarketplaceDraftLines = ({
     '',
     'Buyer-friendly bullets:',
     ...includedLines,
+    ...(modeCoverageLines?.length ? ['', 'Mode and structure notes:', ...modeCoverageLines.map((line) => `- ${line}`)] : []),
     '',
     downloadNote,
     '',
@@ -594,15 +835,24 @@ const buildMarketplaceDraftLines = ({
 };
 
 const buildShopListing = ({ product, offering, themes = [] }) => {
-  const { baseName, productType, productTitle } = getProductTitleMetadata({ product, offering, themes });
+  const metadata = getProductCopyMetadata({ product, offering, themes });
+  const { baseName, productType, productTitle } = metadata;
   const sourceInfo = getThemeExportSourceInfo(themes[0] || {});
-  const individualShort = `${productTitle} is exported from ${sourceInfo.shortDescriptor} for polished digital products, landing pages, and brand systems.`;
+  const modeCoverageLines = offering === 'individual' ? buildModeCoverageLines(sourceInfo) : [];
+  const themeOverview = buildThemeOverview({ metadata, sourceInfo, offering });
+  const themeDirectionLine = metadata.themeTags.length
+    ? `Theme direction: ${displayTerms(metadata.themeTags.slice(0, 8)).join(', ')}.`
+    : '';
+  const individualShort = themeOverview;
   const individualLong = [
-    `${productTitle} is a ready-to-use adaptive color kit for websites, product UI, launch pages, and brand systems.`,
+    themeOverview,
+    ...(themeDirectionLine ? ['', themeDirectionLine] : []),
     '',
-    `${sourceInfo.modeLine} Includes CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes.`,
+    `${sourceInfo.modeLine} Includes CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, marketplace preview artwork, and usage notes.`,
     '',
-    'Use the mode folders for implementation, the combined files for system-wide references, and the preview assets for quick QA or shop listing visuals.',
+    sourceInfo.modes.length > 1
+      ? 'Use the dark, light, and pop mode folders for mode-specific implementation, the combined files for all-mode references, and the preview assets for quick QA or shop listing visuals.'
+      : 'Use the mode folder for implementation, the combined files for the included-mode reference, and the preview assets for quick QA or shop listing visuals.',
   ].join('\n');
   const bundleShort = `${productTitle} includes nested Theme Pack ZIPs and root preview assets for comparing the included palettes.`;
   const bundleLong = [
@@ -610,8 +860,9 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
     '',
     'Open each nested Theme Pack ZIP for that palette\'s README, mode files, CSS variables, JSON tokens, design-tool files, LibreOffice palettes, and previews. Use the root preview assets and listing docs to compare the included palettes while preparing your product page.',
   ].join('\n');
-  const miniShort = `${productTitle} is a lightweight starter palette with CSS, JSON, and preview artwork for quick website and brand direction.`;
+  const miniShort = themeOverview;
   const miniLong = [
+    themeOverview,
     `${productTitle} is a small starter palette for websites, blogs, digital product concepts, and simple brand direction.`,
     '',
     'This mini/freebie package includes lightweight CSS variables, a five-color JSON reference, and preview artwork. It is smaller than a full Theme Pack and does not include full token, Figma/Penpot, or LibreOffice files.',
@@ -621,8 +872,30 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
     : offering === 'bundle'
       ? bundleLong
       : individualLong;
+  const suppliedLong = String(product.longDescription || '').trim();
+  const suppliedLongAddendum = offering === 'mini'
+    ? [
+      `${productTitle} is a small starter palette for websites, blogs, digital product concepts, and simple brand direction.`,
+      'This mini/freebie package includes lightweight CSS variables, a five-color JSON reference, and preview artwork. It is smaller than a full Theme Pack and does not include full token, Figma/Penpot, or LibreOffice files.',
+    ]
+    : offering === 'bundle'
+      ? [
+        `${productTitle} includes multiple Apocapalette theme kits packaged as nested Theme Pack ZIP files.`,
+        'Open each nested Theme Pack ZIP for that palette\'s README, mode files, CSS variables, JSON tokens, design-tool files, LibreOffice palettes, and previews.',
+      ]
+      : [
+        `${sourceInfo.modeLine} Includes CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, marketplace preview artwork, and usage notes.`,
+        sourceInfo.modes.length > 1
+          ? 'Use the dark, light, and pop mode folders for mode-specific implementation, the combined files for all-mode references, and the preview assets for quick QA or shop listing visuals.'
+          : 'Use the mode folder for implementation, the combined files for the included-mode reference, and the preview assets for quick QA or shop listing visuals.',
+      ];
   const longDescription = product.longDescription
-    ? `${product.longDescription}\n\n${fallbackLong}`
+    ? [
+      suppliedLong,
+      ...(themeDirectionLine ? ['', themeDirectionLine] : []),
+      '',
+      ...suppliedLongAddendum,
+    ].join('\n')
     : fallbackLong;
   const shortDescription = product.shortDescription
     || (offering === 'mini' ? miniShort : offering === 'bundle' ? bundleShort : individualShort);
@@ -634,7 +907,7 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
   ];
   const suggestedTags = buildListingTags(product, offering, themes);
   const includedLines = buildListingIncludedLines({ offering, themes, sourceInfo });
-  const suggestedUses = buildSuggestedUses(offering);
+  const suggestedUses = buildSuggestedUses(offering, metadata);
   const compatibilityLines = buildListingCompatibilityLines(offering);
 
   return [
@@ -654,6 +927,12 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
     '## Long Description',
     '',
     longDescription,
+    ...(modeCoverageLines.length ? [
+      '',
+      '## Mode Structure',
+      '',
+      ...modeCoverageLines.map((line) => `- ${line}`),
+    ] : []),
     '',
     '## What\'s Included',
     '',
@@ -689,6 +968,7 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
       includedLines,
       suggestedUses,
       compatibilityLines,
+      modeCoverageLines,
       sourceInfo,
     }),
     '',
@@ -703,7 +983,8 @@ const buildShopListing = ({ product, offering, themes = [] }) => {
 };
 
 const buildTags = ({ product, offering, themes }) => {
-  const baseTags = normalizeTags(product.tags);
+  const metadata = getProductCopyMetadata({ product, offering, themes });
+  const baseTags = metadata.productTags;
   const modeTags = buildModeTags(offering, themes);
   const fullKitTags = offering === 'mini'
     ? []
@@ -714,6 +995,8 @@ const buildTags = ({ product, offering, themes }) => {
     ];
   const tags = [
     ...baseTags,
+    ...metadata.themeTags,
+    ...metadata.useCaseTags,
     'website color kit',
     'brand color kit',
     'adaptive color system',
@@ -769,10 +1052,6 @@ const buildMiniPreviewSvg = ({ product, theme, palette }) => {
   ${swatches}
 </svg>`;
 };
-
-const modeLabel = (mode) => (
-  mode ? `${mode[0].toUpperCase()}${mode.slice(1)}` : ''
-);
 
 const getThemeSwatches = (theme = {}, fallbackPalette = {}) => {
   const currentTheme = theme.currentTheme || theme;
@@ -920,7 +1199,8 @@ const addThemePreviewAssets = (root, theme, options = {}) => {
 
 const addThemePackZip = async (root, theme) => {
   const { blob, filename } = await buildAllModeThemePackArchive(theme);
-  root.file(filename, blob);
+  const data = typeof blob?.arrayBuffer === 'function' ? await blob.arrayBuffer() : blob;
+  root.file(filename, data);
 };
 
 export const buildProductPackageArchive = async ({

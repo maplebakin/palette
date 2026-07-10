@@ -1,4 +1,4 @@
-color palette
+color palette bundle
 design tokens
 theme pack
 ui design
@@ -18,3 +18,34 @@ cobalt chapel
 apocapalette
 commercial use
 starter bundle
+dark ui
+cobalt palette
+horror ui
+sacred tech
+ai tools
+ttrpg tools
+portfolio design
+strange theme
+systems theme
+starter theme
+occult ui
+gothic ui
+fantasy interface
+moody dashboard
+editorial web design
+app interface
+saas ui
+blue palette
+cyan palette
+teal palette
+red palette
+website color kit
+brand color kit
+adaptive color system
+light mode palette
+dark mode palette
+pop mode palette
+penpot tokens
+libreoffice palette
+web design palette
+brand kit

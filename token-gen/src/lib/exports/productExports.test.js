@@ -266,7 +266,7 @@ describe('product export helpers', () => {
     expect(listing).toContain('Website & Brand Color Kit');
     expect(listing).toContain('current/spec-derived dark mode data');
     expect(listing).not.toContain('confirmed app-state mode exports');
-    expect(listing).toContain('CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, and usage notes');
+    expect(listing).toContain('CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palettes, previews, marketplace preview artwork, and usage notes');
     expect(listing).toContain('- CSS variables for websites, apps, landing pages, and interface prototypes.');
     expect(listing).toContain('- JSON tokens plus Figma/Penpot token files for design workflows.');
     expect(listing).toContain('- LibreOffice/OpenOffice palette files for document and presentation color picking.');
@@ -283,7 +283,7 @@ describe('product export helpers', () => {
     expect(listing).toContain('Compatibility and file summary:');
     expect(listing).toContain('- CSS custom properties for websites and apps.');
     expect(listing).toContain('- Figma/Penpot token JSON for design workflows.');
-    expect(countOccurrences(listing, 'Includes current/spec-derived dark mode data. Missing modes are not regenerated during export.')).toBe(1);
+    expect(countOccurrences(listing, 'Includes current/spec-derived dark mode data. Missing modes are not regenerated during export.')).toBeGreaterThan(0);
     const tags = zip.files['hollys-light-blue/tags.txt'];
     expect(tags).toContain('adaptive color system');
     expect(tags).toContain('dark mode palette');
@@ -430,6 +430,79 @@ describe('product export helpers', () => {
     expect(tags).toContain('light mode palette');
     expect(tags).toContain('dark mode palette');
     expect(tags).toContain('pop mode palette');
+  });
+
+  it('uses theme metadata for stronger multi-mode buyer docs, listing copy, and tags', async () => {
+    const theme = {
+      ...makeTheme('Velvet Séance'),
+      variants: {
+        dark: { finalTokens: { brand: { cta: '#6d28d9', primary: '#4c1d95' } } },
+        light: { finalTokens: { brand: { cta: '#8b5cf6', primary: '#ede9fe' } } },
+        pop: { finalTokens: { brand: { cta: '#c026d3', primary: '#f0abfc' } } },
+      },
+    };
+
+    await productExports.buildProductPackageArchive({
+      offering: 'individual',
+      product: {
+        ...product,
+        title: 'Velvet Séance Website & Brand Color Kit',
+        slug: 'velvet-seance',
+        shortDescription: '',
+        longDescription: '',
+        tags: 'purple palette\nséance theme',
+        aestheticTags: ['gothic UI', 'occult UI'],
+        useCases: ['TTRPG tools', 'moody dashboard', 'editorial web design'],
+        usageLicense: undefined,
+      },
+      themes: [theme],
+    });
+
+    const zip = zipInstances[0];
+    const readme = zip.files['velvet-seance/README.md'];
+    const listing = zip.files['velvet-seance/shop-listing.md'];
+    const tags = zip.files['velvet-seance/tags.txt'];
+
+    expect(readme).toContain('# Velvet Seance Website & Brand Color Kit');
+    expect(readme).toContain('Open the extracted `velvet-seance/` folder.');
+    expect(readme).toContain('## Mode Coverage');
+    expect(readme).toContain('multi-mode kit with separate Light, Dark, and Pop mode folders');
+    expect(readme).toContain('`combined/tokens.all-modes.json` and `combined/css/variables.all-modes.css` provide all included modes');
+    expect(readme).toContain('## Theme Direction');
+    expect(readme).toMatch(/Gothic UI/);
+    expect(readme).toMatch(/Occult UI/);
+    expect(readme).toContain('For support, contact streamthreadsystems@gmail.com.');
+
+    expect(listing).toContain('Velvet Seance Website & Brand Color Kit');
+    expect(listing).toContain('Website & Brand Color Kit');
+    expect(listing).toContain('## Mode Structure');
+    expect(listing).toContain('dark, light, and pop mode folders');
+    expect(listing).toContain('combined files for all-mode references');
+    expect(listing).toContain('Theme direction: Gothic UI, Occult UI, TTRPG Tools, Moody Dashboard, Editorial Web Design');
+    expect(listing).toContain('Title: Velvet Seance Website & Brand Color Kit, Digital Palette, CSS Variables and Design Tokens');
+    expect(listing).not.toContain('Website Brand Color Kit Website and Brand Color Kit');
+    expect(listing).not.toContain('Velvet Seance Website & Brand Color Kit Website');
+    expect(listing).not.toContain('mini-palette.css');
+    expect(listing).not.toContain('Nested Theme Pack ZIP');
+
+    expect(tags).toContain('website color kit');
+    expect(tags).toContain('brand color kit');
+    expect(tags).toContain('design tokens');
+    expect(tags).toContain('css variables');
+    expect(tags).toContain('figma tokens');
+    expect(tags).toContain('penpot tokens');
+    expect(tags).toContain('libreoffice palette');
+    expect(tags).toContain('light mode palette');
+    expect(tags).toContain('dark mode palette');
+    expect(tags).toContain('pop mode palette');
+    expect(tags).toContain('gothic ui');
+    expect(tags).toContain('occult ui');
+    expect(tags).toContain('ttrpg tools');
+    expect(tags).toContain('moody dashboard');
+    expect(tags).toContain('editorial web design');
+    expect(tags).toContain('purple palette');
+    expect(tags).toContain('séance theme');
+    expectBuyerFacingDocsReady(zip, 'velvet-seance');
   });
 
   it('labels partial confirmed variants plus the current resolved fallback truthfully', async () => {

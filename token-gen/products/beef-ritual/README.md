@@ -1,78 +1,87 @@
 # Beef Ritual Website & Brand Color Kit
 
-Beef Ritual is a dark, high-contrast website and brand color kit built around a deep burnt-red base, electric cyan accents, and smoky dark surfaces. It is designed for dramatic interfaces, game UI, tabletop tools, occult dashboards, and product concepts that need a sharp visual identity.
+## Product Overview
+
+A dark, high-contrast website and brand color kit with CSS variables, JSON tokens, Figma/Penpot files, LibreOffice palette support, and SVG previews.
+
+## Product Type
+
+Website & Brand Color Kit
+
+## Mode Coverage
+
+Includes confirmed reviewed light, dark, pop modes only. Missing modes are not regenerated during export.
+This is a multi-mode kit with separate Light, Dark, and Pop mode folders. Each mode folder contains matching CSS, JSON, Figma, Penpot, LibreOffice/OpenOffice, and preview files for that mode.
+`combined/tokens.all-modes.json` and `combined/css/variables.all-modes.css` provide all included modes in one reference layer.
+
+## Theme Direction
+
+Useful direction tags: Dark UI, Horror UI, Ritual Theme, Red and Cyan Palette, Game UI, TTRPG Tools, Dashboard Design, Editorial Web Design.
+
+## Source Theme Kit(s)
+
+- Beef Ritual
 
 ## What You Get
 
-- `Beef-Ritual-Theme-Pack.zip` - the complete downloadable kit
-- `USAGE.txt` - plain-language usage guidance
-- `LICENSE.txt` - license terms for the kit
-- `shop-listing.md` - product listing copy
-- `tags.txt` - marketplace/search tags
-- `preview/palette-card.svg` - product preview artwork
-- `preview/swatch-strip.svg` - quick swatch reference
+- `README.md` - product overview.
+- `USAGE.txt` - usage and license notes.
+- `LICENSE.txt` - license terms.
+- `SUPPORT.txt` - support contact details.
+- `shop-listing.md` - marketplace listing copy.
+- `tags.txt` - marketplace/search tags.
+- `modes/light/` - confirmed reviewed light mode tokens, CSS, design-tool files, LibreOffice palette, and previews.
+- `modes/dark/` - confirmed reviewed dark mode tokens, CSS, design-tool files, LibreOffice palette, and previews.
+- `modes/pop/` - confirmed reviewed pop mode tokens, CSS, design-tool files, LibreOffice palette, and previews.
+- `combined/tokens.all-modes.json` - all included modes in one JSON reference.
+- `combined/css/variables.all-modes.css` - scoped CSS variables for all included modes.
+- `marketplace-preview/marketplace-cover.svg` - square product preview artwork.
+- `theme-pack-README.md` - technical theme-pack file guide.
 
 ## Inside the ZIP
 
-The ZIP includes:
+Open the extracted `beef-ritual/` folder. The product docs are at the top level, generated assets are organized by mode, and all-mode references live in `combined/`.
 
-- `README.md` - overview and quick-start guidance
-- `USAGE.txt` - plain-language usage guidance
-- `LICENSE.txt` - license terms for the kit
-- `tokens.json` - canonical JSON token export
-- `css/variables.css` - CSS custom properties for web projects
-- `figma/tokens.json` - nested token JSON for Figma token workflows
-- `penpot/tokens.json` - Penpot-friendly token JSON
-- `libreoffice/beef-ritual.soc` - LibreOffice/OpenOffice color palette
-- `preview/palette-card.svg` - visual summary of the kit
-- `preview/swatch-strip.svg` - quick swatch reference
-- `shop-listing.md` - product listing copy
-- `tags.txt` - marketplace/search tags
+## How to Use This Pack
 
-## Quick Start
-
-1. Open the extracted `beef-ritual/` folder.
-2. Use `css/variables.css` in web projects.
-3. Use `tokens.json`, `figma/tokens.json`, or `penpot/tokens.json` in design-token workflows.
-4. Import `libreoffice/beef-ritual.soc` into LibreOffice or OpenOffice when you need matching document colors.
-5. Review `LICENSE.txt` before sharing or publishing work that uses the kit.
+- Open the extracted product folder first.
+- Start with `README.md`, `USAGE.txt`, and `LICENSE.txt` for the product overview, usage notes, and license terms.
+- Use `modes/<mode>/css/variables.css` for websites, apps, landing pages, and interface prototypes.
+- Use `modes/<mode>/tokens.json` or `combined/tokens.all-modes.json` as JSON token references.
+- Use `modes/<mode>/figma/tokens.json` for Figma token workflows and handoff.
+- Use `modes/<mode>/penpot/tokens.json` for Penpot token workflows and handoff.
+- Use `modes/<mode>/libreoffice/*.soc` for LibreOffice/OpenOffice document, drawing, and presentation color picking.
+- Use preview files and swatch strips as quick visual references.
 
 ## CSS Variables
 
-Add `css/variables.css` to your project, then reference the generated custom properties in your styles.
-
-```css
-@import "./css/variables.css";
-
-.button {
-  background: var(--beef-brand-primary);
-  color: var(--beef-typography-text-body);
-}
-```
+Use `modes/<mode>/css/variables.css` for a single mode, or `combined/css/variables.all-modes.css` when you want all included modes in one CSS file.
 
 ## JSON Tokens
 
-Use `tokens.json` as the canonical source for automation, documentation, or custom token transforms.
+Use `modes/<mode>/tokens.json` for one mode, or `combined/tokens.all-modes.json` for an all-mode reference.
 
 ## Figma Tokens
 
-Use `figma/tokens.json` with your preferred Figma token workflow.
+Use `figma/tokens.json` files inside each mode folder or nested Theme Pack ZIP for Figma token workflows.
 
 ## Penpot Tokens
 
-Use `penpot/tokens.json` as the simplified Penpot-compatible token file for import and handoff.
+Use `penpot/tokens.json` files inside each mode folder or nested Theme Pack ZIP for Penpot token workflows.
 
-## LibreOffice Palette
+## LibreOffice / OpenOffice Palette
 
-Import `libreoffice/beef-ritual.soc` into LibreOffice or OpenOffice to use the kit colors in documents, drawings, and presentation assets.
+Use `.soc` files in each `libreoffice/` folder for LibreOffice/OpenOffice color palettes.
 
 ## Preview Files
 
-Use the SVG files in `preview/` as a quick visual reference, listing image source, or QA check when sharing the kit.
+Use the preview SVG files as quick visual references and listing image starting points.
 
 ## License Summary
 
-Personal and commercial use is allowed for finished projects. You may modify the kit assets for your own work. You may not resell, redistribute, repackage, share, or claim the Beef Ritual kit itself as your own product. The kit is provided as-is, without warranty. See `LICENSE.txt` for the full terms.
+Personal and commercial use is allowed for finished projects. You may modify the kit assets for your own work. You may not resell, redistribute, repackage, share, or claim the kit itself as your own product. The kit is provided as-is, without warranty. See `LICENSE.txt` for the full terms.
+
+## Support
 
 For support, contact streamthreadsystems@gmail.com.
 
