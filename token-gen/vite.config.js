@@ -8,6 +8,11 @@ const parsePort = (value) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 };
 
+const normalizeBasePath = (value) => {
+  if (!value) return '/';
+  return value.endsWith('/') ? value : `${value}/`;
+};
+
 const serverPort = parsePort(process.env.VITE_DEV_PORT) ?? 5173;
 const serverHost = process.env.VITE_DEV_HOST || 'localhost';
 const hmrHost = process.env.VITE_HMR_HOST;
@@ -27,7 +32,7 @@ const hmrConfig = hmrHost || hmrPort || hmrClientPort || hmrProtocol
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: process.env.VITE_BASE || '/',
+  base: normalizeBasePath(process.env.VITE_BASE),
   server: {
     host: serverHost,
     port: serverPort,

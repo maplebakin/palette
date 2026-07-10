@@ -21,10 +21,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Use Node.js 20
+      - name: Use Node.js 20.19
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19.0
           cache: npm
           cache-dependency-path: token-gen/package-lock.json
       - name: Install dependencies
@@ -38,7 +38,14 @@ jobs:
         run: npm run test
       - name: Build
         working-directory: ./token-gen
+        env:
+          VITE_BASE: /palette/
         run: npm run build
+      - name: Verify GitHub Pages asset paths
+        working-directory: ./token-gen
+        env:
+          VITE_BASE: /palette/
+        run: node scripts/verify-pages-build.mjs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
