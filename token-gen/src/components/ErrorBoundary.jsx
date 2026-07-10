@@ -48,7 +48,7 @@ export default class ErrorBoundary extends React.Component {
                 Reload app
               </button>
               <a
-                href={this.props.reportUrl || 'mailto:support@tokengen.app?subject=Token%20Gen%20Error'}
+                href={this.props.reportUrl || 'mailto:streamthreadsystems@gmail.com?subject=Apocapalette%20Error'}
                 className="px-4 py-2 rounded-lg border panel-outline panel-text font-semibold hover:opacity-90 active:scale-95 transition"
               >
                 Report issue

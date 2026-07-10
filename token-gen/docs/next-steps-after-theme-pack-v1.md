@@ -1,6 +1,6 @@
-# Next Steps After Theme Pack Export v1
+# Theme Pack Export v1 Follow-Up Status
 
-Concise handoff note after stabilizing Apocapalette Theme Pack Export v1.
+Concise status note after stabilizing Apocapalette Theme Pack Export v1 and converting the first product outputs into buyer-ready packages.
 
 ## Completed Milestone
 
@@ -16,25 +16,19 @@ Completed work includes:
 - Ignored generated `*theme-pack*.zip` artifacts.
 - Internal release note, Beef Ritual product copy, and reusable product checklist.
 
-## Next
+## Completed Follow-Up
 
-### 1. Deploy and Live Verification
+- Product Forge can now generate buyer-ready individual kits, bundles, and mini palettes with `README.md`, `USAGE.txt`, `LICENSE.txt`, `SUPPORT.txt`, `shop-listing.md`, `tags.txt`, marketplace preview SVGs, and mode-aware package structure.
+- Beef Ritual, Cobalt Chapel, and Strange Systems Starter Pair were regenerated from the current Product Forge path.
+- Fresh ZIP artifacts were validated with `unzip -t`.
+- Product folder docs now include license/support files and marketplace preview assets.
 
-- Deploy the current production build.
-- Verify the Package-stage **Download Theme Pack** button in a real browser.
-- Download a fresh live ZIP and inspect the archive contents.
-- Confirm production UI does not expose the broader dev-only export panel.
+## Remaining Release Work
 
-### 2. Beef Ritual Product Artifact Polish
-
-- Generate the final Beef Ritual ZIP from the live app or production-equivalent browser.
-- Compare final README and previews against `docs/beef-ritual-product-copy.md`.
-- Create final shop listing title, description, tags, price, and license copy.
-- Store final shop assets outside source control.
-
-### 3. PNG Preview Generation
-
-- Verify whether `preview/palette-card.png` and `preview/swatch-strip.png` generate in a live browser.
+- Deploy with `VITE_BASE=/palette/` for GitHub Pages.
+- Verify the public Package-stage **Download Theme Pack** button in a real browser after deployment.
+- Confirm production UI does not expose Product Forge, seller packaging, marketplace assets, or broader development export controls.
+- Convert generated SVG preview assets to PNG/JPG only if required by a marketplace.
 - If missing, determine whether the issue is browser support, canvas export behavior, or current rendering code.
 - Keep SVG previews as the required baseline; treat PNGs as optional until live behavior is confirmed.
 

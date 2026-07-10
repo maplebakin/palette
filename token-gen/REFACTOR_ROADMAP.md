@@ -1,8 +1,10 @@
-# 🔧 SURGICAL REFACTOR ROADMAP: APOCAPALETTE
+# Surgical Refactor Roadmap: Apocapalette
+
+Status: superseded planning note. The original `App.jsx` god-object refactor has largely been completed: `App.jsx` now delegates to `AppShell`, controller logic lives in `src/hooks/useAppController.js`, shared state is in Zustand stores, and stage/export UI has been split into components. Keep this file as historical context only; use the current source tree and tests as the source of truth.
 
 **Mission**: Transform App.jsx from a 2,722-line God Object into a clean, maintainable architecture.
 
-**Status**: Planning Phase - DO NOT EXECUTE YET
+**Original Status**: Planning Phase - DO NOT EXECUTE YET
 **Estimated Total Effort**: 12-16 hours across 4 phases
 **Safety Protocol**: Build and test after each phase
 

@@ -1,40 +1,39 @@
-# Token Gen User Guide
+# ApocaPalette User Guide
 
 ## Getting Started
-- Install: `npm install` then run `npm run dev` and open the provided localhost URL.
-- Core inputs: choose a base hex color, pick a harmony mode, toggle light/dark, and adjust the sliders for harmony spread, neutral depth, accent punch, or Apocalypse intensity (when applicable).
-- Name your theme or leave the auto label (e.g., "Analogous Light"); optionally set a token prefix for exports (e.g., `brand`).
 
-## Saving & Loading Palettes
-- Click **Save palette** to store the current configuration in your browser (localStorage). Up to 20 recent saves are kept.
-- Use the **Load saved…** dropdown to restore a palette; this rehydrates color, mode, toggles, sliders, and prefix.
-- Notes: saved palettes are browser-local; clearing storage removes them. When storage is blocked, a toast message will warn you.
+- Choose a base hex color, harmony mode, theme mode, and any fine-tuning values.
+- Review the generated preview, swatches, contrast checks, and color-vision previews.
+- Name the theme if useful; the token prefix is retained in palette configuration and private Forge workflows.
 
-## Exports & Integrations
-- Asset pack: SVG/PNG palette card + swatch strip + tokens JSON (Penpot-friendly) bundled as a `.tar`.
-- JSON formats:
-  - Penpot JSON (with handoff order and optional prefix)
-  - Generic JSON
-  - Witchcraft JSON (internal flag)
-  - **Figma Tokens JSON**
-  - **Style Dictionary JSON**
-- Print/PDF: enable **Print Mode** for CMYK-safe tokens and foil markers, then export PDF or assets. Clipboard/canvas exports require HTTPS or localhost.
-- If a browser API is unavailable (clipboard, storage, canvas/Blob), the app will warn you and disable related actions where possible.
+## Saving and Projects
 
-## Accessibility & Keyboard
-- Skip link jumps to main content; primary controls are keyboard-focusable.
-- Sliders, toggles, and harmony buttons expose ARIA labels and pressed states. Status messages (saves/exports) announce via `aria-live`.
-- Contrast diagnostics are live; verify custom palettes against WCAG if you adjust tokens heavily.
+- **Save** stores the current palette in this browser. Up to 20 saved palettes are kept.
+- **Load saved…** restores a saved palette configuration.
+- Project View captures palettes locally and can load an existing `.apocaproject.json` file.
+- Palette saves, projects, and saved mood boards are separate browser-local data. The public app does not currently provide project-file backup/export; keep imported project JSON elsewhere.
+
+## Public Theme Pack
+
+- Open the **Package** stage after reviewing a palette.
+- Download the vetted Theme Pack ZIP for the reviewed modes you select. It contains CSS variables, generic tokens JSON, Figma Tokens JSON, Penpot JSON, a LibreOffice/OpenOffice palette, README, and SVG previews.
+- Product Forge, SKU generation, marketplace assets, print/PDF, and broad developer export controls are private seller tools and are not available in the public app.
+- Downloads require browser Blob support. Clipboard and storage behavior depends on browser permissions.
+
+## Accessibility and Keyboard
+
+- Use the skip link to reach main content.
+- Controls expose labels, focus states, and pressed states where relevant.
+- Contrast diagnostics and color-vision previews support review, but final accessibility should always be checked in the target product.
+- `R` generates a random palette, `F` toggles fine tuning, and `H` toggles the header outside text inputs.
 
 ## FAQ
-- **Why did saving fail?** Your browser may block localStorage (private mode or policies). Try a standard window or allow storage.
-- **Where are my exports?** Check your browser downloads folder; some browsers require allowing multiple automatic downloads.
-- **Does it work offline?** Local functionality works once assets are cached, but first load and updates need network access.
-- **Can I customize token names?** Use the Token Prefix input; exports will include that prefix in supported formats.
 
-## Troubleshooting
-- If the UI fails to render, the built-in error screen offers a reload button. Persisting issues: run `npm run lint` and `npm test`.
-- For clipboard issues, ensure you are on HTTPS or localhost and allow clipboard permissions.
+- **Why did saving fail?** Browser storage may be blocked or full. The app will show a warning.
+- **Where is my Theme Pack?** Check the browser downloads folder; the browser may request download permission.
+- **Does it work offline?** No offline guarantee is made: the app has no service worker or account sync.
+- **Can I back up a project?** The public app can load project JSON but does not currently export one. Palette-save import/export is separate from Project View.
 
 ## Support
-- See `SUPPORT.md` for response expectations. When opening issues, include browser/OS, repro steps, and screenshots.***
+
+Contact streamthreadsystems@gmail.com with browser/OS, repro steps, and screenshots where possible. See `SUPPORT.md` for response expectations.

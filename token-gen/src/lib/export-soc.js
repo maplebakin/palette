@@ -27,7 +27,7 @@ const argv = yargs(hideBin(process.argv))
   })
   .option('out', {
     alias: 'o',
-    description: 'Output file or directory',
+    description: 'Output directory, or output .soc filename with --single-file',
     type: 'string',
     demandOption: true,
   })

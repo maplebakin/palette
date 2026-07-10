@@ -10,8 +10,8 @@ Internal release note for the completed theme pack export work.
 
 ## What Shipped
 
-- Production users can download the validated theme pack ZIP from the palette Package stage via **Download Theme Pack**.
-- The broader dev-only export panel remains gated; only the completed v1 ZIP export was exposed in production.
+- Production users can download the validated theme pack ZIP from the palette **Package** stage via **Download Theme Pack**.
+- Product Forge, seller packaging, marketplace assets, and the broader development export panel remain private; only the vetted Theme Pack flow is public.
 - Generated theme pack ZIPs are ignored with `token-gen/*theme-pack*.zip`.
 
 ## ZIP Contents
@@ -38,15 +38,13 @@ Each theme pack ZIP uses the theme slug as the root folder and includes:
 
 ## Product Polish
 
-- `README.md` was rewritten as a product-facing Markdown guide with file descriptions, usage notes, licensing placeholder, and a "Made with Apocapalette" footer.
+- `README.md` was rewritten as a product-facing Markdown guide with file descriptions, usage notes, license/support guidance, and a "Made with Apocapalette" footer.
 - `preview/palette-card.svg` was redesigned as a 1200x800 marketplace-ready preview with the theme name, Apocapalette label, tagline, swatches, token categories, and neutral scale.
 - `preview/swatch-strip.svg` remains a focused swatch reference.
 
 ## Verification
 
-- Full test suite passed after implementation: `npm test` reported 19 test files and 69 tests passing.
-- Production build passed after the Package-stage button was exposed: `npm run build`.
-- Build warnings were non-blocking and pre-existing in nature: stale Browserslist/baseline data, mixed static/dynamic import chunking, and main chunk size warning.
+- Release verification is recorded in the current release report and manifest; run `npm run test`, `npm run build`, and the GitHub Pages asset-path check before publishing.
 - A real `Beef Ritual` artifact was generated and inspected locally; the ZIP was valid and contained all required files. The artifact remains local and ignored.
 
 ## Intentionally Untouched
