@@ -28,6 +28,7 @@ Last checked: 2026-07-04
 ## Verification Completed
 
 - `unzip -t products/*/*.zip` passes for all generated product ZIPs.
+- `RELEASE_MANIFEST.json` records the archive checksums, generation dates, source baseline, and latest integrity result.
 - Buyer-facing product folders do not contain placeholder, draft, internal, TODO, or final-shop language.
 - Product package sizes are below Etsy's 20 MB per-file digital download limit.
 - Product package docs include support contact and license terms.

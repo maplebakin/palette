@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "archivePolicy": "Generated ZIP archives are validated locally and intentionally ignored by Git. Regenerate them from the recorded source before upload.",
+  "sourceCommit": "cde3753d6a1b4fa275cb4343d2f1863e2b00f91d",
+  "archives": [
+    {
+      "product": "Beef Ritual Website & Brand Color Kit",
+      "archive": "products/beef-ritual/Beef-Ritual-Website-Brand-Color-Kit.zip",
+      "generatedAt": "2026-07-04T12:56:17-04:00",
+      "sha256": "94be6a7928bc04ebcad61bba2397e32bec00bfe87dd51b3e144042375714b705",
+      "validation": {
+        "command": "unzip -t products/beef-ritual/Beef-Ritual-Website-Brand-Color-Kit.zip",
+        "result": "passed",
+        "validatedAt": "2026-07-10"
+      }
+    },
+    {
+      "product": "Cobalt Chapel Website & Brand Color Kit",
+      "archive": "products/cobalt-chapel/Cobalt-Chapel-Website-Brand-Color-Kit.zip",
+      "generatedAt": "2026-07-04T12:56:17-04:00",
+      "sha256": "2805827993d400e6e3ea8827d8d0c74374be48e7da3384e257833527f57c8470",
+      "validation": {
+        "command": "unzip -t products/cobalt-chapel/Cobalt-Chapel-Website-Brand-Color-Kit.zip",
+        "result": "passed",
+        "validatedAt": "2026-07-10"
+      }
+    },
+    {
+      "product": "Strange Systems Starter Pair",
+      "archive": "products/strange-systems-starter-pair/Strange-Systems-Starter-Pair.zip",
+      "generatedAt": "2026-07-04T12:56:17-04:00",
+      "sha256": "a5569aa8893feb4b87dcd75f7079ac1330021fd41dd7c683c373a6ea55f01a5a",
+      "validation": {
+        "command": "unzip -t products/strange-systems-starter-pair/Strange-Systems-Starter-Pair.zip",
+        "result": "passed",
+        "validatedAt": "2026-07-10"
+      }
+    }
+  ]
+}
