@@ -1,12 +1,31 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowUpRight, Sparkles } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Lock,
+  RefreshCcw,
+  Sparkles,
+  Unlock,
+} from 'lucide-react';
 import ForgeCta from './ForgeCta.jsx';
 import { BUNDLE, KIT_SEEDS, KITS } from '../data/kits.js';
-import { randomExplorationName } from '../data/nameBank.js';
+import { NAME_BANK, randomExplorationName } from '../data/nameBank.js';
 import { formatArtifactName } from '../lib/artifactNaming.js';
-import { buildTheme } from '../lib/theme/engine.js';
+import { isCustom } from '../lib/honestyPredicate.js';
 import { buildPreviewRoleTokens } from '../lib/previewTokens.js';
+import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
+import { buildTheme } from '../lib/theme/engine.js';
 
+const HARMONY_MODES = ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'];
+const DISPLAY_MODES = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'pop', label: 'Pop' },
+];
+const SCENES = [
+  { id: 'hero', label: 'Hero' },
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'shop', label: 'Shop' },
+];
 const EXPLORATION_SEEDS = [
   { baseColor: '#7f6bb3', mode: 'Analogous', themeMode: 'dark' },
   { baseColor: '#d48267', mode: 'Tertiary', themeMode: 'light' },
@@ -14,193 +33,567 @@ const EXPLORATION_SEEDS = [
   { baseColor: '#c4a24d', mode: 'Monochromatic', themeMode: 'dark' },
 ];
 
-const isHexColor = (value) => typeof value === 'string' && /^#[0-9a-f]{6,8}$/i.test(value);
+const isHexColor = (value) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
+const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
+
+const toSeedHex = (value) => {
+  const trimmed = String(value ?? '').trim();
+  const candidate = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+  if (/^#[0-9a-f]{3}$/i.test(candidate)) {
+    return `#${candidate.slice(1).split('').map((digit) => `${digit}${digit}`).join('')}`.toLowerCase();
+  }
+  return /^#[0-9a-f]{6}$/i.test(candidate) ? candidate.toLowerCase() : null;
+};
+
+const createPresetState = (kit) => {
+  const seed = KIT_SEEDS[kit.id];
+  return {
+    kitId: kit.id,
+    explorationName: '',
+    baseColor: seed.baseColor,
+    baseInput: seed.baseColor,
+    harmony: seed.mode,
+    themeMode: seed.themeMode,
+    hueNudge: 0,
+    satNudge: 0,
+    lockedSwatches: {},
+    swatchOverrides: {},
+    regenerateCount: 0,
+    userHasMutated: false,
+    isChaosMinted: false,
+    chaosIndex: 0,
+    confirmedModes: { [seed.themeMode]: true },
+  };
+};
+
+const createExplorationState = (seed, name, chaosIndex) => ({
+  kitId: null,
+  explorationName: name,
+  baseColor: seed.baseColor,
+  baseInput: seed.baseColor,
+  harmony: seed.mode,
+  themeMode: seed.themeMode,
+  hueNudge: 0,
+  satNudge: 0,
+  lockedSwatches: {},
+  swatchOverrides: {},
+  regenerateCount: 0,
+  userHasMutated: false,
+  isChaosMinted: true,
+  chaosIndex,
+  confirmedModes: { [seed.themeMode]: true },
+});
+
+const buildThemeForState = (state, name) => buildTheme({
+  name,
+  baseColor: state.baseColor,
+  mode: state.harmony,
+  themeMode: state.themeMode,
+  isDark: state.themeMode === 'dark',
+  accentHueShift: state.hueNudge,
+  accentSaturationShift: state.satNudge,
+});
+
+const getPaletteSwatches = (theme) => {
+  const generated = theme.orderedStack
+    .map(({ name, value }) => ({ name, color: value }))
+    .filter(({ color }) => isHexColor(color));
+  const fallback = [
+    { name: 'Primary', color: theme.tokens.brand?.primary },
+    { name: 'Secondary', color: theme.tokens.brand?.secondary },
+    { name: 'Accent', color: theme.tokens.brand?.accent },
+    { name: 'Surface', color: theme.tokens.cards?.['card-panel-surface'] },
+    { name: 'Text', color: theme.tokens.typography?.['text-body'] },
+    { name: 'CTA', color: theme.tokens.brand?.cta },
+  ].filter(({ color }) => isHexColor(color));
+  const seen = new Set();
+  return [...generated, ...fallback].filter(({ color }) => {
+    const key = color.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 12);
+};
+
+const getRenderedSwatches = (state, theme) => getPaletteSwatches(theme).map((swatch, index) => {
+  const locked = hasOwn(state.lockedSwatches, index);
+  return {
+    ...swatch,
+    color: locked
+      ? state.lockedSwatches[index]
+      : state.swatchOverrides[index] || swatch.color,
+    locked,
+  };
+});
+
+const regenerateSwatch = (color, index, iteration) => {
+  const hsl = hexToHsl(color);
+  const hueShift = 9 + ((index * 17 + iteration * 23) % 48);
+  const saturation = Math.max(8, Math.min(96, hsl.s + (index % 2 === 0 ? 5 : -4)));
+  const lightness = Math.max(8, Math.min(92, hsl.l + (index % 3 === 0 ? 3 : -3)));
+  return hslToHex(hsl.h + hueShift, saturation, lightness);
+};
+
+const markMutation = (state, patch) => ({
+  ...state,
+  ...patch,
+  userHasMutated: state.kitId ? true : state.userHasMutated,
+  swatchOverrides: {},
+});
+
+const PreviewScene = ({ scene, roles, swatches, artifactLabel }) => {
+  if (scene === 'dashboard') {
+    return (
+      <div className="playground-scene playground-dashboard-scene" style={{ backgroundColor: roles.surface }}>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="playground-kicker">Studio overview</p>
+            <h2 className="playground-scene-title">Good morning, Mira.</h2>
+            <p className="playground-scene-copy">A calm place to see what is moving through the collection.</p>
+          </div>
+          <span className="playground-scene-date">Tuesday · 09:41</span>
+        </div>
+        <div className="playground-metric-grid">
+          {[
+            ['Active pieces', '24'],
+            ['Saved signals', '08'],
+            ['New this week', '+12%'],
+          ].map(([label, value]) => (
+            <div key={label} className="playground-metric" style={{ borderColor: roles.border }}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </div>
+          ))}
+        </div>
+        <div className="playground-activity" style={{ borderColor: roles.border }}>
+          <div className="flex items-center justify-between gap-3">
+            <span className="playground-kicker">Recent movement</span>
+            <span className="text-xs opacity-70">{artifactLabel}</span>
+          </div>
+          {['A new field note was added', 'Three colors were approved', 'The evening edit was shared'].map((item, index) => (
+            <div key={item} className="playground-activity-row" style={{ borderColor: roles.border }}>
+              <span className="playground-activity-dot" style={{ backgroundColor: swatches[index]?.color || roles.cta }} />
+              <span>{item}</span>
+              <span className="ml-auto text-xs opacity-60">{index + 1}h</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (scene === 'shop') {
+    return (
+      <div className="playground-scene playground-shop-scene" style={{ backgroundColor: roles.surface }}>
+        <div className="flex items-center justify-between gap-3">
+          <span className="playground-kicker">Field notes / 04</span>
+          <span className="text-xs font-semibold opacity-70">Limited run</span>
+        </div>
+        <div className="playground-shop-grid">
+          <div className="playground-product-art" style={{ background: `linear-gradient(145deg, ${roles.cta}, ${roles.accent}, ${roles.secondaryAction})` }}>
+            <div className="playground-product-art-inner">
+              <span>AP</span>
+              <strong>Afterlight</strong>
+              <small>Color study no. 04</small>
+            </div>
+          </div>
+          <div className="flex flex-col justify-center">
+            <p className="playground-kicker">The current edit</p>
+            <h2 className="playground-scene-title">Objects for slow mornings.</h2>
+            <p className="playground-scene-copy">A considered set of small things, chosen for the way they sit together.</p>
+            <div className="mt-5 flex items-center gap-3">
+              <button type="button" className="playground-scene-button" style={{ backgroundColor: roles.cta, color: roles.ctaForeground }}>
+                View the edit
+                <ArrowUpRight size={14} aria-hidden="true" />
+              </button>
+              <span className="text-sm font-bold">$48</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="playground-scene playground-hero-scene" style={{ backgroundColor: roles.surface }}>
+      <div className="playground-hero-copy">
+        <p className="playground-kicker">A living collection of useful beauty</p>
+        <h2 className="playground-scene-title playground-hero-title">Explore the collection.</h2>
+        <p className="playground-scene-copy">
+          Pieces with a pulse, gathered for rooms, rituals, and the quiet pleasure of finding the right thing.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <button type="button" className="playground-scene-button" style={{ backgroundColor: roles.cta, color: roles.ctaForeground }}>
+            Browse the edit
+            <ArrowUpRight size={14} aria-hidden="true" />
+          </button>
+          <span className="text-xs font-semibold opacity-70">Curated weekly · made to linger</span>
+        </div>
+      </div>
+      <div className="playground-hero-colorfield" style={{ background: `linear-gradient(145deg, ${roles.cta}, ${roles.accent}, ${roles.secondaryAction})` }}>
+        <div className="playground-colorfield-label">
+          <span>Now showing</span>
+          <strong>{artifactLabel}</strong>
+        </div>
+        <div className="playground-colorfield-swatches">
+          {swatches.slice(0, 5).map(({ color, name }) => (
+            <span key={`${name}-${color}`} style={{ backgroundColor: color }} title={name} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const TastingRoom = () => {
-  const [selection, setSelection] = useState(() => ({
-    kit: KITS[0],
-    explorationName: '',
-    seed: KIT_SEEDS[KITS[0].id],
-  }));
+  const [playground, setPlayground] = useState(() => createPresetState(KITS[0]));
+  const [showTuning, setShowTuning] = useState(false);
+  const [scene, setScene] = useState('hero');
 
-  const artifactName = formatArtifactName(selection);
-  const theme = useMemo(() => buildTheme({
-    ...selection.seed,
-    name: artifactName,
-  }), [artifactName, selection.seed]);
-  const previewRoles = useMemo(
-    () => buildPreviewRoleTokens(theme.tokens, selection.seed.themeMode),
-    [selection.seed.themeMode, theme.tokens],
+  const kit = playground.kitId ? KITS.find((candidate) => candidate.id === playground.kitId) : null;
+  const custom = isCustom({
+    userHasMutated: playground.userHasMutated,
+    isChaosMinted: playground.isChaosMinted,
+  });
+  const artifactLabel = playground.isChaosMinted
+    ? formatArtifactName({ explorationName: playground.explorationName })
+    : custom && kit
+      ? `Custom exploration · inspired by ${kit.name}`
+      : formatArtifactName({ kit });
+  const theme = useMemo(
+    () => buildThemeForState(playground, artifactLabel),
+    [artifactLabel, playground],
   );
-  const previewSwatches = useMemo(() => {
-    const generated = theme.orderedStack
-      .map(({ name, value }) => ({ name, color: value }))
-      .filter(({ color }) => isHexColor(color));
-    const fallback = [
-      { name: 'Primary', color: theme.tokens.brand?.primary },
-      { name: 'Secondary', color: theme.tokens.brand?.secondary },
-      { name: 'Accent', color: theme.tokens.brand?.accent },
-      { name: 'Surface', color: theme.tokens.cards?.['card-panel-surface'] },
-      { name: 'Text', color: theme.tokens.typography?.['text-body'] },
-      { name: 'CTA', color: theme.tokens.brand?.cta },
-    ].filter(({ color }) => isHexColor(color));
-    const seen = new Set();
-    return [...generated, ...fallback].filter(({ color }) => {
-      const key = color.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).slice(0, 12);
-  }, [theme]);
+  const previewRoles = useMemo(
+    () => buildPreviewRoleTokens(theme.tokens, playground.themeMode),
+    [playground.themeMode, theme.tokens],
+  );
+  const swatches = useMemo(
+    () => getRenderedSwatches(playground, theme),
+    [playground, theme],
+  );
 
-  const selectKit = (kit) => {
-    setSelection({
-      kit,
-      explorationName: '',
-      seed: KIT_SEEDS[kit.id],
+  const selectPreset = (id) => {
+    const nextKit = KITS.find((candidate) => candidate.id === id);
+    if (nextKit) setPlayground(createPresetState(nextKit));
+  };
+
+  const mintChaos = () => {
+    setPlayground((current) => {
+      const nextIndex = current.chaosIndex + 1;
+      const seed = EXPLORATION_SEEDS[nextIndex % EXPLORATION_SEEDS.length];
+      const name = randomExplorationName(() => ((nextIndex % NAME_BANK.length) + 0.5) / NAME_BANK.length);
+      return createExplorationState(seed, name, nextIndex);
     });
   };
 
-  const startExploration = () => {
-    const index = Math.floor(Math.random() * EXPLORATION_SEEDS.length);
-    setSelection({
-      kit: null,
-      explorationName: randomExplorationName(),
-      seed: EXPLORATION_SEEDS[index],
+  const handleSeedInput = (value) => {
+    const candidate = toSeedHex(value);
+    setPlayground((current) => {
+      if (!candidate) return { ...current, baseInput: value };
+      if (candidate === current.baseColor) return { ...current, baseInput: value };
+      return markMutation(current, { baseColor: candidate, baseInput: candidate });
     });
+  };
+
+  const handleSeedBlur = () => {
+    setPlayground((current) => ({ ...current, baseInput: current.baseColor }));
+  };
+
+  const handleHarmonyChange = (harmony) => {
+    setPlayground((current) => {
+      if (harmony === current.harmony) return current;
+      return markMutation(current, { harmony });
+    });
+  };
+
+  const handleHueNudge = (value) => {
+    const next = Number(value);
+    setPlayground((current) => (
+      next === current.hueNudge ? current : markMutation(current, { hueNudge: next })
+    ));
+  };
+
+  const handleSatNudge = (value) => {
+    const next = Number(value);
+    setPlayground((current) => (
+      next === current.satNudge ? current : markMutation(current, { satNudge: next })
+    ));
+  };
+
+  const toggleMode = (mode) => {
+    setPlayground((current) => ({
+      ...current,
+      themeMode: mode,
+      confirmedModes: { ...current.confirmedModes, [mode]: true },
+      swatchOverrides: {},
+    }));
+  };
+
+  const toggleSwatchLock = (index) => {
+    setPlayground((current) => {
+      const currentTheme = buildThemeForState(current, artifactLabel);
+      const currentSwatches = getRenderedSwatches(current, currentTheme);
+      const nextLocked = { ...current.lockedSwatches };
+      const nextOverrides = { ...current.swatchOverrides };
+      if (hasOwn(nextLocked, index)) {
+        delete nextLocked[index];
+        nextOverrides[index] = currentSwatches[index]?.color;
+      } else if (currentSwatches[index]) {
+        nextLocked[index] = currentSwatches[index].color;
+        delete nextOverrides[index];
+      }
+      return {
+        ...current,
+        lockedSwatches: nextLocked,
+        swatchOverrides: nextOverrides,
+        userHasMutated: current.kitId ? true : current.userHasMutated,
+      };
+    });
+  };
+
+  const regenerateUnlocked = () => {
+    setPlayground((current) => {
+      const nextIteration = current.regenerateCount + 1;
+      const currentTheme = buildThemeForState(current, artifactLabel);
+      const currentSwatches = getRenderedSwatches(current, currentTheme);
+      const nextOverrides = { ...current.swatchOverrides };
+      currentSwatches.forEach((swatch, index) => {
+        if (!hasOwn(current.lockedSwatches, index)) {
+          nextOverrides[index] = regenerateSwatch(swatch.color, index, nextIteration);
+        }
+      });
+      return {
+        ...current,
+        regenerateCount: nextIteration,
+        swatchOverrides: nextOverrides,
+        userHasMutated: current.kitId ? true : current.userHasMutated,
+      };
+    });
+  };
+
+  const resetToOriginal = () => {
+    if (kit) setPlayground(createPresetState(kit));
   };
 
   return (
     <div className="tasting-room min-h-screen">
-      <a href="#tasting-main" className="tasting-skip-link">Skip to showroom</a>
+      <a href="#tasting-main" className="tasting-skip-link">Skip to playground</a>
 
       <header className="tasting-header">
         <div className="tasting-frame flex items-center justify-between gap-4 py-5">
           <div>
             <p className="tasting-wordmark">Apocapalette</p>
-            <p className="tasting-header-note">Palette showroom</p>
+            <p className="tasting-header-note">Palette playground</p>
           </div>
           <span className="tasting-header-mark">Public demo</span>
         </div>
       </header>
 
-      <main id="tasting-main" className="tasting-frame space-y-8 py-10 sm:py-14">
+      <main id="tasting-main" className="tasting-frame space-y-7 py-10 sm:py-14">
         <section className="tasting-hero">
-          <p className="tasting-eyebrow">{selection.kit ? 'Curated artifact' : 'Open exploration'}</p>
-          <h1 className="tasting-title">{artifactName}</h1>
-          <p className="tasting-subtitle">A palette showroom — explore freely, take the kit home.</p>
-          <div className="tasting-meta-row" aria-label="Artifact details">
-            <span>{selection.kit ? `$${selection.kit.price} kit` : 'Live exploration'}</span>
-            <span aria-hidden="true">·</span>
-            <span>{selection.kit ? `${selection.kit.teaserTokenCount} teaser tokens` : `${previewSwatches.length} live swatches`}</span>
-            <span aria-hidden="true">·</span>
-            <span>{selection.seed.themeMode} mode</span>
+          <p className="tasting-eyebrow">Live palette playground</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <h1 className="tasting-title">{artifactLabel}</h1>
+            {custom && kit && !playground.isChaosMinted && (
+              <span className="playground-artifact-number">No. {kit.artifactNo}</span>
+            )}
           </div>
+          <p className="tasting-subtitle">A palette showroom — explore freely, take the kit home.</p>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start">
-          <aside className="tasting-panel space-y-4" aria-label="Curated kits">
-            <div>
-              <p className="tasting-eyebrow">The shelf</p>
-              <h2 className="tasting-panel-title">Choose an artifact</h2>
-            </div>
-            <div className="space-y-2">
-              {KITS.map((kit) => (
-                <button
-                  key={kit.id}
-                  type="button"
-                  onClick={() => selectKit(kit)}
-                  className={`tasting-kit-button ${selection.kit?.id === kit.id ? 'is-selected' : ''}`}
-                  aria-pressed={selection.kit?.id === kit.id}
-                >
-                  <span>{kit.name}</span>
-                  <span className="tasting-kit-number">No. {kit.artifactNo}</span>
-                </button>
-              ))}
-            </div>
-            <button type="button" onClick={startExploration} className="tasting-explore-button">
-              <Sparkles size={14} aria-hidden="true" />
-              Explore freely
-            </button>
-            <div className="tasting-bundle">
-              <p className="tasting-eyebrow">Bundle</p>
-              <p className="text-lg font-semibold">${BUNDLE.price}</p>
-              <p className="tasting-muted">{BUNDLE.blurb}</p>
-            </div>
-          </aside>
-
+        <div className="playground-layout">
           <section
-            className="tasting-palette-surface space-y-6"
-            aria-label="Rendered palette preview"
+            className="playground-preview"
+            aria-label="Live website preview"
             style={{
               backgroundColor: previewRoles.background,
               borderColor: previewRoles.border,
               color: previewRoles.text,
             }}
           >
-            <div
-              className="rounded-2xl border p-5 sm:p-7"
-              style={{
-                backgroundColor: previewRoles.surface,
-                borderColor: previewRoles.secondaryActionBorder,
-              }}
-            >
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.28em] opacity-70">Rendered preview</p>
-                  <h2 className="mt-2 text-2xl font-black">A small system with a long shadow.</h2>
-                  <p className="mt-2 max-w-xl text-sm opacity-80">
-                    A live taste of the kit: surfaces, action colors, quiet neutrals, and the colors that make the whole thing feel like itself.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold"
-                  style={{ backgroundColor: previewRoles.cta, color: previewRoles.ctaForeground }}
-                >
-                  Taste the system
-                  <ArrowUpRight size={14} aria-hidden="true" />
-                </button>
+            <div className="playground-preview-topline">
+              <div>
+                <p className="playground-kicker">Live scene</p>
+                <p className="text-xs font-semibold opacity-70">{playground.themeMode} mode · updates as you tune</p>
+              </div>
+              <div className="playground-scene-tabs" role="tablist" aria-label="Preview scenes">
+                {SCENES.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={scene === option.id}
+                    onClick={() => setScene(option.id)}
+                    className={scene === option.id ? 'is-active' : ''}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <PreviewScene scene={scene} roles={previewRoles} swatches={swatches} artifactLabel={artifactLabel} />
+          </section>
+
+          <aside className="playground-controls tasting-panel" aria-label="Playground controls">
+            <div className="playground-control-heading">
+              <div>
+                <p className="tasting-eyebrow">Make it yours</p>
+                <h2 className="tasting-panel-title">Tune the palette</h2>
+              </div>
+              <button
+                type="button"
+                onClick={mintChaos}
+                className="playground-chaos-button"
+                aria-label="Mint a new chaos exploration"
+              >
+                <Sparkles size={14} aria-hidden="true" />
+                Chaos
+              </button>
+            </div>
+
+            <label className="playground-control-label" htmlFor="kit-preset">
+              Curated preset
+              <select id="kit-preset" value={playground.kitId || 'exploration'} onChange={(event) => selectPreset(event.target.value)} className="playground-select">
+                {playground.kitId === null && <option value="exploration">Current exploration</option>}
+                {KITS.map((candidate) => (
+                  <option key={candidate.id} value={candidate.id}>
+                    Artifact No. {candidate.artifactNo} — {candidate.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="playground-control-block">
+              <span className="playground-control-label">Seed color</span>
+              <div className="playground-seed-row">
+                <input
+                  type="color"
+                  value={playground.baseColor}
+                  onChange={(event) => handleSeedInput(event.target.value)}
+                  aria-label="Seed color swatch"
+                  className="playground-color-input"
+                />
+                <input
+                  type="text"
+                  value={playground.baseInput}
+                  onChange={(event) => handleSeedInput(event.target.value)}
+                  onBlur={handleSeedBlur}
+                  aria-label="Seed color hex"
+                  className="playground-hex-input"
+                  spellCheck="false"
+                />
               </div>
             </div>
 
-            <div>
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.28em] opacity-70">Palette surface</p>
-                  <h2 className="mt-1 text-lg font-bold">{selection.kit ? 'Twelve teaser tokens' : 'Exploration swatches'}</h2>
-                </div>
-                <span className="text-xs font-semibold opacity-70">{previewSwatches.length} shown</span>
+            <div className="playground-control-block">
+              <span className="playground-control-label">Harmony</span>
+              <div className="playground-chip-grid" role="group" aria-label="Harmony mode">
+                {HARMONY_MODES.map((harmony) => (
+                  <button
+                    key={harmony}
+                    type="button"
+                    onClick={() => handleHarmonyChange(harmony)}
+                    aria-pressed={playground.harmony === harmony}
+                    className={`playground-chip ${playground.harmony === harmony ? 'is-active' : ''}`}
+                  >
+                    {harmony}
+                  </button>
+                ))}
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-                {previewSwatches.map(({ name, color }) => (
-                  <div key={`${name}-${color}`} className="rounded-xl border p-2" style={{ borderColor: previewRoles.border }}>
-                    <div className="h-20 rounded-lg" style={{ backgroundColor: color }} />
-                    <p className="mt-2 truncate text-[11px] font-semibold opacity-80">{name}</p>
-                    <p className="mt-1 font-mono text-[10px] uppercase opacity-70">{color}</p>
+            </div>
+
+            <div className="playground-control-block">
+              <span className="playground-control-label">Preview mode</span>
+              <div className="playground-mode-row" role="group" aria-label="Preview mode">
+                {DISPLAY_MODES.map((mode) => (
+                  <button
+                    key={mode.value}
+                    type="button"
+                    onClick={() => toggleMode(mode.value)}
+                    aria-pressed={playground.themeMode === mode.value}
+                    className={`playground-mode-pill ${playground.themeMode === mode.value ? 'is-active' : ''}`}
+                  >
+                    {mode.label}
+                    {playground.confirmedModes[mode.value] && (
+                      <Sparkles size={11} aria-label="confirmed" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="playground-control-block">
+              <button
+                type="button"
+                onClick={() => setShowTuning((current) => !current)}
+                className="playground-tuning-toggle"
+                aria-expanded={showTuning}
+              >
+                <span>Fine-tune nudges</span>
+                <span>{showTuning ? 'Hide' : 'Show'}</span>
+              </button>
+              {showTuning && (
+                <div className="playground-tuning-panel">
+                  <label>
+                    Hue nudge
+                    <input type="range" min="-30" max="30" value={playground.hueNudge} onChange={(event) => handleHueNudge(event.target.value)} aria-label="Hue nudge" />
+                    <span>{playground.hueNudge}°</span>
+                  </label>
+                  <label>
+                    Saturation nudge
+                    <input type="range" min="-30" max="30" value={playground.satNudge} onChange={(event) => handleSatNudge(event.target.value)} aria-label="Saturation nudge" />
+                    <span>{playground.satNudge}%</span>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="playground-control-block">
+              <div className="flex items-center justify-between gap-3">
+                <span className="playground-control-label">Swatch locks</span>
+                <button type="button" onClick={regenerateUnlocked} className="playground-regenerate-button">
+                  <RefreshCcw size={13} aria-hidden="true" />
+                  Regenerate unlocked
+                </button>
+              </div>
+              <div className="playground-swatch-grid">
+                {swatches.slice(0, 8).map(({ name, color, locked }, index) => (
+                  <div key={`${name}-${index}`} className="playground-swatch-card">
+                    <span className="playground-swatch-color" style={{ backgroundColor: color }} />
+                    <span className="playground-swatch-name">{name}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSwatchLock(index)}
+                      className="playground-lock-button"
+                      aria-label={`${locked ? 'Unlock' : 'Lock'} ${name} swatch`}
+                      title={`${locked ? 'Unlock' : 'Lock'} ${name}`}
+                    >
+                      {locked ? <Lock size={12} aria-hidden="true" /> : <Unlock size={12} aria-hidden="true" />}
+                    </button>
                   </div>
                 ))}
               </div>
             </div>
-          </section>
+
+            {kit && custom && (
+              <button type="button" onClick={resetToOriginal} className="playground-reset-button">
+                Reset to original {kit.name} seed
+              </button>
+            )}
+            <p className="playground-control-note">
+              {custom ? 'Custom exploration · your edits are part of this palette.' : `${kit?.teaserTokenCount || 12} teaser tokens from the curated kit.`}
+            </p>
+          </aside>
         </div>
 
-        <section className="tasting-panel" aria-label="Kit contents">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="tasting-eyebrow">Inside the artifact</p>
-              <h2 className="tasting-panel-title">A complete color working set.</h2>
-              <p className="tasting-muted mt-2 max-w-2xl">
-                Six core colors, nine tints per color, three modes, and a contrast matrix prepared for the moment a good palette becomes a real project.
-              </p>
-            </div>
-            <div className="tasting-stat-grid">
-              <span><strong>{selection.kit?.coreColors || 6}</strong> core</span>
-              <span><strong>{selection.kit?.tintsPerColor || 9}</strong> tints</span>
-              <span><strong>{selection.kit?.totalTokens || 59}</strong> tokens</span>
-            </div>
+        <div className="tasting-panel flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="tasting-eyebrow">The shelf</p>
+            <p className="tasting-muted">{BUNDLE.blurb}</p>
           </div>
-        </section>
+          <p className="text-lg font-bold">${BUNDLE.price} bundle</p>
+        </div>
 
         <ForgeCta />
       </main>
