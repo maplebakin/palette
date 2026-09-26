@@ -7,12 +7,16 @@ import {
   Unlock,
 } from 'lucide-react';
 import ForgeCta from './ForgeCta.jsx';
+import PlaygroundAccessibility from './PlaygroundAccessibility.jsx';
+import TokenTeaser from './TokenTeaser.jsx';
 import { BUNDLE, KIT_SEEDS, KITS } from '../data/kits.js';
 import { NAME_BANK, randomExplorationName } from '../data/nameBank.js';
 import { formatArtifactName } from '../lib/artifactNaming.js';
 import { isCustom } from '../lib/honestyPredicate.js';
 import { buildPreviewRoleTokens } from '../lib/previewTokens.js';
 import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
+import { simulateColorVision } from '../lib/accessibility.js';
+import { getTokenTeaser } from '../lib/tokenTeaser.js';
 import { buildTheme } from '../lib/theme/engine.js';
 
 const HARMONY_MODES = ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'];
@@ -249,8 +253,10 @@ const TastingRoom = () => {
   const [playground, setPlayground] = useState(() => createPresetState(KITS[0]));
   const [showTuning, setShowTuning] = useState(false);
   const [scene, setScene] = useState('hero');
+  const [visionMode, setVisionMode] = useState('normal');
 
   const kit = playground.kitId ? KITS.find((candidate) => candidate.id === playground.kitId) : null;
+  const manifestKit = kit || KITS[0];
   const custom = isCustom({
     userHasMutated: playground.userHasMutated,
     isChaosMinted: playground.isChaosMinted,
@@ -271,6 +277,24 @@ const TastingRoom = () => {
   const swatches = useMemo(
     () => getRenderedSwatches(playground, theme),
     [playground, theme],
+  );
+  const visionRoles = useMemo(
+    () => Object.fromEntries(Object.entries(previewRoles).map(([key, color]) => [
+      key,
+      simulateColorVision(color, visionMode),
+    ])),
+    [previewRoles, visionMode],
+  );
+  const visionSwatches = useMemo(
+    () => swatches.map((swatch) => ({
+      ...swatch,
+      color: simulateColorVision(swatch.color, visionMode),
+    })),
+    [swatches, visionMode],
+  );
+  const { tokens: teaserTokens } = useMemo(
+    () => getTokenTeaser(swatches, manifestKit),
+    [manifestKit, swatches],
   );
 
   const selectPreset = (id) => {
@@ -376,6 +400,11 @@ const TastingRoom = () => {
     if (kit) setPlayground(createPresetState(kit));
   };
 
+  const copySingleHex = (color) => {
+    if (!color || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) return;
+    void navigator.clipboard.writeText(color).catch(() => {});
+  };
+
   return (
     <div className="tasting-room min-h-screen">
       <a href="#tasting-main" className="tasting-skip-link">Skip to playground</a>
@@ -432,7 +461,7 @@ const TastingRoom = () => {
                 ))}
               </div>
             </div>
-            <PreviewScene scene={scene} roles={previewRoles} swatches={swatches} artifactLabel={artifactLabel} />
+            <PreviewScene scene={scene} roles={visionRoles} swatches={visionSwatches} artifactLabel={artifactLabel} />
           </section>
 
           <aside className="playground-controls tasting-panel" aria-label="Playground controls">
@@ -586,6 +615,14 @@ const TastingRoom = () => {
             </p>
           </aside>
         </div>
+
+        <TokenTeaser manifest={manifestKit} tokens={teaserTokens} onCopy={copySingleHex} />
+
+        <PlaygroundAccessibility
+          roles={previewRoles}
+          visionMode={visionMode}
+          onVisionModeChange={setVisionMode}
+        />
 
         <div className="tasting-panel flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
