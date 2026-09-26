@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ValidateStage from './ValidateStage.jsx';
 import { generateTokens } from '../../lib/tokens.js';
@@ -393,5 +393,78 @@ describe('ValidateStage', () => {
       backgroundColor: punchy.entity['entity-highlight-bg'],
       borderColor: punchy.entity['entity-highlight-border'],
     });
+  });
+});
+
+describe('ValidateStage share link', () => {
+  it('renders a palette-link button when copyShareLink is provided and calls it on click', () => {
+    const copyShareLink = vi.fn();
+    const tokens = generateTokens('#FF9DB8', 'Monochromatic', 'light', 100);
+
+    render(
+      <ValidateStage
+        tokens={tokens}
+        displayThemeName="Monochromatic Light"
+        baseColor="#FF9DB8"
+        mode="Monochromatic"
+        themeMode="light"
+        isDark={false}
+        primaryTextColor="#ffffff"
+        quickEssentials={[]}
+        copyAllEssentials={vi.fn()}
+        copyEssentialsList={vi.fn()}
+        copyHexValue={vi.fn()}
+        copyShareLink={copyShareLink}
+        orderedSwatches={[]}
+        showContrast={false}
+        setShowContrast={vi.fn()}
+        contrastChecks={[]}
+        paletteRows={[]}
+        activeTab="Quick view"
+        setActiveTab={vi.fn()}
+        getTabId={(tab) => `tab-${tab.toLowerCase().replace(/\s+/g, '-')}`}
+        tabOptions={['Quick view', 'Full system']}
+        onJumpToFileTools={vi.fn()}
+        isInternal={false}
+      />
+    );
+
+    const button = screen.getByRole('button', { name: /copy palette link/i });
+    expect(button).toBeInTheDocument();
+    fireEvent.click(button);
+    expect(copyShareLink).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits the palette-link button when copyShareLink is not provided', () => {
+    const tokens = generateTokens('#FF9DB8', 'Monochromatic', 'light', 100);
+
+    render(
+      <ValidateStage
+        tokens={tokens}
+        displayThemeName="Monochromatic Light"
+        baseColor="#FF9DB8"
+        mode="Monochromatic"
+        themeMode="light"
+        isDark={false}
+        primaryTextColor="#ffffff"
+        quickEssentials={[]}
+        copyAllEssentials={vi.fn()}
+        copyEssentialsList={vi.fn()}
+        copyHexValue={vi.fn()}
+        orderedSwatches={[]}
+        showContrast={false}
+        setShowContrast={vi.fn()}
+        contrastChecks={[]}
+        paletteRows={[]}
+        activeTab="Quick view"
+        setActiveTab={vi.fn()}
+        getTabId={(tab) => `tab-${tab.toLowerCase().replace(/\s+/g, '-')}`}
+        tabOptions={['Quick view', 'Full system']}
+        onJumpToFileTools={vi.fn()}
+        isInternal={false}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: /copy palette link/i })).not.toBeInTheDocument();
   });
 });

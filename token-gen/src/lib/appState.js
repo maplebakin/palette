@@ -13,10 +13,12 @@ export const STORAGE_KEYS = {
   saved: 'token-gen/saved-palettes',
 };
 
+// Step ids match the stepper steps (Create/Refine/Review); the old ids
+// (identity/build/validate) reflected the pre-stepper component names.
 const BASE_STAGE_DEFS = [
-  { id: 'identity', label: 'Create' },
-  { id: 'build', label: 'Refine' },
-  { id: 'validate', label: 'Review' },
+  { id: 'create', label: 'Create' },
+  { id: 'refine', label: 'Refine' },
+  { id: 'review', label: 'Review' },
 ];
 const packageTab = 'Package';
 const privateExportLabel = ['Ex', 'port'].join('');

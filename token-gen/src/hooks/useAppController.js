@@ -299,7 +299,10 @@ export default function useAppController() {
         uiState.setCurrentStage(PRIVATE_EXPORT_STAGE);
         return;
       }
-      uiState.setCurrentStage('Review');
+      // No fallthrough: the stepper owns the current step. (Previously this
+      // defaulted the nav highlight to 'Review'; the stepper now starts on
+      // 'Create' from the uiStore initial state and must not be overridden
+      // when e.g. switching the Review step's internal tabs.)
     };
     updateStage();
     window.addEventListener('hashchange', updateStage);
@@ -914,10 +917,15 @@ export default function useAppController() {
     [tabIds]
   );
 
-  const handleStageNavigate = useCallback((event, stage) => {
+  // Stepper navigation: switch the visible step. For tabbed forge stages the
+  // matching tab is selected; when leaving a tabbed stage the tab resets to
+  // the neutral default so the tab watcher below doesn't yank the stepper
+  // back to the forge step.
+  const handleStageNavigate = useCallback((stage) => {
+    if (!stage) return;
     if (stage.tab) {
       uiState.setActiveTab(stage.tab);
-    } else if (stage.id === 'validate' && !['Quick view', 'Full system'].includes(uiState.activeTab)) {
+    } else if (!['Quick view', 'Full system'].includes(uiState.activeTab)) {
       uiState.setActiveTab('Quick view');
     }
     uiState.setCurrentStage(stage.label);

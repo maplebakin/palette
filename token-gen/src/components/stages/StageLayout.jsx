@@ -1,25 +1,28 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
+// Stepper nav for the demo flow. Previously this rendered anchor links that
+// scrolled a single long page; now each pill switches the visible step.
+// Visual style (pills, active/completed/upcoming dots) is unchanged.
 export const StageNav = ({ stages, currentStage, onNavigate }) => {
   const getStageIndex = (stageLabel) => stages.findIndex(s => s.label === stageLabel);
   const currentIndex = getStageIndex(currentStage);
-  
+
   return (
-    <nav className="panel-surface-soft border rounded-full px-2 py-2 flex items-center gap-1 text-xs font-semibold overflow-x-auto max-w-full">
+    <nav aria-label="Palette workflow steps" className="panel-surface-soft border rounded-full px-2 py-2 flex items-center gap-1 text-xs font-semibold overflow-x-auto max-w-full">
       {stages.map((stage, index) => {
         const isActive = currentStage === stage.label;
-        const isCompleted = index < currentIndex;
-        
+        const isCompleted = currentIndex >= 0 && index < currentIndex;
+
         return (
-          <a
+          <button
             key={stage.id}
-            href={`#${stage.id}`}
-            onClick={(event) => onNavigate(event, stage)}
+            type="button"
+            onClick={() => onNavigate(stage)}
             className={`
               px-2.5 py-1.5 rounded-full transition-all duration-200 whitespace-nowrap flex items-center gap-1
-              ${isActive 
-                ? 'panel-surface shadow-md scale-105' 
+              ${isActive
+                ? 'panel-surface shadow-md scale-105'
                 : isCompleted
                 ? 'panel-surface-strong opacity-80 hover:opacity-100'
                 : 'panel-surface-strong opacity-60 hover:opacity-80'
@@ -30,10 +33,10 @@ export const StageNav = ({ stages, currentStage, onNavigate }) => {
           >
             <span className={`
               w-1.5 h-1.5 rounded-full
-              ${isActive 
-                ? 'bg-blue-500 dark:bg-blue-400' 
-                : isCompleted 
-                ? 'bg-green-500 dark:bg-green-400' 
+              ${isActive
+                ? 'bg-blue-500 dark:bg-blue-400'
+                : isCompleted
+                ? 'bg-green-500 dark:bg-green-400'
                 : 'bg-gray-400 dark:bg-gray-500'
               }
             `} />
@@ -41,7 +44,7 @@ export const StageNav = ({ stages, currentStage, onNavigate }) => {
             <span className="sm:hidden">
               {stage.label.charAt(0)}
             </span>
-          </a>
+          </button>
         );
       })}
     </nav>

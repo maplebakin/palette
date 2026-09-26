@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import BuildStage from './BuildStage.jsx';
+import RefineStage from './RefineStage.jsx';
 
 const tokens = {
   brand: {
@@ -13,27 +13,8 @@ const tokens = {
   },
 };
 
-const renderBuildStage = (props = {}) => render(
-  <BuildStage
-    headerOpen
-    setHeaderOpen={vi.fn()}
-    chaosMenuOpen={false}
-    setChaosMenuOpen={vi.fn()}
-    randomRitual={vi.fn()}
-    crankApocalypse={vi.fn()}
-    resetPalette={vi.fn()}
-    tokens={tokens}
-    mode="Monochromatic"
-    setMode={vi.fn()}
-    themeMode="light"
-    setThemeMode={vi.fn()}
-    pickerColor="#ff9db8"
-    baseInput="#ff9db8"
-    baseError=""
-    handleBaseColorChange={vi.fn()}
-    flushBaseColorChange={vi.fn()}
-    presets={[]}
-    applyPreset={vi.fn()}
+const renderRefineStage = (props = {}) => render(
+  <RefineStage
     showFineTune
     setShowFineTune={vi.fn()}
     harmonyIntensity={120}
@@ -70,22 +51,31 @@ const renderBuildStage = (props = {}) => render(
       availableModes: ['light'],
       missingModes: ['dark', 'pop'],
     }}
+    themeMode="light"
+    setThemeMode={vi.fn()}
+    tokens={tokens}
+    mode="Monochromatic"
+    chaosMenuOpen={false}
+    setChaosMenuOpen={vi.fn()}
+    randomRitual={vi.fn()}
+    crankApocalypse={vi.fn()}
+    resetPalette={vi.fn()}
     {...props}
   />
 );
 
-describe('BuildStage', () => {
+describe('RefineStage', () => {
   it('renders a fine-tune reset button that calls the reset handler', () => {
     const resetFineTuneSliders = vi.fn();
 
-    renderBuildStage({ resetFineTuneSliders });
+    renderRefineStage({ resetFineTuneSliders });
     fireEvent.click(screen.getByRole('button', { name: /reset sliders/i }));
 
     expect(resetFineTuneSliders).toHaveBeenCalledTimes(1);
   });
 
   it('shows confirmed variant coverage near mode controls', () => {
-    renderBuildStage();
+    renderRefineStage();
 
     expect(screen.getByTestId('confirmed-variants-status')).toBeInTheDocument();
     expect(screen.getByLabelText(/light confirmed/i)).toBeInTheDocument();
@@ -97,7 +87,7 @@ describe('BuildStage', () => {
     const debouncedAccentHueChange = vi.fn();
     const debouncedAccentSaturationChange = vi.fn();
 
-    renderBuildStage({ debouncedAccentHueChange, debouncedAccentSaturationChange });
+    renderRefineStage({ debouncedAccentHueChange, debouncedAccentSaturationChange });
     fireEvent.change(screen.getByLabelText(/adjust accent hue/i), { target: { value: '20' } });
     fireEvent.change(screen.getByLabelText(/adjust accent saturation/i), { target: { value: '-12' } });
 
@@ -106,5 +96,14 @@ describe('BuildStage', () => {
     expect(screen.getByText(/nudge buttons\/highlights warmer, cooler, softer, or stronger/i)).toBeInTheDocument();
     expect(debouncedAccentHueChange).toHaveBeenCalledWith('20');
     expect(debouncedAccentSaturationChange).toHaveBeenCalledWith('-12');
+  });
+
+  it('renders the light/dark/pop theme mode switch', () => {
+    const setThemeMode = vi.fn();
+
+    renderRefineStage({ setThemeMode });
+    fireEvent.click(screen.getByRole('button', { name: /set theme mode to dark/i }));
+
+    expect(setThemeMode).toHaveBeenCalledWith('dark');
   });
 });

@@ -2,7 +2,10 @@ import React, { lazy, Suspense } from 'react';
 import MoodBoard from '../MoodBoard.jsx';
 import ListingAssetsCanvas from '../ListingAssetsCanvas.jsx';
 import ValidateStage from '../stages/ValidateStage.jsx';
-import BuildStage from '../stages/BuildStage.jsx';
+import CreateStage from '../stages/CreateStage.jsx';
+import RefineStage from '../stages/RefineStage.jsx';
+import ForgeCta from '../ForgeCta.jsx';
+import StepPager from './StepPager.jsx';
 import { StageNav } from '../stages/StageLayout.jsx';
 import { canDownloadThemePack, isPrivateForge } from '../../lib/capabilities.js';
 
@@ -16,118 +19,145 @@ const ExportStage = isPrivateForge
   ? lazy(() => import('../stages/ExportStage.jsx'))
   : null;
 
+// Stepped demo flow: one stage visible at a time.
+// Public: Create → Refine → Review. Forge builds continue into
+// Package → Export after Review — one coherent flow, not two nav systems.
 export default function PaletteWorkspace({ controller }) {
+  const steps = controller.stageDefs;
+  const currentLabel = controller.uiState.currentStage;
+  const foundIndex = steps.findIndex((step) => step.label === currentLabel);
+  const currentIndex = foundIndex >= 0 ? foundIndex : 0;
+
+  const goToStep = (step) => {
+    if (step) controller.handleStageNavigate(step);
+  };
+
   return (
     <>
       <div className="flex justify-center">
         <StageNav
-          stages={controller.stageDefs}
-          currentStage={controller.uiState.currentStage}
+          stages={steps}
+          currentStage={currentLabel}
           onNavigate={controller.handleStageNavigate}
         />
       </div>
 
-      <BuildStage
-        headerOpen={controller.uiState.headerOpen}
-        setHeaderOpen={controller.uiState.setHeaderOpen}
-        chaosMenuOpen={controller.uiState.chaosMenuOpen}
-        setChaosMenuOpen={controller.uiState.setChaosMenuOpen}
-        randomRitual={controller.randomRitual}
-        crankApocalypse={controller.crankApocalypse}
-        resetPalette={controller.resetPalette}
-        tokens={controller.tokens}
-        mode={controller.paletteState.mode}
-        setMode={controller.paletteState.setMode}
-        themeMode={controller.paletteState.themeMode}
-        setThemeMode={controller.paletteState.setThemeMode}
-        pickerColor={controller.pickerColor}
-        baseInput={controller.paletteState.baseInput}
-        baseError={controller.paletteState.baseError}
-        handleBaseColorChange={controller.handleBaseColorChange}
-        flushBaseColorChange={controller.flushBaseColorChange}
-        presets={controller.presets}
-        applyPreset={controller.applyPreset}
-        showFineTune={controller.uiState.showFineTune}
-        setShowFineTune={controller.uiState.setShowFineTune}
-        harmonyIntensity={controller.paletteState.harmonyIntensity}
-        neutralCurve={controller.paletteState.neutralCurve}
-        accentStrength={controller.paletteState.accentStrength}
-        accentHueShift={controller.paletteState.accentHueShift}
-        accentSaturationShift={controller.paletteState.accentSaturationShift}
-        apocalypseIntensity={controller.paletteState.apocalypseIntensity}
-        popIntensity={controller.paletteState.popIntensity}
-        setHarmonyIntensity={controller.paletteState.setHarmonyIntensity}
-        setNeutralCurve={controller.paletteState.setNeutralCurve}
-        setAccentStrength={controller.paletteState.setAccentStrength}
-        setApocalypseIntensity={controller.paletteState.setApocalypseIntensity}
-        setPopIntensity={controller.paletteState.setPopIntensity}
-        harmonyInput={controller.paletteState.harmonyInput}
-        neutralInput={controller.paletteState.neutralInput}
-        accentInput={controller.paletteState.accentInput}
-        accentHueInput={controller.paletteState.accentHueInput}
-        accentSaturationInput={controller.paletteState.accentSaturationInput}
-        apocalypseInput={controller.paletteState.apocalypseInput}
-        popInput={controller.paletteState.popInput}
-        setHarmonyInput={controller.paletteState.setHarmonyInput}
-        setNeutralInput={controller.paletteState.setNeutralInput}
-        setAccentInput={controller.paletteState.setAccentInput}
-        setAccentHueInput={controller.paletteState.setAccentHueInput}
-        setAccentSaturationInput={controller.paletteState.setAccentSaturationInput}
-        setApocalypseInput={controller.paletteState.setApocalypseInput}
-        setPopInput={controller.paletteState.setPopInput}
-        debouncedHarmonyChange={controller.debouncedHarmonyChange}
-        debouncedNeutralChange={controller.debouncedNeutralChange}
-        debouncedAccentChange={controller.debouncedAccentChange}
-        debouncedAccentHueChange={controller.debouncedAccentHueChange}
-        debouncedAccentSaturationChange={controller.debouncedAccentSaturationChange}
-        debouncedApocalypseChange={controller.debouncedApocalypseChange}
-        debouncedPopChange={controller.debouncedPopChange}
-        resetFineTuneSliders={controller.resetFineTuneSliders}
-        variantStatus={controller.confirmedVariantStatus}
-        canUndo={controller.canUndo}
-        canRedo={controller.canRedo}
-        undo={controller.paletteState.undo}
-        redo={controller.paletteState.redo}
-      />
+      {currentLabel === 'Create' && (
+        <CreateStage
+          headerOpen={controller.uiState.headerOpen}
+          setHeaderOpen={controller.uiState.setHeaderOpen}
+          randomRitual={controller.randomRitual}
+          crankApocalypse={controller.crankApocalypse}
+          resetPalette={controller.resetPalette}
+          tokens={controller.tokens}
+          mode={controller.paletteState.mode}
+          setMode={controller.paletteState.setMode}
+          pickerColor={controller.pickerColor}
+          baseInput={controller.paletteState.baseInput}
+          baseError={controller.paletteState.baseError}
+          handleBaseColorChange={controller.handleBaseColorChange}
+          flushBaseColorChange={controller.flushBaseColorChange}
+          presets={controller.presets}
+          applyPreset={controller.applyPreset}
+        />
+      )}
 
-      <MoodBoard
-        tokens={controller.tokens}
-        baseColor={controller.paletteState.baseColor}
-        onApplyPaletteSpec={controller.applyMoodBoardSpec}
-        onSaveDraft={controller.saveMoodBoardDraft}
-        copyHexValue={controller.copyHexValue}
-        canSaveDraft={Boolean(controller.projectContext)}
-        onExportSingleMoodBoard={controller.canExport ? controller.exportSingleMoodBoardFromProject : undefined}
-        onExportAllMoodBoards={controller.canExport ? controller.exportAllMoodBoardsFromProject : undefined}
-      />
+      {currentLabel === 'Refine' && (
+        <>
+          <RefineStage
+            showFineTune={controller.uiState.showFineTune}
+            setShowFineTune={controller.uiState.setShowFineTune}
+            harmonyIntensity={controller.paletteState.harmonyIntensity}
+            neutralCurve={controller.paletteState.neutralCurve}
+            accentStrength={controller.paletteState.accentStrength}
+            accentHueShift={controller.paletteState.accentHueShift}
+            accentSaturationShift={controller.paletteState.accentSaturationShift}
+            apocalypseIntensity={controller.paletteState.apocalypseIntensity}
+            popIntensity={controller.paletteState.popIntensity}
+            harmonyInput={controller.paletteState.harmonyInput}
+            neutralInput={controller.paletteState.neutralInput}
+            accentInput={controller.paletteState.accentInput}
+            accentHueInput={controller.paletteState.accentHueInput}
+            accentSaturationInput={controller.paletteState.accentSaturationInput}
+            apocalypseInput={controller.paletteState.apocalypseInput}
+            popInput={controller.paletteState.popInput}
+            setHarmonyInput={controller.paletteState.setHarmonyInput}
+            setNeutralInput={controller.paletteState.setNeutralInput}
+            setAccentInput={controller.paletteState.setAccentInput}
+            setAccentHueInput={controller.paletteState.setAccentHueInput}
+            setAccentSaturationInput={controller.paletteState.setAccentSaturationInput}
+            setApocalypseInput={controller.paletteState.setApocalypseInput}
+            setPopInput={controller.paletteState.setPopInput}
+            debouncedHarmonyChange={controller.debouncedHarmonyChange}
+            debouncedNeutralChange={controller.debouncedNeutralChange}
+            debouncedAccentChange={controller.debouncedAccentChange}
+            debouncedAccentHueChange={controller.debouncedAccentHueChange}
+            debouncedAccentSaturationChange={controller.debouncedAccentSaturationChange}
+            debouncedApocalypseChange={controller.debouncedApocalypseChange}
+            debouncedPopChange={controller.debouncedPopChange}
+            resetFineTuneSliders={controller.resetFineTuneSliders}
+            variantStatus={controller.confirmedVariantStatus}
+            themeMode={controller.paletteState.themeMode}
+            setThemeMode={controller.paletteState.setThemeMode}
+            tokens={controller.tokens}
+            mode={controller.paletteState.mode}
+            chaosMenuOpen={controller.uiState.chaosMenuOpen}
+            setChaosMenuOpen={controller.uiState.setChaosMenuOpen}
+            randomRitual={controller.randomRitual}
+            crankApocalypse={controller.crankApocalypse}
+            resetPalette={controller.resetPalette}
+          />
 
-      <ValidateStage
-        tokens={controller.tokens}
-        displayThemeName={controller.displayThemeName}
-        baseColor={controller.paletteState.baseColor}
-        mode={controller.paletteState.mode}
-        themeMode={controller.paletteState.themeMode}
-        isDark={controller.isDark}
-        primaryTextColor={controller.primaryTextColor}
-        quickEssentials={controller.quickEssentials}
-        copyAllEssentials={controller.copyAllEssentials}
-        copyEssentialsList={controller.copyEssentialsList}
-        copyHexValue={controller.copyHexValue}
-        orderedSwatches={controller.orderedSwatches}
-        showContrast={controller.uiState.showContrast}
-        setShowContrast={controller.uiState.setShowContrast}
-        contrastChecks={controller.contrastChecks}
-        paletteRows={controller.paletteRows}
-        activeTab={controller.uiState.activeTab}
-        setActiveTab={controller.uiState.setActiveTab}
-        getTabId={controller.getTabId}
-        tabOptions={controller.tabOptions}
-        onJumpToFileTools={controller.handleJumpToFileTools}
-        showFileTools={controller.canExport}
-        isInternal={controller.isInternal}
-      />
+          <MoodBoard
+            tokens={controller.tokens}
+            baseColor={controller.paletteState.baseColor}
+            onApplyPaletteSpec={controller.applyMoodBoardSpec}
+            onSaveDraft={controller.saveMoodBoardDraft}
+            copyHexValue={controller.copyHexValue}
+            canSaveDraft={Boolean(controller.projectContext)}
+            onExportSingleMoodBoard={controller.canExport ? controller.exportSingleMoodBoardFromProject : undefined}
+            onExportAllMoodBoards={controller.canExport ? controller.exportAllMoodBoardsFromProject : undefined}
+          />
+        </>
+      )}
 
-      {controller.canDownloadThemePack && PackageStage && (
+      {currentLabel === 'Review' && (
+        <>
+          <ValidateStage
+            tokens={controller.tokens}
+            displayThemeName={controller.displayThemeName}
+            baseColor={controller.paletteState.baseColor}
+            mode={controller.paletteState.mode}
+            themeMode={controller.paletteState.themeMode}
+            isDark={controller.isDark}
+            primaryTextColor={controller.primaryTextColor}
+            quickEssentials={controller.quickEssentials}
+            copyAllEssentials={controller.copyAllEssentials}
+            copyEssentialsList={controller.copyEssentialsList}
+            copyHexValue={controller.copyHexValue}
+            copyShareLink={controller.copyShareLink}
+            orderedSwatches={controller.orderedSwatches}
+            showContrast={controller.uiState.showContrast}
+            setShowContrast={controller.uiState.setShowContrast}
+            contrastChecks={controller.contrastChecks}
+            paletteRows={controller.paletteRows}
+            activeTab={controller.uiState.activeTab}
+            setActiveTab={controller.uiState.setActiveTab}
+            getTabId={controller.getTabId}
+            tabOptions={controller.tabOptions}
+            onJumpToFileTools={controller.handleJumpToFileTools}
+            showFileTools={controller.canExport}
+            isInternal={controller.isInternal}
+          />
+          {/* ForgeCta is public-demo-only: forge builds flow from Review into the
+              Package/Export steps instead. Gated on controller.canExport (the
+              forge flag) rather than the module-level isPrivateForge so the
+              workspace stays testable without module-mock gymnastics. */}
+          {!controller.canExport && <ForgeCta />}
+        </>
+      )}
+
+      {currentLabel === 'Package' && controller.canDownloadThemePack && PackageStage && (
         <Suspense fallback={null}>
           <PackageStage
             activeTab={controller.uiState.activeTab}
@@ -146,7 +176,7 @@ export default function PaletteWorkspace({ controller }) {
         </Suspense>
       )}
 
-      {controller.canExport && ProductForgeStage && (
+      {currentLabel === 'Export' && controller.canExport && ProductForgeStage && (
         <Suspense fallback={null}>
           <ProductForgeStage
             isDev={controller.canExport}
@@ -159,7 +189,7 @@ export default function PaletteWorkspace({ controller }) {
         </Suspense>
       )}
 
-      {controller.canExport && ExportStage && (
+      {currentLabel === 'Export' && controller.canExport && ExportStage && (
         <Suspense fallback={null}>
           <ExportStage
             activeTab={controller.uiState.activeTab}
@@ -197,6 +227,8 @@ export default function PaletteWorkspace({ controller }) {
           />
         </Suspense>
       )}
+
+      <StepPager steps={steps} currentIndex={currentIndex} onNavigate={goToStep} />
 
       {controller.canExport && (
         <ListingAssetsCanvas

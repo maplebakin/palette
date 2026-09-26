@@ -15,9 +15,9 @@ describe('stage definitions', () => {
       expect.objectContaining({ id: 'product-forge' }),
     ]));
     expect(STAGE_DEFS).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'identity', label: 'Create' }),
-      expect.objectContaining({ id: 'build', label: 'Refine' }),
-      expect.objectContaining({ id: 'validate', label: 'Review' }),
+      expect.objectContaining({ id: 'create', label: 'Create' }),
+      expect.objectContaining({ id: 'refine', label: 'Refine' }),
+      expect.objectContaining({ id: 'review', label: 'Review' }),
       expect.objectContaining({ id: 'export', label: 'Export' }),
       expect.objectContaining({ id: 'package', label: 'Package', tab: 'Package' }),
     ]));
@@ -31,9 +31,9 @@ describe('stage definitions', () => {
     const { STAGE_DEFS } = await import('./appState.js');
 
     expect(STAGE_DEFS).toEqual([
-      expect.objectContaining({ id: 'identity', label: 'Create' }),
-      expect.objectContaining({ id: 'build', label: 'Refine' }),
-      expect.objectContaining({ id: 'validate', label: 'Review' }),
+      expect.objectContaining({ id: 'create', label: 'Create' }),
+      expect.objectContaining({ id: 'refine', label: 'Refine' }),
+      expect.objectContaining({ id: 'review', label: 'Review' }),
     ]);
     expect(STAGE_DEFS).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'export' }),

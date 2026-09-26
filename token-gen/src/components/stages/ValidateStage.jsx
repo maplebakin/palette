@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { Eye, EyeOff, Check, Layers, Droplet, Type, Grid, Box, Sun, FileText } from 'lucide-react';
+import { Eye, EyeOff, Check, Layers, Droplet, Type, Grid, Box, Sun, FileText, Link as LinkIcon } from 'lucide-react';
 import ColorSwatch from '../ColorSwatch';
 import Section from '../Section';
 import ErrorBoundary from '../ErrorBoundary.jsx';
@@ -25,6 +25,7 @@ const ValidateStage = ({
   copyAllEssentials,
   copyEssentialsList,
   copyHexValue,
+  copyShareLink,
   orderedSwatches,
   showContrast,
   setShowContrast,
@@ -65,7 +66,7 @@ const ValidateStage = ({
   const ctaForeground = tokens.pop?.['pop-cta-foreground'] || previewPrimaryActionForeground;
 
   return (
-  <StageSection id="validate" title="Review" subtitle="Preview, copy essentials, and confirm the palette before packaging.">
+  <StageSection id="review" title="Review" subtitle="Preview, share, and copy the essentials.">
     <ColorBlindnessSimulator>
       <section
         className="relative overflow-hidden rounded-3xl border shadow-[0_40px_140px_-80px_rgba(0,0,0,0.6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-500"
@@ -351,6 +352,18 @@ const ValidateStage = ({
             <FileText size={14} />
             Copy quick kit
           </button>
+          {copyShareLink && (
+            <button
+              type="button"
+              onClick={copyShareLink}
+              className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold border panel-surface-strong panel-text hover:-translate-y-[1px] active:scale-95 transition"
+              style={{ borderColor: tokens.cards["card-panel-border"] }}
+              title="Copy a shareable link to this palette"
+            >
+              <LinkIcon size={14} />
+              Copy palette link
+            </button>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3">
