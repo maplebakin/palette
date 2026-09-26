@@ -29,6 +29,11 @@ class JSZipMock {
   folder(name) {
     return new FolderMock(this, `${name}/`);
   }
+
+  file(name, data) {
+    this.files[name] = data;
+    return this;
+  }
 }
 
 vi.mock('jszip', () => ({ default: JSZipMock }));
@@ -416,6 +421,29 @@ describe('workflow export helpers', () => {
     expect(zip.files['stored-family/README.md']).toContain('Missing modes: none');
     expect(JSON.parse(zip.files['stored-family/modes/light/tokens.json']).brand.primary).toBe(light.finalTokens.brand.primary);
     expect(JSON.parse(zip.files['stored-family/modes/pop/tokens.json']).brand.primary).toBe(pop.finalTokens.brand.primary);
+  });
+
+  it('adds native designer palette formats to each mode folder', async () => {
+    const dark = buildSampleTheme();
+
+    await workflowExports.buildAllModeThemePackArchive({
+      displayThemeName: 'Designer Kit',
+      mode: 'Monochromatic',
+      baseColor: '#6633ff',
+      themeMode: 'dark',
+      finalTokens: dark.finalTokens,
+      currentTheme: dark.currentTheme,
+      themeMaster: dark,
+    });
+
+    const zip = zipInstances[0];
+    expect(Object.keys(zip.files)).toEqual(expect.arrayContaining([
+      'designer-kit/modes/dark/designer/designer-kit-dark.ase',
+      'designer-kit/modes/dark/designer/designer-kit-dark.gpl',
+      'designer-kit/modes/dark/designer/designer-kit-dark.swatches',
+    ]));
+    expect(zip.files['designer-kit/README.md']).toContain('`modes/{mode}/designer/`');
+    expect(zip.files['designer-kit/modes/dark/designer/designer-kit-dark.gpl']).toContain('GIMP Palette');
   });
 
   it('exports only explicitly selected resolved modes without re-adding a deselected current mode', async () => {

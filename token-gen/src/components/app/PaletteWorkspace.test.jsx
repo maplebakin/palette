@@ -199,12 +199,14 @@ describe('PaletteWorkspace', () => {
     expect(controller.handleExportProductPackage).toHaveBeenCalledWith({ offering: 'individual' });
   });
 
-  it('keeps the public Theme Pack while hiding Product Forge and broad exports', async () => {
-    render(<PaletteWorkspace controller={createController({ canExport: false })} />);
+  it('hides every file download in the public demo build', async () => {
+    render(<PaletteWorkspace controller={createController({ canExport: false, canDownloadThemePack: false })} />);
 
     expect(screen.queryByTestId('product-forge-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('export-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('listing-assets-canvas')).not.toBeInTheDocument();
-    expect(await screen.findByTestId('package-stage')).toBeInTheDocument();
+    expect(screen.queryByTestId('package-stage')).not.toBeInTheDocument();
+    // The demo still offers the copy-based tools.
+    expect(screen.getByTestId('validate-stage')).toBeInTheDocument();
   });
 });

@@ -1,18 +1,20 @@
 # ApocaPalette — Design System Palette Generator
 
-ApocaPalette is a browser-based palette generator for creating, reviewing, saving, and downloading vetted design-system Theme Packs.
+ApocaPalette is a browser-based palette generator for creating, reviewing, saving, and copying vetted design-system palettes.
 
 ## Features
 
 - Live palette generation from a base color, harmony modes, presets, and light/dark/pop themes
 - Fine-tuning controls, visual preview, WCAG contrast checks, and color-vision previews
 - Browser-local palette saves, project capture, and mood boards
-- Public Theme Pack ZIP download from the **Package** stage
+- Copy-to-clipboard for individual hex and token values
 - Keyboard shortcuts and visible focus states
 
-## Public Theme Pack
+The public site is a **demo**: it offers no file downloads. The private forge build (development, or production with `VITE_PRIVATE_FORGE=true`) unlocks the full seller/export surface.
 
-The public Package stage downloads a reviewed Theme Pack ZIP for the selected modes. Each ZIP includes:
+## Forge Theme Pack
+
+The forge Package stage downloads a reviewed Theme Pack ZIP for the selected modes. Each ZIP includes:
 
 - `tokens.json` — generic token payload
 - `css/variables.css` — CSS custom properties
@@ -20,6 +22,7 @@ The public Package stage downloads a reviewed Theme Pack ZIP for the selected mo
 - `penpot/tokens.json` — Penpot handoff data
 - `libreoffice/<theme>.soc` — LibreOffice/OpenOffice palette
 - `README.md` and SVG preview assets
+- `designer/` — native designer palette formats: Adobe Swatch Exchange (`.ase`), Procreate (`.swatches`, first 30 unique colors), and GIMP (`.gpl`)
 
 Product Forge, SKU generation, marketplace listing assets, seller packaging, print/PDF tooling, and broad JSON/CSS export utilities are private seller tools. They are available only in development or builds with `VITE_PRIVATE_FORGE=true`; they are not part of the public application contract.
 
@@ -45,9 +48,9 @@ npm install
 
 1. Choose a base color, harmony mode, and theme mode.
 2. Refine the palette and review the preview and contrast checks.
-3. Open **Package**, select the reviewed modes, and download the Theme Pack.
+3. Copy any hex or token value to the clipboard, or share a palette via link (forge build).
 
-The Package stage only includes modes that have been reviewed in the current palette session. Product Forge and other seller workflows remain private.
+The public site is a demo: it offers no file downloads. Forge builds add the Package stage (Theme Pack ZIP download for reviewed modes), the Product Forge, and the other seller workflows, which remain private.
 
 ## Storage, Privacy, and Project Limits
 

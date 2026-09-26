@@ -23,7 +23,7 @@ describe('stage definitions', () => {
     ]));
   });
 
-  it('keeps the public Package stage while excluding the private Export stage', async () => {
+  it('excludes the Package and Export stages from the public demo build', async () => {
     vi.resetModules();
     vi.stubEnv('DEV', false);
     vi.stubEnv('VITE_PRIVATE_FORGE', '');
@@ -34,10 +34,10 @@ describe('stage definitions', () => {
       expect.objectContaining({ id: 'identity', label: 'Create' }),
       expect.objectContaining({ id: 'build', label: 'Refine' }),
       expect.objectContaining({ id: 'validate', label: 'Review' }),
-      expect.objectContaining({ id: 'package', label: 'Package', tab: 'Package' }),
     ]);
     expect(STAGE_DEFS).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'export' }),
+      expect.objectContaining({ id: 'package' }),
     ]));
   });
 });

@@ -7,6 +7,9 @@ import { buildPrintTokenTree, getThemePackGuidance, sanitizeThemeName } from '..
 import { normalizeHex } from '../colorUtils.js';
 import { buildOrderedStack } from '../tokens.js';
 import { extractSocColorsFromTokens, generateSoc } from '../soc-exporter.js';
+import { generateAse } from './exportAse.js';
+import { generateGpl } from './exportGpl.js';
+import { generateProcreateSwatchesFile } from './exportProcreate.js';
 import { buildPreviewRoleTokens } from '../previewTokens.js';
 import { generateDesignSpacePalette } from './designSpacePalette.js';
 import {
@@ -756,6 +759,7 @@ export const addAllModeThemePackFiles = async (root, theme, options = {}) => {
     '- `modes/{mode}/figma/tokens.json` - Figma token JSON from the same resolved mode tokens.',
     '- `modes/{mode}/penpot/tokens.json` - Penpot-friendly token JSON from the same resolved mode tokens.',
     '- `modes/{mode}/libreoffice/` - LibreOffice/OpenOffice palette files from the same resolved mode tokens.',
+    '- `modes/{mode}/designer/` - native designer palette formats from the same resolved mode tokens: Adobe Swatch Exchange (.ase), Procreate (.swatches, first 30 unique colors), and GIMP (.gpl).',
     '- `modes/{mode}/preview/` - palette card and swatch preview assets for that mode when available.',
     ...combinedGuide,
   ].join('\n'));
@@ -797,6 +801,15 @@ export const addAllModeThemePackFiles = async (root, theme, options = {}) => {
 
     const socColors = extractSocColorsFromTokens(finalTokens);
     modeFolder.folder('libreoffice')?.file(`${themeSlug}-${themeMode}.soc`, generateSoc(`${spec.name} ${themeMode}`, socColors));
+
+    const designerFolder = modeFolder.folder('designer');
+    const designerPaletteName = `${spec.name} ${themeMode}`;
+    designerFolder?.file(`${themeSlug}-${themeMode}.ase`, generateAse(socColors));
+    designerFolder?.file(`${themeSlug}-${themeMode}.gpl`, generateGpl(designerPaletteName, socColors));
+    designerFolder?.file(
+      `${themeSlug}-${themeMode}.swatches`,
+      await generateProcreateSwatchesFile(designerPaletteName, socColors),
+    );
 
     const previewFolder = modeFolder.folder('preview');
     try {
