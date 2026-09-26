@@ -8,6 +8,7 @@ describe('stage definitions', () => {
   it('keeps Product Forge out of Palette Creator stage navigation in private forge mode', async () => {
     vi.resetModules();
     vi.stubEnv('DEV', true);
+    vi.stubEnv('VITE_PRIVATE_FORGE', 'true');
 
     const { STAGE_DEFS } = await import('./appState.js');
 

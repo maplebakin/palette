@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ProductForgeStage from './ProductForgeStage.jsx';
 
+vi.hoisted(() => {
+  vi.stubEnv('VITE_PRIVATE_FORGE', 'true');
+});
+
 const tokens = {
   brand: {
     primary: '#8b2f24',

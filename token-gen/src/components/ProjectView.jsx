@@ -5,17 +5,10 @@ import { useNotification } from '../context/NotificationContext';
 import { mergeProjectColors } from '../lib/projectMerge';
 import { flattenTokens } from '../lib/theme/paths';
 import { generateSoc } from '../lib/soc-exporter';
-import { isPrivateForge } from '../lib/capabilities.js';
 
-const ProductForgeStage = isPrivateForge
-  ? lazy(() => import('./stages/ProductForgeStage.jsx'))
-  : null;
-const loadMoodBoardExports = isPrivateForge
-  ? () => import('../lib/exportMoodBoards')
-  : null;
-const loadBasicExports = isPrivateForge
-  ? () => import('../lib/export')
-  : null;
+const ProductForgeStage = lazy(() => import('./stages/ProductForgeStage.jsx'));
+const loadMoodBoardExports = () => import('../lib/exportMoodBoards');
+const loadBasicExports = () => import('../lib/export');
 
 const StartPanel = ({ children, className }) => (
   <div className={className}>{children}</div>

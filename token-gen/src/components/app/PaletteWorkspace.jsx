@@ -7,17 +7,10 @@ import RefineStage from '../stages/RefineStage.jsx';
 import ForgeCta from '../ForgeCta.jsx';
 import StepPager from './StepPager.jsx';
 import { StageNav } from '../stages/StageLayout.jsx';
-import { canDownloadThemePack, isPrivateForge } from '../../lib/capabilities.js';
 
-const PackageStage = canDownloadThemePack
-  ? lazy(() => import('../stages/PackageStage.jsx'))
-  : null;
-const ProductForgeStage = isPrivateForge
-  ? lazy(() => import('../stages/ProductForgeStage.jsx'))
-  : null;
-const ExportStage = isPrivateForge
-  ? lazy(() => import('../stages/ExportStage.jsx'))
-  : null;
+const PackageStage = lazy(() => import('../stages/PackageStage.jsx'));
+const ProductForgeStage = lazy(() => import('../stages/ProductForgeStage.jsx'));
+const ExportStage = lazy(() => import('../stages/ExportStage.jsx'));
 
 // Stepped demo flow: one stage visible at a time.
 // Public: Create → Refine → Review. Forge builds continue into

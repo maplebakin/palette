@@ -1,14 +1,21 @@
 import React from 'react';
 import { MoodBoardProvider } from '../context/MoodBoardContext.jsx';
 import useAppController from '../hooks/useAppController.js';
+import { isPrivateForge } from '../lib/capabilities.js';
 import PaletteWorkspace from './app/PaletteWorkspace.jsx';
 import ProjectWorkspace from './app/ProjectWorkspace.jsx';
 import PrintHeader from './app/PrintHeader.jsx';
 import CollapsedQuickBar from './app/CollapsedQuickBar.jsx';
 import FloatingActions from './app/FloatingActions.jsx';
 import IdentityStage from './stages/IdentityStage.jsx';
+import TastingRoom from './TastingRoom.jsx';
 
 export default function AppShell() {
+  if (!isPrivateForge) return <TastingRoom />;
+  return <PrivateForgeShell />;
+}
+
+function PrivateForgeShell() {
   const controller = useAppController();
 
   return (

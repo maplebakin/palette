@@ -296,6 +296,239 @@ body {
   color: var(--status-info-text);
 }
 
+/* The public tasting room is a fixed ink-dark frame. Palette colors belong to
+   its preview surface and swatches, never to the surrounding chrome. */
+.tasting-room {
+  --tasting-ink: #171411;
+  --tasting-ink-raised: #211d19;
+  --tasting-ink-panel: #29231f;
+  --tasting-line: #4b4037;
+  --tasting-warm-white: #f5efe5;
+  --tasting-muted: #b8aca0;
+  --tasting-accent: #e5a56c;
+  background-color: var(--tasting-ink);
+  color: var(--tasting-warm-white);
+}
+
+.tasting-frame {
+  width: min(1180px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.tasting-header {
+  background-color: var(--tasting-ink);
+  border-bottom: 1px solid var(--tasting-line);
+}
+
+.tasting-wordmark {
+  color: var(--tasting-warm-white);
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.tasting-header-note,
+.tasting-header-mark,
+.tasting-muted,
+.tasting-meta-row,
+.tasting-kit-number {
+  color: var(--tasting-muted);
+}
+
+.tasting-header-note,
+.tasting-header-mark {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tasting-header-mark {
+  border: 1px solid var(--tasting-line);
+  border-radius: 999px;
+  padding: 0.45rem 0.7rem;
+}
+
+.tasting-skip-link {
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  z-index: 50;
+  transform: translateY(-200%);
+  border-radius: 0.5rem;
+  background: var(--tasting-warm-white);
+  color: var(--tasting-ink);
+  padding: 0.5rem 0.75rem;
+}
+
+.tasting-skip-link:focus {
+  transform: translateY(0);
+}
+
+.tasting-eyebrow {
+  color: var(--tasting-accent);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.tasting-hero {
+  max-width: 52rem;
+}
+
+.tasting-title {
+  margin-top: 0.65rem;
+  color: var(--tasting-warm-white);
+  font-size: clamp(2.25rem, 7vw, 5.5rem);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+}
+
+.tasting-subtitle {
+  margin-top: 1.25rem;
+  color: var(--tasting-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.tasting-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tasting-panel {
+  border: 1px solid var(--tasting-line);
+  border-radius: 1.25rem;
+  background: var(--tasting-ink-raised);
+  color: var(--tasting-warm-white);
+  padding: 1.25rem;
+}
+
+.tasting-panel-title {
+  margin-top: 0.35rem;
+  color: var(--tasting-warm-white);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.tasting-kit-button {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  color: var(--tasting-warm-white);
+  padding: 0.65rem 0.7rem;
+  text-align: left;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.tasting-kit-button:hover,
+.tasting-kit-button.is-selected {
+  border-color: var(--tasting-line);
+  background: var(--tasting-ink-panel);
+  transform: translateY(-1px);
+}
+
+.tasting-kit-button.is-selected {
+  box-shadow: inset 3px 0 0 var(--tasting-accent);
+}
+
+.tasting-kit-button > span:first-child {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.tasting-kit-number {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tasting-explore-button {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid var(--tasting-accent);
+  border-radius: 999px;
+  color: var(--tasting-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.65rem 0.75rem;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.tasting-explore-button:hover {
+  background: var(--tasting-accent);
+  color: var(--tasting-ink);
+}
+
+.tasting-bundle {
+  border-top: 1px solid var(--tasting-line);
+  padding-top: 1rem;
+}
+
+.tasting-palette-surface {
+  min-width: 0;
+  border: 1px solid;
+  border-radius: 1.25rem;
+  padding: 1rem;
+}
+
+.tasting-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  min-width: min(100%, 18rem);
+}
+
+.tasting-stat-grid span {
+  border: 1px solid var(--tasting-line);
+  border-radius: 0.75rem;
+  color: var(--tasting-muted);
+  padding: 0.65rem;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tasting-stat-grid strong {
+  display: block;
+  color: var(--tasting-warm-white);
+  font-size: 1.15rem;
+  line-height: 1.1;
+}
+
+.tasting-room .panel-surface-soft,
+.tasting-room .panel-surface-strong,
+.tasting-room .panel-surface {
+  background-color: var(--tasting-ink-raised) !important;
+  border-color: var(--tasting-line) !important;
+  color: var(--tasting-warm-white) !important;
+}
+
+.tasting-room .panel-text {
+  color: var(--tasting-warm-white) !important;
+}
+
+.tasting-room .panel-muted {
+  color: var(--tasting-muted) !important;
+}
+
 @media print {
   @page {
     size: A4;

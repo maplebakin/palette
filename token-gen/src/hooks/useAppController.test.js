@@ -7,6 +7,10 @@ import { useProjectStore } from '../store/projectStore.js';
 import { useUiStore } from '../store/uiStore.js';
 import { generateTokens } from '../lib/tokens.js';
 
+vi.hoisted(() => {
+  vi.stubEnv('VITE_PRIVATE_FORGE', 'true');
+});
+
 const workflowExportMocks = vi.hoisted(() => ({
   downloadAllModeThemePackArchive: vi.fn(async () => undefined),
 }));

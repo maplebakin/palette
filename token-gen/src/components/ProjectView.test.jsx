@@ -5,6 +5,10 @@ import ProjectView from './ProjectView.jsx';
 import { PaletteContext } from '../context/PaletteContext.jsx';
 import { ProjectContext } from '../context/ProjectContext.jsx';
 
+vi.hoisted(() => {
+  vi.stubEnv('VITE_PRIVATE_FORGE', 'true');
+});
+
 const tokens = {
   brand: {
     primary: '#6633ff',
