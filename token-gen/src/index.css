@@ -673,12 +673,21 @@ body {
   gap: 0.4rem;
 }
 
-.playground-colorfield-swatches span {
+.playground-colorfield-swatches button {
   width: 2.15rem;
   height: 2.15rem;
+  cursor: pointer;
   border: 2px solid rgba(255, 255, 255, 0.55);
   border-radius: 0.65rem;
+  padding: 0;
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.14);
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.playground-colorfield-swatches button:hover,
+.playground-colorfield-swatches button:focus-visible {
+  border-color: #fff;
+  transform: translateY(-2px);
 }
 
 .playground-dashboard-scene,
@@ -990,8 +999,18 @@ body {
   display: block;
   width: 100%;
   aspect-ratio: 1;
+  cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 0.55rem;
+  padding: 0;
+  appearance: none;
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.playground-swatch-color:hover,
+.playground-swatch-color:focus-visible {
+  border-color: var(--tasting-accent);
+  transform: translateY(-2px);
 }
 
 .playground-swatch-name {
@@ -1270,6 +1289,117 @@ body {
   font-size: 0.72rem;
 }
 
+.vault-strip {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.vault-card-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.vault-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 9rem;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid var(--tasting-line);
+  border-radius: 0.9rem;
+  background: var(--tasting-ink-panel);
+  color: var(--tasting-warm-white);
+  cursor: pointer;
+  padding: 0.8rem;
+  text-align: left;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.vault-card:hover,
+.vault-card:focus-visible {
+  border-color: var(--tasting-accent);
+  background: var(--tasting-ink-raised);
+  transform: translateY(-2px);
+}
+
+.vault-card:focus-visible {
+  outline: 2px solid var(--tasting-accent);
+  outline-offset: 2px;
+}
+
+.vault-card-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid var(--tasting-line);
+  border-radius: 0.6rem;
+  color: var(--tasting-accent);
+}
+
+.vault-card-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.75rem;
+}
+
+.vault-card-copy strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.vault-card-copy span {
+  overflow: hidden;
+  color: var(--tasting-muted);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-card-lock {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.8rem;
+  color: var(--tasting-muted);
+}
+
+.vault-card-metadata {
+  margin-top: auto;
+  color: var(--tasting-accent);
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1.35;
+  opacity: 0;
+  transform: translateY(0.35rem);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.vault-card:hover .vault-card-metadata,
+.vault-card:focus-visible .vault-card-metadata {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.playground-copy-toast {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 60;
+  max-width: min(28rem, calc(100vw - 2rem));
+  border: 1px solid var(--tasting-accent);
+  border-radius: 999px;
+  background: var(--tasting-ink-raised);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.35);
+  color: var(--tasting-warm-white);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.75rem 1rem;
+}
+
 @media (max-width: 960px) {
   .playground-layout {
     grid-template-columns: 1fr;
@@ -1277,6 +1407,10 @@ body {
 
   .playground-controls {
     position: static;
+  }
+
+  .vault-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -1310,6 +1444,10 @@ body {
 
   .playground-vision-controls {
     justify-content: flex-start;
+  }
+
+  .vault-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .playground-swatch-grid {

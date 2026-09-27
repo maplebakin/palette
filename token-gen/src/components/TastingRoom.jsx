@@ -9,6 +9,7 @@ import {
 import ForgeCta from './ForgeCta.jsx';
 import PlaygroundAccessibility from './PlaygroundAccessibility.jsx';
 import TokenTeaser from './TokenTeaser.jsx';
+import VaultStrip from './VaultStrip.jsx';
 import { BUNDLE, KIT_SEEDS, KITS } from '../data/kits.js';
 import { NAME_BANK, randomExplorationName } from '../data/nameBank.js';
 import { formatArtifactName } from '../lib/artifactNaming.js';
@@ -16,6 +17,7 @@ import { isCustom } from '../lib/honestyPredicate.js';
 import { buildPreviewRoleTokens } from '../lib/previewTokens.js';
 import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
 import { simulateColorVision } from '../lib/accessibility.js';
+import { buildCopyToastMessage } from '../lib/copyToast.js';
 import { getTokenTeaser } from '../lib/tokenTeaser.js';
 import { buildTheme } from '../lib/theme/engine.js';
 
@@ -145,7 +147,7 @@ const markMutation = (state, patch) => ({
   swatchOverrides: {},
 });
 
-const PreviewScene = ({ scene, roles, swatches, artifactLabel }) => {
+const PreviewScene = ({ scene, roles, swatches, artifactLabel, onCopy }) => {
   if (scene === 'dashboard') {
     return (
       <div className="playground-scene playground-dashboard-scene" style={{ backgroundColor: roles.surface }}>
@@ -241,7 +243,15 @@ const PreviewScene = ({ scene, roles, swatches, artifactLabel }) => {
         </div>
         <div className="playground-colorfield-swatches">
           {swatches.slice(0, 5).map(({ color, name }) => (
-            <span key={`${name}-${color}`} style={{ backgroundColor: color }} title={name} />
+            <button
+              key={`${name}-${color}`}
+              type="button"
+              onClick={() => onCopy(color)}
+              className="playground-colorfield-swatch"
+              style={{ backgroundColor: color }}
+              title={`Copy ${name} ${color}`}
+              aria-label={`Copy ${name} swatch ${color}`}
+            />
           ))}
         </div>
       </div>
@@ -254,6 +264,8 @@ const TastingRoom = () => {
   const [showTuning, setShowTuning] = useState(false);
   const [scene, setScene] = useState('hero');
   const [visionMode, setVisionMode] = useState('normal');
+  const [copyCount, setCopyCount] = useState(0);
+  const [copyToast, setCopyToast] = useState('');
 
   const kit = playground.kitId ? KITS.find((candidate) => candidate.id === playground.kitId) : null;
   const manifestKit = kit || KITS[0];
@@ -401,12 +413,21 @@ const TastingRoom = () => {
   };
 
   const copySingleHex = (color) => {
-    if (!color || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) return;
-    void navigator.clipboard.writeText(color).catch(() => {});
+    if (!color) return;
+    setCopyToast(buildCopyToastMessage(color, copyCount));
+    setCopyCount((current) => current + 1);
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(color).catch(() => {});
+    }
   };
 
   return (
     <div className="tasting-room min-h-screen">
+      {copyToast && (
+        <div className="playground-copy-toast" role="status" aria-live="polite">
+          {copyToast}
+        </div>
+      )}
       <a href="#tasting-main" className="tasting-skip-link">Skip to playground</a>
 
       <header className="tasting-header">
@@ -461,7 +482,13 @@ const TastingRoom = () => {
                 ))}
               </div>
             </div>
-            <PreviewScene scene={scene} roles={visionRoles} swatches={visionSwatches} artifactLabel={artifactLabel} />
+            <PreviewScene
+              scene={scene}
+              roles={visionRoles}
+              swatches={visionSwatches}
+              artifactLabel={artifactLabel}
+              onCopy={copySingleHex}
+            />
           </section>
 
           <aside className="playground-controls tasting-panel" aria-label="Playground controls">
@@ -589,7 +616,14 @@ const TastingRoom = () => {
               <div className="playground-swatch-grid">
                 {swatches.slice(0, 8).map(({ name, color, locked }, index) => (
                   <div key={`${name}-${index}`} className="playground-swatch-card">
-                    <span className="playground-swatch-color" style={{ backgroundColor: color }} />
+                    <button
+                      type="button"
+                      className="playground-swatch-color"
+                      style={{ backgroundColor: color }}
+                      onClick={() => copySingleHex(color)}
+                      aria-label={`Copy ${name} swatch ${color}`}
+                      title={`Copy ${name} ${color}`}
+                    />
                     <span className="playground-swatch-name">{name}</span>
                     <button
                       type="button"
@@ -617,6 +651,8 @@ const TastingRoom = () => {
         </div>
 
         <TokenTeaser manifest={manifestKit} tokens={teaserTokens} onCopy={copySingleHex} />
+
+        <VaultStrip manifest={manifestKit} />
 
         <PlaygroundAccessibility
           roles={previewRoles}
