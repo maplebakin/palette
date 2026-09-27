@@ -1,8 +1,25 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { requestGate } from '../lib/gateEvents.js';
 import { getTokenTeaser } from '../lib/tokenTeaser.js';
 
 const TokenTeaser = ({ manifest, tokens, onCopy }) => {
+  const fadeRef = useRef(null);
   const { tokens: teaserTokens, moreCount } = getTokenTeaser(tokens, manifest);
+
+  useEffect(() => {
+    const fadeNode = fadeRef.current;
+    if (!fadeNode || typeof window === 'undefined' || !('IntersectionObserver' in window)) return undefined;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        requestGate('token-fade');
+        observer.disconnect();
+      }
+    }, { threshold: 0.45 });
+    observer.observe(fadeNode);
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <section className="token-teaser tasting-panel" aria-label="Token teaser">
@@ -31,7 +48,7 @@ const TokenTeaser = ({ manifest, tokens, onCopy }) => {
         ))}
       </div>
 
-      <div className="token-teaser-fade" aria-label={`${moreCount} more production tokens live in the kit`}>
+      <div ref={fadeRef} className="token-teaser-fade" aria-label={`${moreCount} more production tokens live in the kit`}>
         <span>+{moreCount} more production tokens live in the kit</span>
       </div>
     </section>

@@ -7,6 +7,7 @@ import {
   Unlock,
 } from 'lucide-react';
 import ForgeCta from './ForgeCta.jsx';
+import ClimaxGate from './ClimaxGate.jsx';
 import PlaygroundAccessibility from './PlaygroundAccessibility.jsx';
 import TokenTeaser from './TokenTeaser.jsx';
 import VaultStrip from './VaultStrip.jsx';
@@ -653,6 +654,12 @@ const TastingRoom = () => {
         <TokenTeaser manifest={manifestKit} tokens={teaserTokens} onCopy={copySingleHex} />
 
         <VaultStrip manifest={manifestKit} />
+
+        <ClimaxGate
+          manifest={manifestKit}
+          isCustom={custom}
+          paletteSeed={playground.baseColor}
+        />
 
         <PlaygroundAccessibility
           roles={previewRoles}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { PackageOpen } from 'lucide-react';
+import { requestGate } from '../lib/gateEvents.js';
 
 // ─── MADDIE: SET THIS BEFORE SHARING THE DEMO PUBLICLY ───────────────────────
 // There is no public forge-kit storefront URL yet, so this defaults to a
@@ -28,14 +29,13 @@ const ForgeCta = () => (
       plus docs and a usage license for client work.
     </p>
     <div>
-      <a
-        href={FORGE_KIT_URL}
-        target="_blank"
-        rel="noreferrer"
+      <button
+        type="button"
+        onClick={() => requestGate('see-full-kit')}
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
       >
         Get the full theme kit
-      </a>
+      </button>
     </div>
   </section>
 );
