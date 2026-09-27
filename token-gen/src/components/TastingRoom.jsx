@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpRight,
   Lock,
@@ -8,8 +8,10 @@ import {
 } from 'lucide-react';
 import ForgeCta from './ForgeCta.jsx';
 import ClimaxGate from './ClimaxGate.jsx';
+import KitGallery from './KitGallery.jsx';
 import PlaygroundAccessibility from './PlaygroundAccessibility.jsx';
 import TokenTeaser from './TokenTeaser.jsx';
+import TastingFooter from './TastingFooter.jsx';
 import VaultStrip from './VaultStrip.jsx';
 import { BUNDLE, KIT_SEEDS, KITS } from '../data/kits.js';
 import { NAME_BANK, randomExplorationName } from '../data/nameBank.js';
@@ -19,7 +21,9 @@ import { buildPreviewRoleTokens } from '../lib/previewTokens.js';
 import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
 import { simulateColorVision } from '../lib/accessibility.js';
 import { buildCopyToastMessage } from '../lib/copyToast.js';
+import { requestGate } from '../lib/gateEvents.js';
 import { getTokenTeaser } from '../lib/tokenTeaser.js';
+import { STICKY_DELAY_MS, shouldShowStickyBar } from '../lib/stickyBar.js';
 import { buildTheme } from '../lib/theme/engine.js';
 
 const HARMONY_MODES = ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'];
@@ -267,9 +271,21 @@ const TastingRoom = () => {
   const [visionMode, setVisionMode] = useState('normal');
   const [copyCount, setCopyCount] = useState(0);
   const [copyToast, setCopyToast] = useState('');
+  const [engagementElapsed, setEngagementElapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setEngagementElapsed(true), STICKY_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const kit = playground.kitId ? KITS.find((candidate) => candidate.id === playground.kitId) : null;
   const manifestKit = kit || KITS[0];
+  const hasModeConfirmation = Object.values(playground.confirmedModes).some(Boolean);
+  const showStickyBar = shouldShowStickyBar({
+    elapsedMs: engagementElapsed ? STICKY_DELAY_MS : 0,
+    hasModeConfirmation,
+    copyCount,
+  });
   const custom = isCustom({
     userHasMutated: playground.userHasMutated,
     isChaosMinted: playground.isChaosMinted,
@@ -428,6 +444,15 @@ const TastingRoom = () => {
         <div className="playground-copy-toast" role="status" aria-live="polite">
           {copyToast}
         </div>
+      )}
+      {showStickyBar && (
+        <aside className="tasting-sticky-bar" aria-label="Complete token pack">
+          <p>Loving this palette? The complete token pack is in the kit.</p>
+          <button type="button" onClick={() => requestGate('sticky-bar')}>
+            See the complete kit
+            <ArrowUpRight size={14} aria-hidden="true" />
+          </button>
+        </aside>
       )}
       <a href="#tasting-main" className="tasting-skip-link">Skip to playground</a>
 
@@ -676,7 +701,11 @@ const TastingRoom = () => {
         </div>
 
         <ForgeCta />
+
+        <KitGallery />
       </main>
+
+      <TastingFooter />
     </div>
   );
 };
