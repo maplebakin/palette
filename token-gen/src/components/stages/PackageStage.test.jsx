@@ -174,15 +174,16 @@ describe('PackageStage', () => {
     });
   });
 
-  it('shows full-family confirmed variant coverage with the theme pack action', () => {
+  it('shows compact read-only variant coverage with the theme pack action', () => {
     renderPackageStage({ onDownloadThemePack: vi.fn() });
 
     expect(screen.getByRole('button', { name: /download full theme pack/i })).toBeInTheDocument();
     expect(screen.getByText(/included in this zip: light, dark, pop/i)).toBeInTheDocument();
     expect(screen.queryByText(/missing modes:/i)).not.toBeInTheDocument();
-    expect(screen.getByTestId('confirmed-variants-status')).toBeInTheDocument();
-    expect(screen.getByTestId('variant-coverage-label')).toHaveTextContent(/full family ready/i);
-    expect(screen.getByText(/review each mode once to unlock a full light\/dark\/pop theme pack/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('confirmed-variants-status')).not.toBeInTheDocument();
+    expect(screen.getByTestId('compact-variant-status')).toHaveTextContent(
+      'Dark confirmed · Light confirmed · Pop confirmed — confirm modes in Refine',
+    );
   });
 
   it('shows full-family success after export', async () => {

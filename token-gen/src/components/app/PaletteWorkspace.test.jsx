@@ -5,6 +5,7 @@ import PaletteWorkspace from './PaletteWorkspace.jsx';
 
 vi.mock('../../lib/capabilities.js', () => ({
   canDownloadThemePack: true,
+  canExport: true,
   isPrivateForge: true,
 }));
 
@@ -38,28 +39,43 @@ vi.mock('../ForgeCta.jsx', () => ({
 }));
 
 vi.mock('../stages/PackageStage.jsx', () => ({
-  default: () => <section data-testid="package-stage">Package Stage</section>,
+  default: ({ onDownloadThemePack }) => (
+    <section data-testid="package-stage">
+      Package Stage
+      <button type="button" onClick={() => onDownloadThemePack?.(['light'])}>
+        Download theme pack
+      </button>
+    </section>
+  ),
 }));
 
 vi.mock('../stages/ProductForgeStage.jsx', () => ({
-  default: ({ productExportThemes = [], onExportProductPackage }) => (
-    <section data-testid="product-forge-stage">
-      <h2>Product Forge</h2>
-      <p>Product Package Builder</p>
+  AvailableThemeKits: ({ productExportThemes = [] }) => (
+    <section data-testid="available-theme-kits">Available Theme Kits {productExportThemes.length}</section>
+  ),
+  ProductExportBuilderBlock: ({ productExportThemes = [], onExportProductPackage }) => (
+    <section data-testid="product-package-builder">
+      <h2>Product Package Builder</h2>
       <p>{productExportThemes.length} source themes</p>
       <button type="button" onClick={() => onExportProductPackage?.({ offering: 'individual' })}>
         Export Product Package
       </button>
     </section>
   ),
+  ProductLibraryNote: () => <section data-testid="product-library-note">Product Library / Ready to Upload</section>,
 }));
 
 vi.mock('../stages/ExportStage.jsx', () => ({
-  default: () => <section data-testid="export-stage">Export Stage</section>,
+  default: () => <section data-testid="toolbox-stage">File toolbox</section>,
 }));
 
 vi.mock('../stages/PublishStage.jsx', () => ({
-  default: () => <section data-testid="publish-stage">Publish Stage</section>,
+  default: ({ onManifestGenerated }) => (
+    <section data-testid="publish-stage">
+      Publish Stage
+      <button type="button" onClick={onManifestGenerated}>Copy manifest entry</button>
+    </section>
+  ),
 }));
 
 const tokens = {
@@ -73,7 +89,7 @@ const STEPS = [
   { id: 'refine', label: 'Refine' },
   { id: 'review', label: 'Review' },
   { id: 'package', label: 'Package' },
-  { id: 'export', label: 'Export' },
+  { id: 'publish', label: 'Publish' },
 ];
 
 const createController = (overrides = {}) => ({
@@ -201,17 +217,22 @@ const createController = (overrides = {}) => ({
 describe('PaletteWorkspace private pipeline', () => {
   it('renders every forge stage together on one visible page', async () => {
     const controller = createController();
-    render(<PaletteWorkspace controller={controller} />);
+    const { container } = render(<PaletteWorkspace controller={controller} />);
 
     expect(screen.getByTestId('create-stage')).toBeInTheDocument();
     expect(screen.getByTestId('refine-stage')).toBeInTheDocument();
     expect(screen.getByTestId('mood-board')).toBeInTheDocument();
     expect(screen.getByTestId('validate-stage')).toBeInTheDocument();
     expect(await screen.findByTestId('package-stage')).toBeInTheDocument();
-    expect(await screen.findByTestId('product-forge-stage')).toBeInTheDocument();
-    expect(await screen.findByTestId('export-stage')).toBeInTheDocument();
+    expect(await screen.findByTestId('available-theme-kits')).toBeInTheDocument();
+    expect(await screen.findByTestId('product-export-builder')).toBeInTheDocument();
+    expect(screen.getByTestId('product-library-note')).toBeInTheDocument();
+    expect(await screen.findByTestId('toolbox-stage')).toBeInTheDocument();
     expect(screen.getByTestId('publish-stage')).toBeInTheDocument();
+    expect(screen.getByText('Listing & seller pack')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Publish' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Export', exact: true })).not.toBeInTheDocument();
+    expect(container.querySelector('[data-pipeline-stage="export"]')).not.toBeInTheDocument();
   });
 
   it('moves the current rail state when a section is selected', () => {
@@ -231,20 +252,38 @@ describe('PaletteWorkspace private pipeline', () => {
     expect(screen.getByTestId('validate-stage')).toBeInTheDocument();
     expect(screen.getByTestId('share-link-wired')).toBeInTheDocument();
     expect(screen.getByTestId('forge-cta')).toBeInTheDocument();
-    expect(screen.queryByTestId('product-forge-stage')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('export-stage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('product-export-builder')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('toolbox-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('package-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('publish-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('listing-assets-canvas')).not.toBeInTheDocument();
   });
 
-  it('keeps product package export wired inside the visible Export section', async () => {
+  it('keeps product package export wired inside the visible Package section', async () => {
     const controller = createController();
     render(<PaletteWorkspace controller={controller} />);
 
-    await screen.findByTestId('product-forge-stage');
+    await screen.findByTestId('product-export-builder');
     fireEvent.click(screen.getByRole('button', { name: /export product package/i }));
 
-    expect(controller.handleExportProductPackage).toHaveBeenCalledWith({ offering: 'individual' });
+    expect(controller.handleExportProductPackage).toHaveBeenCalledWith(expect.objectContaining({
+      offering: 'individual',
+      selectedThemeIds: ['current'],
+    }));
+  });
+
+  it('marks Package only after a package download and Publish only after manifest action', () => {
+    const controller = createController();
+    render(<PaletteWorkspace controller={controller} />);
+
+    expect(screen.getByRole('button', { name: 'Package' })).toHaveAttribute('data-status', 'todo');
+    expect(screen.getByRole('button', { name: 'Publish' })).toHaveAttribute('data-status', 'todo');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download theme pack' }));
+    expect(screen.getByRole('button', { name: 'Package' })).toHaveAttribute('data-status', 'done');
+    expect(screen.getByRole('button', { name: 'Publish' })).toHaveAttribute('data-status', 'todo');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy manifest entry' }));
+    expect(screen.getByRole('button', { name: 'Publish' })).toHaveAttribute('data-status', 'done');
   });
 });

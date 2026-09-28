@@ -10,8 +10,10 @@ import PublishStage from '../stages/PublishStage.jsx';
 import { PIPELINE_STAGES, derivePipelineRailStatuses } from '../../lib/forgePipeline.js';
 
 const PackageStage = lazy(() => import('../stages/PackageStage.jsx'));
-const ProductForgeStage = lazy(() => import('../stages/ProductForgeStage.jsx'));
 const ExportStage = lazy(() => import('../stages/ExportStage.jsx'));
+const AvailableThemeKits = lazy(() => import('../stages/ProductForgeStage.jsx').then(({ AvailableThemeKits: Component }) => ({ default: Component })));
+const ProductExportBuilderBlock = lazy(() => import('../stages/ProductForgeStage.jsx').then(({ ProductExportBuilderBlock: Component }) => ({ default: Component })));
+const ProductLibraryNote = lazy(() => import('../stages/ProductForgeStage.jsx').then(({ ProductLibraryNote: Component }) => ({ default: Component })));
 
 const CORE_BRAND_KEYS = ['primary', 'secondary', 'accent', 'accent-strong', 'cta', 'cta-hover'];
 
@@ -86,8 +88,8 @@ const PublicWorkspaceFallback = ({ controller }) => (
 export default function PaletteWorkspace({ controller }) {
   const [currentSection, setCurrentSection] = useState('create');
   const [visitedStages, setVisitedStages] = useState({ create: true });
-  const [exportDownloaded, setExportDownloaded] = useState(false);
-  const [manifestGenerated, setManifestGenerated] = useState(false);
+  const [packageDownloaded, setPackageDownloaded] = useState(false);
+  const [manifestExported, setManifestExported] = useState(false);
   const sectionRefs = useRef({});
 
   const setSectionRef = useCallback((id) => (node) => {
@@ -156,65 +158,40 @@ export default function PaletteWorkspace({ controller }) {
     };
   }, []);
 
-  const markExportDownloaded = useCallback(() => {
-    setExportDownloaded(true);
+  const markPackageDownloaded = useCallback(() => {
+    setPackageDownloaded(true);
   }, []);
-  const wrapDownload = useCallback((handler) => (...args) => {
-    markExportDownloaded();
+  const wrapPackageDownload = useCallback((handler) => (...args) => {
+    markPackageDownloaded();
     return handler?.(...args);
-  }, [markExportDownloaded]);
-  const exportHandlers = useMemo(() => ({
-    exportAllAssets: wrapDownload(controller.exportAllAssets),
-    handleExportPdf: wrapDownload(controller.handleExportPdf),
-    exportJson: wrapDownload(controller.exportJson),
-    exportGenericJson: wrapDownload(controller.exportGenericJson),
-    exportFigmaTokensJson: wrapDownload(controller.exportFigmaTokensJson),
-    exportStyleDictionaryJson: wrapDownload(controller.exportStyleDictionaryJson),
-    exportCssVars: wrapDownload(controller.exportCssVars),
-    exportUiThemeCss: wrapDownload(controller.exportUiThemeCss),
-    exportWitchcraftJson: wrapDownload(controller.exportWitchcraftJson),
-    exportDesignPalette: wrapDownload(controller.exportDesignPalette),
-    onDownloadThemePack: wrapDownload(controller.handleDownloadThemePack),
-    onDownloadThemePackWithPrint: wrapDownload(controller.handleDownloadThemePackWithPrint),
-    onGenerateListingAssets: wrapDownload(controller.handleGenerateListingAssets),
-    onExportProductPackage: wrapDownload(controller.handleExportProductPackage),
+  }, [markPackageDownloaded]);
+  const packageHandlers = useMemo(() => ({
+    onDownloadThemePack: wrapPackageDownload(controller.handleDownloadThemePack),
+    onDownloadThemePackWithPrint: wrapPackageDownload(controller.handleDownloadThemePackWithPrint),
+    onExportProductPackage: wrapPackageDownload(controller.handleExportProductPackage),
   }), [
-    controller.exportAllAssets,
-    controller.exportCssVars,
-    controller.exportDesignPalette,
-    controller.exportFigmaTokensJson,
-    controller.exportGenericJson,
-    controller.exportJson,
-    controller.exportStyleDictionaryJson,
-    controller.exportUiThemeCss,
-    controller.exportWitchcraftJson,
     controller.handleDownloadThemePack,
     controller.handleDownloadThemePackWithPrint,
-    controller.handleExportPdf,
     controller.handleExportProductPackage,
-    controller.handleGenerateListingAssets,
-    wrapDownload,
+    wrapPackageDownload,
   ]);
 
   const publishPalette = useMemo(() => buildPublishPalette(controller.tokens), [controller.tokens]);
   const handleManifestGenerated = useCallback(() => {
-    setManifestGenerated(true);
+    setManifestExported(true);
   }, []);
-  const packageReady = Boolean(visitedStages.package && controller.printAssetPack);
   const railStatuses = useMemo(() => derivePipelineRailStatuses({
     currentStage: currentSection,
     paletteExists: Boolean(controller.tokens),
     refineVisited: Boolean(visitedStages.refine),
     reviewVisited: Boolean(visitedStages.review),
-    packageReady,
-    exportDownloaded,
-    manifestGenerated,
+    packageDownloaded,
+    manifestExported,
   }), [
     controller.tokens,
     currentSection,
-    exportDownloaded,
-    manifestGenerated,
-    packageReady,
+    manifestExported,
+    packageDownloaded,
     visitedStages.refine,
     visitedStages.review,
   ]);
@@ -321,60 +298,30 @@ export default function PaletteWorkspace({ controller }) {
                 primaryTextColor={controller.primaryTextColor}
                 printAssetPack={controller.printAssetPack}
                 canvaPrintHexes={controller.canvaPrintHexes}
-                onDownloadThemePack={exportHandlers.onDownloadThemePack}
+                onDownloadThemePack={packageHandlers.onDownloadThemePack}
                 canExport={controller.canDownloadThemePack}
                 showPrintTools={controller.canExport}
                 variantStatus={controller.confirmedVariantStatus}
               />
             </Suspense>
-          </div>
-
-          <div ref={setSectionRef('export')} className="forge-pipeline-section" data-pipeline-stage="export">
-            <Suspense fallback={<LoadingStage label="Product Forge" />}>
-              <ProductForgeStage
-                isDev={controller.canExport}
-                tokens={controller.tokens}
-                primaryTextColor={controller.primaryTextColor}
-                productExportThemes={controller.productExportThemes}
-                onExportProductPackage={exportHandlers.onExportProductPackage}
-                onDownloadThemePack={exportHandlers.onDownloadThemePack}
-              />
-            </Suspense>
-            <Suspense fallback={<LoadingStage label="Export" />}>
-              <ExportStage
-                activeTab={controller.uiState.activeTab}
-                getTabId={controller.getTabId}
-                exportsSectionRef={controller.exportsSectionRef}
-                handleJumpToExports={controller.handleJumpToFileTools}
-                copyShareLink={controller.copyShareLink}
-                overflowOpen={controller.uiState.overflowOpen}
-                setOverflowOpen={controller.uiState.setOverflowOpen}
-                tokens={controller.tokens}
-                ctaTextColor={controller.ctaTextColor}
-                primaryTextColor={controller.primaryTextColor}
-                finalTokens={controller.finalTokens}
-                printMode={controller.paletteState.printMode}
-                isExportingAssets={controller.exportState.isExportingAssets}
-                exportError={controller.exportState.exportError}
-                exportBlocked={controller.exportState.exportBlocked}
-                printSupported={controller.exportState.printSupported}
-                neutralButtonText={controller.neutralButtonText}
-                exportAllAssets={exportHandlers.exportAllAssets}
-                handleExportPdf={exportHandlers.handleExportPdf}
-                exportJson={exportHandlers.exportJson}
-                exportGenericJson={exportHandlers.exportGenericJson}
-                exportFigmaTokensJson={exportHandlers.exportFigmaTokensJson}
-                exportStyleDictionaryJson={exportHandlers.exportStyleDictionaryJson}
-                exportCssVars={exportHandlers.exportCssVars}
-                exportUiThemeCss={exportHandlers.exportUiThemeCss}
-                exportWitchcraftJson={exportHandlers.exportWitchcraftJson}
-                exportDesignPalette={exportHandlers.exportDesignPalette}
-                onDownloadThemePack={exportHandlers.onDownloadThemePack}
-                onDownloadThemePackWithPrint={exportHandlers.onDownloadThemePackWithPrint}
-                onGenerateListingAssets={exportHandlers.onGenerateListingAssets}
-                displayThemeName={controller.displayThemeName}
-                isInternal={controller.isInternal}
-              />
+            <Suspense fallback={<LoadingStage label="Packaging tools" />}>
+              <div className="mt-6 space-y-5" data-testid="package-commerce-blocks">
+                <AvailableThemeKits productExportThemes={controller.productExportThemes} />
+                <h3 className="text-lg font-bold panel-text">Listing &amp; seller pack</h3>
+                <ProductExportBuilderBlock
+                  isDev={controller.canExport}
+                  productExportThemes={controller.productExportThemes}
+                  onExportProductPackage={packageHandlers.onExportProductPackage}
+                  tokens={controller.tokens}
+                  primaryTextColor={controller.primaryTextColor}
+                />
+                <details className="rounded-lg border panel-surface-soft p-4">
+                  <summary className="cursor-pointer text-sm font-bold panel-text">After you export</summary>
+                  <div className="mt-3">
+                    <ProductLibraryNote />
+                  </div>
+                </details>
+              </div>
             </Suspense>
           </div>
 
@@ -382,6 +329,45 @@ export default function PaletteWorkspace({ controller }) {
             <PublishStage palette={publishPalette} onManifestGenerated={handleManifestGenerated} />
           </div>
         </div>
+      </div>
+
+      <div className="forge-toolbox-section">
+        <Suspense fallback={<LoadingStage label="Toolbox" />}>
+          <ExportStage
+            activeTab={controller.uiState.activeTab}
+            getTabId={controller.getTabId}
+            exportsSectionRef={controller.exportsSectionRef}
+            handleJumpToExports={controller.handleJumpToFileTools}
+            copyShareLink={controller.copyShareLink}
+            overflowOpen={controller.uiState.overflowOpen}
+            setOverflowOpen={controller.uiState.setOverflowOpen}
+            tokens={controller.tokens}
+            ctaTextColor={controller.ctaTextColor}
+            primaryTextColor={controller.primaryTextColor}
+            finalTokens={controller.finalTokens}
+            printMode={controller.paletteState.printMode}
+            isExportingAssets={controller.exportState.isExportingAssets}
+            exportError={controller.exportState.exportError}
+            exportBlocked={controller.exportState.exportBlocked}
+            printSupported={controller.exportState.printSupported}
+            neutralButtonText={controller.neutralButtonText}
+            exportAllAssets={controller.exportAllAssets}
+            handleExportPdf={controller.handleExportPdf}
+            exportJson={controller.exportJson}
+            exportGenericJson={controller.exportGenericJson}
+            exportFigmaTokensJson={controller.exportFigmaTokensJson}
+            exportStyleDictionaryJson={controller.exportStyleDictionaryJson}
+            exportCssVars={controller.exportCssVars}
+            exportUiThemeCss={controller.exportUiThemeCss}
+            exportWitchcraftJson={controller.exportWitchcraftJson}
+            exportDesignPalette={controller.exportDesignPalette}
+            onDownloadThemePack={packageHandlers.onDownloadThemePack}
+            onDownloadThemePackWithPrint={packageHandlers.onDownloadThemePackWithPrint}
+            onGenerateListingAssets={controller.handleGenerateListingAssets}
+            displayThemeName={controller.displayThemeName}
+            isInternal={controller.isInternal}
+          />
+        </Suspense>
       </div>
 
       <ListingAssetsCanvas

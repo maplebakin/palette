@@ -1,7 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import ProductForgeStage from './ProductForgeStage.jsx';
+import ProductForgeStage, {
+  AvailableThemeKits,
+  ProductExportBuilderBlock,
+  ProductLibraryNote,
+} from './ProductForgeStage.jsx';
 
 vi.hoisted(() => {
   vi.stubEnv('VITE_PRIVATE_FORGE', 'true');
@@ -95,5 +99,34 @@ describe('ProductForgeStage', () => {
 
     expect(screen.queryByTestId('product-forge-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('product-export-builder')).not.toBeInTheDocument();
+  });
+
+  it('exposes the packaging pieces without the retired workflow cards', async () => {
+    render(
+      <>
+        <AvailableThemeKits productExportThemes={[{ id: 'current', label: 'Current Theme' }]} />
+        <ProductExportBuilderBlock
+          isDev
+          productExportThemes={[{ id: 'current', label: 'Current Theme' }]}
+          onExportProductPackage={vi.fn()}
+          tokens={tokens}
+          primaryTextColor="#ffffff"
+        />
+        <ProductLibraryNote />
+      </>,
+    );
+
+    expect(screen.getByTestId('available-theme-kits')).toBeInTheDocument();
+    expect(screen.getByTestId('product-library-note')).toBeInTheDocument();
+    expect(await screen.findByTestId('product-export-builder')).toBeInTheDocument();
+    expect(screen.getByLabelText('Offering type')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Website & Brand Color Kit' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Multi-Kit Bundle' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Mini Website Palette / Freebie' })).toBeInTheDocument();
+    expect(screen.queryByText('Saved Kits')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bundles / Freebies')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Package one saved theme kit with buyer docs/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Combine saved kits into one seller bundle/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Export a lightweight starter palette/i)).not.toBeInTheDocument();
   });
 });

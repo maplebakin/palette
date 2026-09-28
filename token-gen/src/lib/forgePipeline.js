@@ -3,17 +3,15 @@ export const PIPELINE_STAGES = [
   { id: 'refine', label: 'Refine' },
   { id: 'review', label: 'Review' },
   { id: 'package', label: 'Package' },
-  { id: 'export', label: 'Export' },
   { id: 'publish', label: 'Publish' },
 ];
 
-const DONE_KEYS = {
+export const DONE_KEYS = {
   create: 'paletteExists',
   refine: 'refineVisited',
   review: 'reviewVisited',
-  package: 'packageReady',
-  export: 'exportDownloaded',
-  publish: 'manifestGenerated',
+  package: 'packageDownloaded',
+  publish: 'manifestExported',
 };
 
 export const derivePipelineRailStatuses = ({
@@ -21,17 +19,15 @@ export const derivePipelineRailStatuses = ({
   paletteExists = false,
   refineVisited = false,
   reviewVisited = false,
-  packageReady = false,
-  exportDownloaded = false,
-  manifestGenerated = false,
+  packageDownloaded = false,
+  manifestExported = false,
 } = {}) => {
   const stageState = {
     paletteExists,
     refineVisited,
     reviewVisited,
-    packageReady,
-    exportDownloaded,
-    manifestGenerated,
+    packageDownloaded,
+    manifestExported,
   };
 
   return PIPELINE_STAGES.map((stage) => {

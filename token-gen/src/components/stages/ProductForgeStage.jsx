@@ -4,7 +4,7 @@ import { StageSection } from './StageLayout.jsx';
 import { isPrivateForge } from '../../lib/capabilities.js';
 import { getThemeExportSourceInfo } from '../../lib/exports/productExports.js';
 
-const ProductExportBuilder = isPrivateForge
+const LazyProductExportBuilder = isPrivateForge
   ? lazy(() => import('../ProductExportBuilder.jsx'))
   : null;
 
@@ -52,6 +52,90 @@ const getThemeSourceLabel = (id = '') => {
   return 'Theme kit';
 };
 
+export const AvailableThemeKits = ({ productExportThemes = [] }) => {
+  const safeThemes = Array.isArray(productExportThemes) ? productExportThemes : [];
+
+  return (
+    <div className="rounded-lg border panel-surface-strong p-4" data-testid="available-theme-kits">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-bold panel-text">
+            <FolderOpen size={16} />
+            Available Theme Kits
+          </div>
+          <p className="text-xs panel-muted">Choose these as the source palettes for product packages.</p>
+        </div>
+        <span className="text-xs panel-muted">{safeThemes.length} available</span>
+      </div>
+      {safeThemes.length === 0 ? (
+        <div className="rounded-md border panel-surface-soft p-3 text-xs panel-muted">
+          No export kits are available yet. Capture a kit in Project Manager or save a palette first.
+        </div>
+      ) : (
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {safeThemes.map((theme) => (
+            <div key={theme.id} className="rounded-md border panel-surface-soft p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-bold panel-text">{theme.label || 'Untitled kit'}</p>
+                  <p className="text-[11px] panel-muted">{getThemeSourceLabel(theme.id)}</p>
+                </div>
+                <CheckCircle2 size={15} className="shrink-0 panel-muted" aria-hidden />
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px] panel-muted">
+                {theme.baseColor && <span>Base {theme.baseColor}</span>}
+                {theme.mode && <span>{theme.mode}</span>}
+                {theme.themeMode && <span>{theme.themeMode}</span>}
+              </div>
+              <p className="mt-2 text-[11px] font-semibold panel-muted">
+                {getThemeExportSourceInfo(theme).sourceLabel}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const ProductExportBuilderBlock = ({
+  isDev = false,
+  productExportThemes = [],
+  onExportProductPackage,
+  tokens,
+  primaryTextColor,
+}) => {
+  if (!isDev || !LazyProductExportBuilder) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <LazyProductExportBuilder
+        isDev={isDev}
+        themes={productExportThemes}
+        onExport={onExportProductPackage}
+        tokens={tokens}
+        primaryTextColor={primaryTextColor}
+      />
+    </Suspense>
+  );
+};
+
+// Keep the concise component name available to callers that want the extracted
+// builder without the surrounding legacy Project Manager shell.
+export const ProductExportBuilder = ProductExportBuilderBlock;
+
+export const ProductLibraryNote = () => (
+  <div className="rounded-lg border panel-surface-strong p-4" data-testid="product-library-note">
+    <div className="mb-2 flex items-center gap-2 text-sm font-bold panel-text">
+      <PackageCheck size={16} />
+      Product Library / Ready to Upload
+    </div>
+    <p className="text-xs panel-muted">
+      Export history is not stored yet. After generating a product package, keep the ZIP, generated listing docs, and marketplace preview SVGs with the intended library pattern: products/&lt;product-slug&gt;/.
+    </p>
+  </div>
+);
+
 export default function ProductForgeStage({
   isDev = false,
   tokens,
@@ -60,8 +144,7 @@ export default function ProductForgeStage({
   onExportProductPackage,
   onDownloadThemePack,
 }) {
-  if (!isDev || !ProductExportBuilder) return null;
-  const safeThemes = Array.isArray(productExportThemes) ? productExportThemes : [];
+  if (!isDev || !LazyProductExportBuilder) return null;
 
   return (
     <StageSection
@@ -99,45 +182,7 @@ export default function ProductForgeStage({
           ))}
         </div>
 
-        <div className="rounded-lg border panel-surface-strong p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-bold panel-text">
-                <FolderOpen size={16} />
-                Available Theme Kits
-              </div>
-              <p className="text-xs panel-muted">Choose these as the source palettes for product packages.</p>
-            </div>
-            <span className="text-xs panel-muted">{safeThemes.length} available</span>
-          </div>
-          {safeThemes.length === 0 ? (
-            <div className="rounded-md border panel-surface-soft p-3 text-xs panel-muted">
-              No export kits are available yet. Capture a kit in Project Manager or save a palette first.
-            </div>
-          ) : (
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              {safeThemes.map((theme) => (
-                <div key={theme.id} className="rounded-md border panel-surface-soft p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-bold panel-text">{theme.label || 'Untitled kit'}</p>
-                      <p className="text-[11px] panel-muted">{getThemeSourceLabel(theme.id)}</p>
-                    </div>
-                    <CheckCircle2 size={15} className="shrink-0 panel-muted" aria-hidden />
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] panel-muted">
-                    {theme.baseColor && <span>Base {theme.baseColor}</span>}
-                    {theme.mode && <span>{theme.mode}</span>}
-                    {theme.themeMode && <span>{theme.themeMode}</span>}
-                  </div>
-                  <p className="mt-2 text-[11px] font-semibold panel-muted">
-                    {getThemeExportSourceInfo(theme).sourceLabel}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <AvailableThemeKits productExportThemes={productExportThemes} />
 
         {onDownloadThemePack && (
           <div className="rounded-lg border panel-surface-strong p-4">
@@ -184,25 +229,15 @@ export default function ProductForgeStage({
           </div>
         </div>
 
-        <Suspense fallback={null}>
-          <ProductExportBuilder
-            isDev={isDev}
-            themes={productExportThemes}
-            onExport={onExportProductPackage}
-            tokens={tokens}
-            primaryTextColor={primaryTextColor}
-          />
-        </Suspense>
+        <ProductExportBuilderBlock
+          isDev={isDev}
+          productExportThemes={productExportThemes}
+          onExportProductPackage={onExportProductPackage}
+          tokens={tokens}
+          primaryTextColor={primaryTextColor}
+        />
 
-        <div className="rounded-lg border panel-surface-strong p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-bold panel-text">
-            <PackageCheck size={16} />
-            Product Library / Ready to Upload
-          </div>
-          <p className="text-xs panel-muted">
-            Export history is not stored yet. After generating a product package, keep the ZIP, generated listing docs, and marketplace preview SVGs with the intended library pattern: products/&lt;product-slug&gt;/.
-          </p>
-        </div>
+        <ProductLibraryNote />
       </div>
     </StageSection>
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Check, Clipboard, Download, TriangleAlert } from 'lucide-react';
 import { KITS } from '../../data/kits.js';
 import {
@@ -64,13 +64,17 @@ const PublishStage = ({ palette, onManifestGenerated }) => {
     && Number(price) >= 0
     && Number(teaserTokenCount) >= 0;
 
-  useEffect(() => {
-    if (isValid) onManifestGenerated?.();
-  }, [isValid, onManifestGenerated]);
-
   const handleCopy = async () => {
+    if (!isValid) return;
     await copyText(manifestCode);
     setCopyState('copied');
+    onManifestGenerated?.();
+  };
+
+  const handleDownload = () => {
+    if (!isValid) return;
+    downloadJson(manifest);
+    onManifestGenerated?.();
   };
 
   return (
@@ -158,7 +162,7 @@ const PublishStage = ({ palette, onManifestGenerated }) => {
             </button>
             <button
               type="button"
-              onClick={() => downloadJson(manifest)}
+              onClick={handleDownload}
               disabled={!isValid}
               className="inline-flex items-center gap-2 rounded-full border panel-surface-strong px-4 py-2 text-xs font-bold shadow-sm transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
             >

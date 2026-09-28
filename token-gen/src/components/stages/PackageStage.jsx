@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Palette, Printer } from 'lucide-react';
 import ColorSwatch from '../ColorSwatch';
-import ConfirmedVariantsStatus from '../ConfirmedVariantsStatus.jsx';
 import { StageSection } from './StageLayout';
 import { buildThemePackSelectionCopy } from '../../lib/appState.js';
 
@@ -11,6 +10,11 @@ const MODE_LABELS = {
   dark: 'Dark',
   pop: 'Pop',
 };
+const MODE_STATUS_ORDER = ['dark', 'light', 'pop'];
+
+const buildCompactVariantStatus = (availableModes = []) => (
+  `${MODE_STATUS_ORDER.map((mode) => `${MODE_LABELS[mode]} ${availableModes.includes(mode) ? 'confirmed' : 'missing'}`).join(' · ')} — confirm modes in Refine`
+);
 
 const PackageStage = ({
   getTabId,
@@ -152,7 +156,9 @@ const PackageStage = ({
                 {exportCopy.omittedModesLabel && <p>{exportCopy.omittedModesLabel}</p>}
               </div>
               {variantStatus && (
-                <ConfirmedVariantsStatus {...variantStatus} className="mt-2 max-w-2xl" />
+                <p className="mt-2 max-w-2xl text-xs panel-muted" data-testid="compact-variant-status">
+                  {buildCompactVariantStatus(availableModes)}
+                </p>
               )}
               {exportSuccessMessage && (
                 <p className="mt-2 max-w-2xl rounded-lg border panel-surface-soft px-3 py-2 text-xs font-bold panel-text" role="status">

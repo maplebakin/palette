@@ -40,7 +40,13 @@ const ExportStage = ({
   displayThemeName,
   isInternal,
 }) => (
-  <StageSection id="export" title="Export" subtitle="Private forge export tools and project utilities." collapsible>
+  <StageSection
+    id="toolbox"
+    title="File toolbox"
+    eyebrow="Toolbox"
+    subtitle="One-off files and dev formats. Nothing here is required to publish a kit."
+    collapsible
+  >
     <section
       ref={exportsSectionRef}
       id="tab-panel-3"
