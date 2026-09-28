@@ -745,11 +745,6 @@ export default function useAppController() {
         surface: normalizeHex(tokens.cards?.['card-panel-surface'] || tokens.surfaces?.surface || '#f8fafc', '#f8fafc'),
       },
     };
-    const saved = paletteState.savedPalettes.map((palette, index) => createProductThemeDescriptor(
-      `saved-${palette.id ?? index}`,
-      palette.name || `Saved ${index + 1}`,
-      palette
-    ));
     const project = (projectContext?.sections || []).map((section, index) => {
       const spec = section.paletteSpec || buildSpecFromSection(section);
       return createProductThemeDescriptor(
@@ -758,7 +753,8 @@ export default function useAppController() {
         { ...spec, name: section.label || spec?.customThemeName }
       );
     });
-    return [current, ...saved, ...project];
+    // The file cabinet is for loading palettes to work on; the project (captured kits) is for packaging. To package a saved palette, capture it into the project first.
+    return [current, ...project];
   }, [
     buildSpecFromSection,
     createProductThemeDescriptor,
@@ -778,7 +774,6 @@ export default function useAppController() {
     paletteState.popIntensity,
     paletteState.importedOverrides,
     paletteState.printMode,
-    paletteState.savedPalettes,
     paletteState.themeMode,
     paletteState.tokenPrefix,
     projectContext?.sections,

@@ -69,7 +69,7 @@ export const AvailableThemeKits = ({ productExportThemes = [] }) => {
       </div>
       {safeThemes.length === 0 ? (
         <div className="rounded-md border panel-surface-soft p-3 text-xs panel-muted">
-          No export kits are available yet. Capture a kit in Project Manager or save a palette first.
+          No export kits are available yet. Capture a kit in Project Manager first.
         </div>
       ) : (
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
