@@ -18,18 +18,26 @@ const ICONS = {
   braces: Braces,
 };
 
-const VaultStrip = ({ manifest }) => (
-  <section className="vault-strip tasting-panel" aria-label="Locked production formats">
-    <div className="playground-section-heading">
-      <div>
-        <p className="tasting-eyebrow">The vault</p>
-        <h2 className="tasting-panel-title">Production formats</h2>
-      </div>
-      <span className="playground-section-meta">Included with the kit</span>
-    </div>
+const VaultStrip = ({ manifest }) => {
+  const cards = buildVaultCards(manifest);
 
-    <div className="vault-card-grid" role="list">
-      {buildVaultCards(manifest).map((card) => {
+  return (
+    <section className="vault-strip tasting-panel" aria-label="Locked production formats">
+      <div className="playground-section-heading">
+        <div>
+          <p className="tasting-eyebrow">The vault</p>
+          <h2 className="tasting-panel-title">Production formats</h2>
+        </div>
+        <span className="playground-section-meta">Included with the kit</span>
+      </div>
+
+      <button type="button" className="vault-mobile-summary" onClick={() => requestGate('vault-click')}>
+        <span><LockKeyhole size={15} aria-hidden="true" /> Formats locked</span>
+        <strong>{cards.length} formats</strong>
+      </button>
+
+      <div className="vault-card-grid" role="list">
+        {cards.map((card) => {
         const Icon = ICONS[card.icon] || FileText;
         return (
           <button
@@ -48,9 +56,10 @@ const VaultStrip = ({ manifest }) => (
             <span className="vault-card-metadata">{card.metadata}</span>
           </button>
         );
-      })}
-    </div>
-  </section>
-);
+        })}
+      </div>
+    </section>
+  );
+};
 
 export default VaultStrip;

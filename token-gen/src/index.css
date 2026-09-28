@@ -536,6 +536,11 @@ body {
   gap: 1.25rem;
 }
 
+.playground-mobile-quick-controls,
+.vault-mobile-summary {
+  display: none;
+}
+
 .playground-preview {
   min-width: 0;
   border: 1px solid;
@@ -1845,6 +1850,17 @@ body {
 }
 
 @media (max-width: 640px) {
+  .playground-preview {
+    display: flex;
+    min-height: 65vh;
+    flex-direction: column;
+  }
+
+  .playground-preview > .playground-scene {
+    min-height: 0;
+    flex: 1;
+  }
+
   .playground-preview-topline {
     align-items: flex-start;
     flex-direction: column;
@@ -1852,6 +1868,75 @@ body {
 
   .playground-scene {
     min-height: 32rem;
+  }
+
+  .playground-preview > .playground-scene {
+    min-height: 0;
+  }
+
+  .playground-mobile-quick-controls {
+    position: sticky;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    border: 1px solid var(--tasting-line);
+    border-radius: 0.95rem;
+    background: var(--tasting-ink-raised);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.3);
+    padding: 0.55rem;
+  }
+
+  .mobile-quick-chaos {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    background: var(--tasting-accent);
+    color: var(--tasting-ink);
+    font-size: 0.66rem;
+    font-weight: 900;
+    padding: 0.6rem 0.7rem;
+  }
+
+  .mobile-quick-locks {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    justify-content: flex-end;
+    gap: 0.35rem;
+  }
+
+  .mobile-lock-chip {
+    display: inline-flex;
+    width: 2.2rem;
+    height: 2.2rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    border: 1px solid var(--tasting-line);
+    border-radius: 0.65rem;
+    color: var(--tasting-muted);
+    padding: 0.25rem;
+  }
+
+  .mobile-lock-chip span {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 999px;
+  }
+
+  .mobile-lock-chip.is-locked {
+    border-color: var(--tasting-accent);
+    color: var(--tasting-warm-white);
+  }
+
+  .mobile-lock-chip:focus-visible,
+  .mobile-quick-chaos:focus-visible {
+    outline: 2px solid var(--tasting-accent);
+    outline-offset: 2px;
   }
 
   .playground-metric-grid,
@@ -1878,6 +1963,38 @@ body {
 
   .vault-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: none;
+  }
+
+  .vault-mobile-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    border: 1px solid var(--tasting-line);
+    border-radius: 0.75rem;
+    color: var(--tasting-warm-white);
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0.8rem;
+    text-align: left;
+  }
+
+  .vault-mobile-summary > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .vault-mobile-summary strong {
+    color: var(--tasting-muted);
+    font-size: 0.64rem;
+  }
+
+  .vault-mobile-summary:focus-visible {
+    outline: 2px solid var(--tasting-accent);
+    outline-offset: 2px;
   }
 
   .kit-gallery-grid {
@@ -1907,12 +2024,27 @@ body {
     display: none;
   }
 
+  .climax-gate-in-flow {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    overflow-y: auto;
+    border: 0;
+    border-radius: 0;
+    padding: 1.25rem;
+  }
+
   .tasting-sticky-bar {
+    bottom: 0;
+    width: 100%;
     align-items: stretch;
-    border-radius: 1rem;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 1.25rem 1.25rem 0 0;
     flex-direction: column;
     gap: 0.6rem;
-    padding: 0.8rem;
+    padding: 0.8rem 1rem calc(0.8rem + env(safe-area-inset-bottom));
   }
 
   .tasting-sticky-bar button {

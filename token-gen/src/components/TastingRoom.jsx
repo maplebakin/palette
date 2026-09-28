@@ -23,6 +23,7 @@ import { simulateColorVision } from '../lib/accessibility.js';
 import { buildCopyToastMessage } from '../lib/copyToast.js';
 import { requestGate } from '../lib/gateEvents.js';
 import { getTokenTeaser } from '../lib/tokenTeaser.js';
+import { loadPlaygroundSession, savePlaygroundSession } from '../lib/sessionPersistence.js';
 import { STICKY_DELAY_MS, shouldShowStickyBar } from '../lib/stickyBar.js';
 import { buildTheme } from '../lib/theme/engine.js';
 
@@ -265,11 +266,12 @@ const PreviewScene = ({ scene, roles, swatches, artifactLabel, onCopy }) => {
 };
 
 const TastingRoom = () => {
-  const [playground, setPlayground] = useState(() => createPresetState(KITS[0]));
+  const [restoredSession] = useState(() => loadPlaygroundSession());
+  const [playground, setPlayground] = useState(() => restoredSession?.playground || createPresetState(KITS[0]));
   const [showTuning, setShowTuning] = useState(false);
   const [scene, setScene] = useState('hero');
   const [visionMode, setVisionMode] = useState('normal');
-  const [copyCount, setCopyCount] = useState(0);
+  const [copyCount, setCopyCount] = useState(() => restoredSession?.copyCount || 0);
   const [copyToast, setCopyToast] = useState('');
   const [engagementElapsed, setEngagementElapsed] = useState(false);
 
@@ -280,16 +282,20 @@ const TastingRoom = () => {
 
   const kit = playground.kitId ? KITS.find((candidate) => candidate.id === playground.kitId) : null;
   const manifestKit = kit || KITS[0];
+  const custom = isCustom({
+    userHasMutated: playground.userHasMutated,
+    isChaosMinted: playground.isChaosMinted,
+  });
   const hasModeConfirmation = Object.values(playground.confirmedModes).some(Boolean);
   const showStickyBar = shouldShowStickyBar({
     elapsedMs: engagementElapsed ? STICKY_DELAY_MS : 0,
     hasModeConfirmation,
     copyCount,
   });
-  const custom = isCustom({
-    userHasMutated: playground.userHasMutated,
-    isChaosMinted: playground.isChaosMinted,
-  });
+
+  useEffect(() => {
+    savePlaygroundSession({ playground, isCustom: custom, copyCount });
+  }, [copyCount, custom, playground]);
   const artifactLabel = playground.isChaosMinted
     ? formatArtifactName({ explorationName: playground.explorationName })
     : custom && kit
@@ -517,6 +523,28 @@ const TastingRoom = () => {
             />
           </section>
 
+          <div className="playground-mobile-quick-controls" aria-label="Quick palette controls">
+            <button type="button" className="mobile-quick-chaos" onClick={mintChaos}>
+              <Sparkles size={14} aria-hidden="true" />
+              Chaos
+            </button>
+            <div className="mobile-quick-locks" aria-label="Quick swatch locks">
+              {swatches.slice(0, 4).map(({ name, color, locked }, index) => (
+                <button
+                  key={`${name}-${index}`}
+                  type="button"
+                  className={`mobile-lock-chip ${locked ? 'is-locked' : ''}`}
+                  onClick={() => toggleSwatchLock(index)}
+                  aria-label={`${locked ? 'Unlock' : 'Lock'} ${name} swatch`}
+                  title={`${locked ? 'Unlock' : 'Lock'} ${name}`}
+                >
+                  <span style={{ backgroundColor: color }} />
+                  {locked ? <Lock size={12} aria-hidden="true" /> : <Unlock size={12} aria-hidden="true" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <aside className="playground-controls tasting-panel" aria-label="Playground controls">
             <div className="playground-control-heading">
               <div>
@@ -629,6 +657,7 @@ const TastingRoom = () => {
                   </label>
                 </div>
               )}
+              <p className="playground-session-note">Tweaks live in this browser session.</p>
             </div>
 
             <div className="playground-control-block">
