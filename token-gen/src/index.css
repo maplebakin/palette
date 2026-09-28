@@ -1076,8 +1076,12 @@ body {
 .playground-handoff {
   display: grid;
   gap: 1rem;
-  border-color: var(--tasting-accent);
+  border-color: var(--handoff-accent, var(--tasting-accent));
   background: linear-gradient(135deg, var(--tasting-ink-raised), var(--tasting-ink-panel));
+}
+
+.playground-handoff .tasting-eyebrow {
+  color: var(--handoff-accent, var(--tasting-accent));
 }
 
 .playground-handoff-header {
@@ -1126,8 +1130,8 @@ body {
 }
 
 .playground-handoff-copy {
-  background: var(--tasting-accent);
-  color: var(--tasting-ink);
+  background: var(--handoff-accent, var(--tasting-accent));
+  color: var(--handoff-on-accent, var(--tasting-ink));
 }
 
 .playground-handoff-copy:hover {
@@ -1140,13 +1144,13 @@ body {
 }
 
 .playground-handoff-link:hover {
-  color: var(--tasting-accent);
+  color: var(--handoff-accent, var(--tasting-accent));
   transform: translateY(-1px);
 }
 
 .playground-handoff-copy:focus-visible,
 .playground-handoff-link:focus-visible {
-  outline: 2px solid var(--tasting-accent);
+  outline: 2px solid var(--handoff-accent, var(--tasting-accent));
   outline-offset: 2px;
 }
 

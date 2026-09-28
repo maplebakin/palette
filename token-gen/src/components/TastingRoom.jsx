@@ -23,6 +23,7 @@ import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
 import { simulateColorVision } from '../lib/accessibility.js';
 import { buildCopyToastMessage } from '../lib/copyToast.js';
 import { requestGate } from '../lib/gateEvents.js';
+import { resolveHandoffAccent, resolveOnAccentText } from '../lib/handoffAccent.js';
 import { decodePlaygroundHash, encodePlaygroundHash } from '../lib/playgroundLink.js';
 import { getTokenTeaser } from '../lib/tokenTeaser.js';
 import { loadPlaygroundSession, savePlaygroundSession } from '../lib/sessionPersistence.js';
@@ -322,6 +323,10 @@ const TastingRoom = () => {
     () => buildThemeForState(playground, artifactLabel),
     [artifactLabel, playground],
   );
+  const handoffAccent = useMemo(() => {
+    const accent = resolveHandoffAccent({ theme, baseColor: playground.baseColor });
+    return { accent, onAccent: resolveOnAccentText(accent) };
+  }, [playground.baseColor, theme]);
   const previewRoles = useMemo(
     () => buildPreviewRoleTokens(theme.tokens, playground.themeMode),
     [playground.themeMode, theme.tokens],
@@ -510,7 +515,13 @@ const TastingRoom = () => {
           <p className="tasting-subtitle">A palette showroom — explore freely, take the kit home.</p>
         </section>
 
-        {custom && <PlaygroundHandoff onCopyLink={copyPaletteLink} />}
+        {custom && (
+          <PlaygroundHandoff
+            onCopyLink={copyPaletteLink}
+            accent={handoffAccent.accent}
+            onAccent={handoffAccent.onAccent}
+          />
+        )}
 
         <div className="playground-layout">
           <section
