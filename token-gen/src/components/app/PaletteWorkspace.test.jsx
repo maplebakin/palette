@@ -58,6 +58,10 @@ vi.mock('../stages/ExportStage.jsx', () => ({
   default: () => <section data-testid="export-stage">Export Stage</section>,
 }));
 
+vi.mock('../stages/PublishStage.jsx', () => ({
+  default: () => <section data-testid="publish-stage">Publish Stage</section>,
+}));
+
 const tokens = {
   brand: {
     primary: '#6633ff',
@@ -194,87 +198,51 @@ const createController = (overrides = {}) => ({
   ...overrides,
 });
 
-describe('PaletteWorkspace stepper', () => {
-  it('shows only the active step instead of the old stacked page', () => {
+describe('PaletteWorkspace private pipeline', () => {
+  it('renders every forge stage together on one visible page', async () => {
     const controller = createController();
-    controller.uiState.currentStage = 'Refine';
     render(<PaletteWorkspace controller={controller} />);
 
+    expect(screen.getByTestId('create-stage')).toBeInTheDocument();
     expect(screen.getByTestId('refine-stage')).toBeInTheDocument();
     expect(screen.getByTestId('mood-board')).toBeInTheDocument();
-    expect(screen.queryByTestId('create-stage')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('validate-stage')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('package-stage')).not.toBeInTheDocument();
+    expect(screen.getByTestId('validate-stage')).toBeInTheDocument();
+    expect(await screen.findByTestId('package-stage')).toBeInTheDocument();
+    expect(await screen.findByTestId('product-forge-stage')).toBeInTheDocument();
+    expect(await screen.findByTestId('export-stage')).toBeInTheDocument();
+    expect(screen.getByTestId('publish-stage')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeInTheDocument();
   });
 
-  it('navigates with the StepPager Back/Next buttons', () => {
-    const controller = createController();
-    const { rerender } = render(<PaletteWorkspace controller={controller} />);
-
-    fireEvent.click(screen.getByRole('button', { name: /refine · next/i }));
-    expect(controller.handleStageNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'refine', label: 'Refine' }),
-    );
-
-    controller.uiState.currentStage = 'Refine';
-    rerender(<PaletteWorkspace controller={controller} />);
-    fireEvent.click(screen.getByRole('button', { name: /back · create/i }));
-    expect(controller.handleStageNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'create', label: 'Create' }),
-    );
-  });
-
-  it('navigates with the StageNav pills', () => {
+  it('moves the current rail state when a section is selected', () => {
     const controller = createController();
     render(<PaletteWorkspace controller={controller} />);
 
-    fireEvent.click(screen.getByTitle(/review stage/i));
-    expect(controller.handleStageNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'review', label: 'Review' }),
-    );
+    const reviewRailItem = screen.getByRole('button', { name: 'Review' });
+    fireEvent.click(reviewRailItem);
+
+    expect(reviewRailItem).toHaveAttribute('aria-current', 'step');
   });
 
-  it('wires the share-link handler into the Review step and shows the forge CTA in the public demo', () => {
+  it('keeps the public controller path free of forge sections and downloads', () => {
     const controller = createController({ canExport: false, canDownloadThemePack: false });
-    controller.uiState.currentStage = 'Review';
     render(<PaletteWorkspace controller={controller} />);
 
     expect(screen.getByTestId('validate-stage')).toBeInTheDocument();
     expect(screen.getByTestId('share-link-wired')).toBeInTheDocument();
     expect(screen.getByTestId('forge-cta')).toBeInTheDocument();
-  });
-
-  it('hides every file download in the public demo build', () => {
-    const controller = createController({ canExport: false, canDownloadThemePack: false });
-    controller.uiState.currentStage = 'Review';
-    render(<PaletteWorkspace controller={controller} />);
-
     expect(screen.queryByTestId('product-forge-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('export-stage')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('listing-assets-canvas')).not.toBeInTheDocument();
     expect(screen.queryByTestId('package-stage')).not.toBeInTheDocument();
-    // The demo still offers the copy-based tools.
-    expect(screen.getByTestId('validate-stage')).toBeInTheDocument();
+    expect(screen.queryByTestId('publish-stage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('listing-assets-canvas')).not.toBeInTheDocument();
   });
 
-  it('continues the forge flow into Package and Export steps after Review, without the public CTA', async () => {
+  it('keeps product package export wired inside the visible Export section', async () => {
     const controller = createController();
-    controller.uiState.currentStage = 'Package';
-    const { rerender } = render(<PaletteWorkspace controller={controller} />);
+    render(<PaletteWorkspace controller={controller} />);
 
-    expect(await screen.findByTestId('package-stage')).toBeInTheDocument();
-    expect(screen.queryByTestId('forge-cta')).not.toBeInTheDocument();
-
-    controller.uiState.currentStage = 'Export';
-    rerender(<PaletteWorkspace controller={controller} />);
-
-    const productForgeStage = await screen.findByTestId('product-forge-stage');
-    const exportStage = await screen.findByTestId('export-stage');
-    expect(productForgeStage.compareDocumentPosition(exportStage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText('Product Forge')).toBeInTheDocument();
-    expect(screen.getByText('Product Package Builder')).toBeInTheDocument();
-    expect(screen.getByText('1 source themes')).toBeInTheDocument();
-
+    await screen.findByTestId('product-forge-stage');
     fireEvent.click(screen.getByRole('button', { name: /export product package/i }));
 
     expect(controller.handleExportProductPackage).toHaveBeenCalledWith({ offering: 'individual' });
