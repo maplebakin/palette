@@ -29,7 +29,7 @@ describe('ClimaxGate branch logic', () => {
 
     expect(copy).toEqual(expect.objectContaining({
       title: 'Custom exploration',
-      bridgeCopy: "You've built a custom remix of Ashfall Bloom.",
+      bridgeCopy: "This exact palette isn't for sale — it's a sketch. The kits are the finished paintings: contrast-checked, Light/Dark/Pop variants, supported.",
       baseKitAnchor: 'Download the base Ashfall Bloom Kit — $9 for all 59 tokens',
     }));
   });

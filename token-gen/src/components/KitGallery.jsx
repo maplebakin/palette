@@ -15,7 +15,7 @@ const buildCoverColors = (kit) => {
 };
 
 const KitGallery = () => (
-  <section className="kit-gallery tasting-panel" aria-label="Curated kit gallery">
+  <section id="kit-collection" className="kit-gallery tasting-panel" aria-label="Curated kit gallery">
     <div className="playground-section-heading">
       <div>
         <p className="tasting-eyebrow">The collection</p>

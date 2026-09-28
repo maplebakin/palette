@@ -1,6 +1,7 @@
 import { BUNDLE } from '../data/kits.js';
 
 export const CLIMAX_INTEREST_STORAGE_KEY = 'apocapalette:climax-gate-interest:v1';
+export const CUSTOM_PALETTE_HONEST_LINE = "This exact palette isn't for sale — it's a sketch. The kits are the finished paintings: contrast-checked, Light/Dark/Pop variants, supported.";
 
 export const getClimaxGateTier = (source) => {
   if (source === 'vault-click') return 'detail';
@@ -33,7 +34,7 @@ export const buildClimaxGateCopy = ({ manifest, isCustom = false } = {}) => {
   return {
     title: 'Custom exploration',
     primaryCta: `Download the base ${manifest.name} Kit — $${manifest.price} for all ${manifest.totalTokens} tokens`,
-    bridgeCopy: `You've built a custom remix of ${manifest.name}.`,
+    bridgeCopy: CUSTOM_PALETTE_HONEST_LINE,
     baseKitAnchor: `Download the base ${manifest.name} Kit — $${manifest.price} for all ${manifest.totalTokens} tokens`,
     secondaryCta: 'Browse kits with similar contrast profiles',
     bundleLine,

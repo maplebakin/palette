@@ -9,6 +9,7 @@ import {
 import ForgeCta from './ForgeCta.jsx';
 import ClimaxGate from './ClimaxGate.jsx';
 import KitGallery from './KitGallery.jsx';
+import PlaygroundHandoff from './PlaygroundHandoff.jsx';
 import PlaygroundAccessibility from './PlaygroundAccessibility.jsx';
 import TokenTeaser from './TokenTeaser.jsx';
 import TastingFooter from './TastingFooter.jsx';
@@ -22,6 +23,7 @@ import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
 import { simulateColorVision } from '../lib/accessibility.js';
 import { buildCopyToastMessage } from '../lib/copyToast.js';
 import { requestGate } from '../lib/gateEvents.js';
+import { decodePlaygroundHash, encodePlaygroundHash } from '../lib/playgroundLink.js';
 import { getTokenTeaser } from '../lib/tokenTeaser.js';
 import { loadPlaygroundSession, savePlaygroundSession } from '../lib/sessionPersistence.js';
 import { STICKY_DELAY_MS, shouldShowStickyBar } from '../lib/stickyBar.js';
@@ -94,6 +96,14 @@ const createExplorationState = (seed, name, chaosIndex) => ({
   isChaosMinted: true,
   chaosIndex,
   confirmedModes: { [seed.themeMode]: true },
+});
+
+const restoreLinkedPlayground = (payload) => ({
+  ...payload,
+  baseInput: payload.baseColor,
+  regenerateCount: 0,
+  userHasMutated: Boolean(payload.kitId && !payload.isChaosMinted),
+  confirmedModes: { [payload.themeMode]: true },
 });
 
 const buildThemeForState = (state, name) => buildTheme({
@@ -267,7 +277,14 @@ const PreviewScene = ({ scene, roles, swatches, artifactLabel, onCopy }) => {
 
 const TastingRoom = () => {
   const [restoredSession] = useState(() => loadPlaygroundSession());
-  const [playground, setPlayground] = useState(() => restoredSession?.playground || createPresetState(KITS[0]));
+  const [linkedPlayground] = useState(() => (
+    typeof window === 'undefined' ? null : decodePlaygroundHash(window.location.hash)
+  ));
+  const [playground, setPlayground] = useState(() => (
+    linkedPlayground
+      ? restoreLinkedPlayground(linkedPlayground)
+      : restoredSession?.playground || createPresetState(KITS[0])
+  ));
   const [showTuning, setShowTuning] = useState(false);
   const [scene, setScene] = useState('hero');
   const [visionMode, setVisionMode] = useState('normal');
@@ -444,6 +461,15 @@ const TastingRoom = () => {
     }
   };
 
+  const copyPaletteLink = () => {
+    if (typeof window === 'undefined') return;
+    const shareUrl = `${window.location.origin}${window.location.pathname}${encodePlaygroundHash(playground)}`;
+    setCopyToast('Copied link to this palette.');
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(shareUrl).catch(() => {});
+    }
+  };
+
   return (
     <div className="tasting-room min-h-screen">
       {copyToast && (
@@ -483,6 +509,8 @@ const TastingRoom = () => {
           </div>
           <p className="tasting-subtitle">A palette showroom — explore freely, take the kit home.</p>
         </section>
+
+        {custom && <PlaygroundHandoff onCopyLink={copyPaletteLink} />}
 
         <div className="playground-layout">
           <section
