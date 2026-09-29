@@ -6,10 +6,14 @@ import { formatArtifactName } from '../lib/artifactNaming.js';
 import { requestGate } from '../lib/gateEvents.js';
 import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
 
+const formatModes = (modes = []) => modes.map((mode) => mode.charAt(0).toUpperCase() + mode.slice(1)).join('/');
+
 const buildCoverColors = (kit) => {
   const seed = KIT_SEEDS[kit.id]?.baseColor || '#8b6f9c';
   const hsl = hexToHsl(seed);
-  return [0, 28, 54, 82, 110].map((hueShift, index) => (
+  // Tonal strip: small hue steps keep the cover inside the kit's own color
+  // family instead of sweeping a rainbow unrelated to the kit.
+  return [0, 10, 20, 30, 40].map((hueShift, index) => (
     hslToHex(hsl.h + hueShift, Math.max(28, hsl.s + (index % 2 ? -8 : 4)), Math.max(18, Math.min(86, hsl.l + (index - 2) * 7)))
   ));
 };
@@ -44,7 +48,7 @@ const KitGallery = () => (
               </span>
               <span className="kit-gallery-copy">
                 <span className="kit-gallery-name">{formatArtifactName({ kit })}</span>
-                <span className="kit-gallery-meta">{kit.totalTokens} tokens · {kit.formats.length} formats</span>
+                <span className="kit-gallery-meta">${kit.price} · {kit.totalTokens} tokens · {formatModes(kit.modes)} · {kit.formats.length} formats</span>
                 <span className="kit-gallery-cta">
                   <LockKeyhole size={13} aria-hidden="true" />
                   View the kit

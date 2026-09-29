@@ -28,7 +28,7 @@ describe('ClimaxGate branch logic', () => {
     const copy = buildClimaxGateCopy({ manifest: ashfall, isCustom: true });
 
     expect(copy).toEqual(expect.objectContaining({
-      title: 'Custom exploration',
+      title: 'Start with Ashfall Bloom',
       bridgeCopy: "This exact palette isn't for sale — it's a sketch. The kits are the finished paintings: contrast-checked, Light/Dark/Pop variants, supported.",
       baseKitAnchor: 'Download the base Ashfall Bloom Kit — $9 for all 59 tokens',
     }));

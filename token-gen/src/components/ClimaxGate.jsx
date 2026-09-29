@@ -105,8 +105,12 @@ const GateContent = ({ manifest, isCustom, paletteSeed, tier }) => {
   );
 };
 
-const ClimaxGate = ({ manifest, isCustom, paletteSeed }) => {
+const ClimaxGate = ({ manifest, isCustom, paletteSeed, onTierChange }) => {
   const [tier, setTier] = useState(null);
+
+  useEffect(() => {
+    onTierChange?.(tier !== null);
+  }, [tier, onTierChange]);
 
   useEffect(() => {
     const handleGateRequest = (event) => {

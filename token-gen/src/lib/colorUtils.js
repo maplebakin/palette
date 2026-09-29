@@ -366,15 +366,15 @@ export const getContrastRatio = (fg, bg, fallback = 1) => {
 
 export const getWCAGBadge = (ratio) => {
   if (ratio >= 7) {
-    return { text: 'AAA', color: 'text-[var(--status-success-text)] bg-[var(--status-success)]' };
+    return { text: 'AAA', label: 'AAA', hint: 'Passes WCAG AAA', color: 'text-[var(--status-success-text)] bg-[var(--status-success)]' };
   }
   if (ratio >= 4.5) {
-    return { text: 'AA', color: 'text-[var(--status-warning-text)] bg-[var(--status-warning)]' };
+    return { text: 'AA', label: 'AA', hint: 'Passes WCAG AA for normal text', color: 'text-[var(--status-warning-text)] bg-[var(--status-warning)]' };
   }
   if (ratio >= 3) {
-    return { text: 'AA18', color: 'text-[var(--status-info-text)] bg-[var(--status-info)]' };
+    return { text: 'AA18', label: 'Large text only', hint: 'Passes WCAG AA for large text only — fails AA for normal text', color: 'text-[var(--status-info-text)] bg-[var(--status-info)]' };
   }
-  return { text: 'FAIL', color: 'text-[var(--status-error-text)] bg-[var(--status-error)]' };
+  return { text: 'FAIL', label: 'Fail', hint: 'Fails WCAG AA', color: 'text-[var(--status-error-text)] bg-[var(--status-error)]' };
 };
 
 export const escapeXml = (str = '') => String(str)

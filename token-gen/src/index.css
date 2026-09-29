@@ -1024,8 +1024,8 @@ body {
   margin-top: 0.3rem;
   color: var(--tasting-muted);
   font-size: 0.58rem;
+  line-height: 1.35;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .playground-lock-button {
@@ -1818,6 +1818,10 @@ body {
   transform: translateY(-1px);
 }
 
+.tasting-room.has-sticky-bar {
+  padding-bottom: 4.5rem;
+}
+
 .kit-gallery {
   display: grid;
   gap: 1.25rem;
@@ -2132,8 +2136,16 @@ body {
     justify-content: center;
   }
 
+  .tasting-room.has-sticky-bar {
+    padding-bottom: 7.5rem;
+  }
+
   .playground-swatch-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .playground-section-meta {
+    text-wrap: balance;
   }
 }
 

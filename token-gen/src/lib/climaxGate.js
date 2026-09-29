@@ -32,7 +32,7 @@ export const buildClimaxGateCopy = ({ manifest, isCustom = false } = {}) => {
   }
 
   return {
-    title: 'Custom exploration',
+    title: `Start with ${manifest.name}`,
     primaryCta: `Download the base ${manifest.name} Kit — $${manifest.price} for all ${manifest.totalTokens} tokens`,
     bridgeCopy: CUSTOM_PALETTE_HONEST_LINE,
     baseKitAnchor: `Download the base ${manifest.name} Kit — $${manifest.price} for all ${manifest.totalTokens} tokens`,

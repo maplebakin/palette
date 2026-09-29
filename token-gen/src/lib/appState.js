@@ -36,7 +36,7 @@ export const PRESETS = [
   { name: 'Solar Flare', base: '#f59e0b', mode: 'Analogous', dark: false },
   { name: 'Terracotta Sunrise', base: '#e2725b', mode: 'Analogous', dark: false },
   { name: 'Vapor Dream', base: '#ff8b94', mode: 'Tertiary', dark: false },
-  { name: 'Nuclear Winter', base: '#a7f432', mode: 'Apocalypse', dark: true },
+  { name: 'Nuclear Winter', base: '#7f1d1d', mode: 'Apocalypse', dark: true },
   { name: 'Corporate Compliance', base: '#000000', mode: 'Monochromatic', dark: true },
 ];
 

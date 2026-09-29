@@ -292,10 +292,23 @@ const TastingRoom = () => {
   const [copyCount, setCopyCount] = useState(() => restoredSession?.copyCount || 0);
   const [copyToast, setCopyToast] = useState('');
   const [engagementElapsed, setEngagementElapsed] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [footerVisible, setFooterVisible] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setEngagementElapsed(true), STICKY_DELAY_MS);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const footer = document.querySelector('.tasting-footer');
+    if (!footer || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => setFooterVisible(entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(footer);
+    return () => observer.disconnect();
   }, []);
 
   const kit = playground.kitId ? KITS.find((candidate) => candidate.id === playground.kitId) : null;
@@ -309,7 +322,7 @@ const TastingRoom = () => {
     elapsedMs: engagementElapsed ? STICKY_DELAY_MS : 0,
     hasModeConfirmation,
     copyCount,
-  });
+  }) && !gateOpen && !footerVisible;
 
   useEffect(() => {
     savePlaygroundSession({ playground, isCustom: custom, copyCount });
@@ -476,17 +489,17 @@ const TastingRoom = () => {
   };
 
   return (
-    <div className="tasting-room min-h-screen">
+    <div className={`tasting-room min-h-screen${showStickyBar ? ' has-sticky-bar' : ''}`}>
       {copyToast && (
         <div className="playground-copy-toast" role="status" aria-live="polite">
           {copyToast}
         </div>
       )}
       {showStickyBar && (
-        <aside className="tasting-sticky-bar" aria-label="Complete token pack">
-          <p>Loving this palette? The complete token pack is in the kit.</p>
+        <aside className="tasting-sticky-bar" aria-label="Browse finished kits">
+          <p>Like this direction? Browse finished, contrast-tested kits.</p>
           <button type="button" onClick={() => requestGate('sticky-bar')}>
-            See the complete kit
+            Browse finished kits
             <ArrowUpRight size={14} aria-hidden="true" />
           </button>
         </aside>
@@ -512,7 +525,7 @@ const TastingRoom = () => {
               <span className="playground-artifact-number">No. {kit.artifactNo}</span>
             )}
           </div>
-          <p className="tasting-subtitle">A palette showroom — explore freely, take the kit home.</p>
+          <p className="tasting-subtitle">Generate a sketch here. Ship with a finished 59-token kit — Light, Dark, Pop, five production formats — from $9.</p>
         </section>
 
         {custom && (
@@ -752,6 +765,7 @@ const TastingRoom = () => {
           manifest={manifestKit}
           isCustom={custom}
           paletteSeed={playground.baseColor}
+          onTierChange={setGateOpen}
         />
 
         <PlaygroundAccessibility

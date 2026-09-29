@@ -32,8 +32,13 @@ describe('colorUtils', () => {
     expect(ratio).toBeGreaterThan(20.9);
     const badge = getWCAGBadge(ratio);
     expect(badge.text).toBe('AAA');
+    expect(badge.label).toBe('AAA');
     expect(getWCAGBadge(4.7).text).toBe('AA');
+    expect(getWCAGBadge(4.7).label).toBe('AA');
+    expect(getWCAGBadge(4.29).text).toBe('AA18');
+    expect(getWCAGBadge(4.29).label).toBe('Large text only');
     expect(getWCAGBadge(2.5).text).toBe('FAIL');
+    expect(getWCAGBadge(2.5).label).toBe('Fail');
   });
 
   it('blendHue follows the shortest hue path', () => {

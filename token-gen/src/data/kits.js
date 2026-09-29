@@ -48,7 +48,7 @@ export const BUNDLE = {
 // Seeds stay separate from the storefront manifest so the public listing shape
 // remains focused on what a kit contains and costs.
 export const KIT_SEEDS = {
-  'nuclear-winter': { baseColor: '#a7f432', mode: 'Apocalypse', themeMode: 'dark' },
+  'nuclear-winter': { baseColor: '#7f1d1d', mode: 'Apocalypse', themeMode: 'dark' },
   'ashfall-bloom': { baseColor: '#b86f61', mode: 'Analogous', themeMode: 'dark' },
   'vapor-dream': { baseColor: '#ff8b94', mode: 'Tertiary', themeMode: 'pop' },
 };

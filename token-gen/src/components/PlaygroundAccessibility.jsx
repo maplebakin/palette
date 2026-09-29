@@ -24,8 +24,8 @@ const PlaygroundAccessibility = ({ roles, visionMode, onVisionModeChange }) => {
           <article key={check.id} className="playground-contrast-card">
             <div className="flex items-start justify-between gap-3">
               <h3>{check.label}</h3>
-              <span className={`playground-contrast-badge ${check.badge.text === 'AAA' ? 'is-aaa' : check.badge.text.startsWith('AA') ? 'is-aa' : 'is-fail'}`}>
-                {check.badge.text}
+              <span className={`playground-contrast-badge ${check.badge.text === 'AAA' ? 'is-aaa' : check.badge.text.startsWith('AA') ? 'is-aa' : 'is-fail'}`} title={check.badge.hint}>
+                {check.badge.label}
               </span>
             </div>
             <strong>{check.ratio.toFixed(2)}:1</strong>

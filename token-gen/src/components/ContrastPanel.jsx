@@ -25,7 +25,7 @@ export default function ContrastPanel({ contrastChecks }) {
             <div key={c.label} className="panel-surface-soft p-4 rounded-lg border">
               <div className="text-sm font-medium panel-text">{c.label}</div>
               <div className="text-2xl font-bold my-2 panel-text">{c.ratio.toFixed(2)}:1</div>
-              <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${c.badge.color}`}>{c.badge.text}</div>
+              <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${c.badge.color}`} title={c.badge.hint}>{c.badge.label}</div>
               <div className="mt-2 text-[11px] font-mono panel-muted">
                 {c.fg.toUpperCase()} on {c.bg.toUpperCase()}
               </div>
