@@ -347,4 +347,24 @@ describe('PackageStage', () => {
     expect(screen.queryByText(/print asset pack preview/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/turn on print mode/i)).not.toBeInTheDocument();
   });
+
+  it('renders a marketplace kit button that exports with the selected modes', async () => {
+    const onDownloadMarketplaceKit = vi.fn(async () => true);
+
+    renderPackageStage({ onDownloadMarketplaceKit });
+    fireEvent.click(screen.getByRole('button', { name: /download marketplace kit/i }));
+
+    await waitFor(() => {
+      expect(onDownloadMarketplaceKit).toHaveBeenCalledTimes(1);
+    });
+    expect(onDownloadMarketplaceKit).toHaveBeenCalledWith(['light', 'dark', 'pop']);
+    expect(screen.getByText(/marketplace kit downloaded/i)).toBeInTheDocument();
+    expect(screen.getByText(/sell-ready ZIP in the finished-kit format/i)).toBeInTheDocument();
+  });
+
+  it('does not render the marketplace kit button without a handler', () => {
+    renderPackageStage({ onDownloadThemePack: vi.fn() });
+
+    expect(screen.queryByRole('button', { name: /download marketplace kit/i })).not.toBeInTheDocument();
+  });
 });

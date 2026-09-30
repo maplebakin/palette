@@ -23,6 +23,7 @@ export default function ProjectWorkspace({ controller }) {
           productExportThemes={controller.productExportThemes}
           onExportProductPackage={controller.canExport ? controller.handleExportProductPackage : undefined}
           onDownloadThemePack={controller.canExport ? controller.handleDownloadThemePack : undefined}
+          onDownloadMarketplaceKit={controller.canExport ? controller.handleDownloadMarketplaceKit : undefined}
         />
       </PaletteContext.Provider>
     </Suspense>

@@ -572,7 +572,7 @@ const buildModeCanonicalTokens = ({ finalTokens, spec, themeMode }) => buildGene
   themeMode,
 });
 
-const buildThemePackPreviewTheme = (currentTheme, spec, themeMode) => ({
+export const buildThemePackPreviewTheme = (currentTheme, spec, themeMode) => ({
   ...currentTheme,
   name: spec.name,
   mode: currentTheme.mode || spec.mode,

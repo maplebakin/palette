@@ -170,3 +170,28 @@ export const exportDesignSpacePaletteFile = ({
   const filename = buildExportFilename(slug, '-designspace', 'json');
   downloadFile({ data: JSON.stringify(palette, null, 2), filename, mime: 'application/json' });
 };
+
+// Tailwind CSS v3 theme-extension snippet builder. Takes flat kit tokens
+// ([{ key: 'brand-primary', hex: '#76a653', group: 'brand' }, ...]) and returns
+// a ready-to-require config fragment: theme.extend.colors.<prefix>.
+export const buildTailwindConfigJs = ({ kitName, mode, flatTokens, prefix }) => {
+  const tree = {};
+  (flatTokens || []).forEach(({ key, hex, group }) => {
+    const name = key.startsWith(`${group}-`) ? key.slice(group.length + 1) : key;
+    tree[group] = tree[group] || {};
+    tree[group][name] = hex;
+  });
+  const colorsBody = JSON.stringify({ colors: { [prefix || 'kit']: tree } }, null, 2)
+    .replace(/"([^"]+)":/g, '$1:');
+  const varName = `${(prefix || 'kit').replace(/[^a-zA-Z0-9]+/g, '')}${mode[0].toUpperCase()}${mode.slice(1)}`;
+  return [
+    `// ${kitName} — ${mode} variant · Tailwind CSS v3 theme extension`,
+    '// Merge into your tailwind.config.js:',
+    `//   const ${varName} = require('./tailwind.${(prefix || 'kit')}-${mode}.js');`,
+    `//   module.exports = { theme: { extend: { ...${varName}.theme.extend } } };`,
+    `// Tailwind v4: import the matching .css variables inside @theme { ... } instead.`,
+    '/** @type {import(\'tailwindcss\').Config} */',
+    `module.exports = { theme: { extend: ${colorsBody} } };`,
+    '',
+  ].join('\n');
+};

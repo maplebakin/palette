@@ -1875,6 +1875,56 @@ export default function useAppController() {
     themeMaster,
   ]);
 
+  const handleDownloadMarketplaceKit = useCallback(async (selectedModes) => {
+    if (!canDownloadThemePack) return false;
+    if (typeof Blob === 'undefined') {
+      notify('File export is not supported in this browser', 'error');
+      return false;
+    }
+    try {
+      const { downloadMarketplaceKitArchive } = await import('../lib/exports/marketplaceKit.js');
+      const themePackData = {
+        finalTokens,
+        themeMaster,
+        currentTheme,
+        displayThemeName,
+        mode: paletteState.mode,
+        baseColor: normalizeHex(paletteState.baseColor || '#000000', '#000000').toUpperCase(),
+        isDark,
+        printMode: paletteState.printMode,
+        themeMode: paletteState.themeMode,
+        variants: paletteState.confirmedVariants,
+        tokenPrefix: paletteState.tokenPrefix,
+      };
+      if (Array.isArray(selectedModes)) {
+        await downloadMarketplaceKitArchive(themePackData, { selectedModes });
+      } else {
+        await downloadMarketplaceKitArchive(themePackData);
+      }
+      setStatusMessage('Marketplace kit downloaded', 'success');
+      return true;
+    } catch (error) {
+      console.error('Marketplace kit export failed', error);
+      notify('Marketplace kit export failed. Check console for details.', 'error');
+      return false;
+    }
+  }, [
+    currentTheme,
+    canDownloadThemePack,
+    displayThemeName,
+    finalTokens,
+    isDark,
+    notify,
+    paletteState.baseColor,
+    paletteState.confirmedVariants,
+    paletteState.mode,
+    paletteState.printMode,
+    paletteState.themeMode,
+    paletteState.tokenPrefix,
+    setStatusMessage,
+    themeMaster,
+  ]);
+
   const handleExportProductPackage = useCallback(async ({ offering, product, selectedThemeIds }) => {
     if (!canExport) return;
     if (typeof Blob === 'undefined') {
@@ -2247,6 +2297,7 @@ export default function useAppController() {
     exportDesignPalette,
     handleGenerateListingAssets,
     handleDownloadThemePack,
+    handleDownloadMarketplaceKit,
     handleExportProductPackage,
     copyShareLink,
     exportAllAssets,

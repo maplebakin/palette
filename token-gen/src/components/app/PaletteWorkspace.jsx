@@ -167,10 +167,12 @@ export default function PaletteWorkspace({ controller }) {
   }, [markPackageDownloaded]);
   const packageHandlers = useMemo(() => ({
     onDownloadThemePack: wrapPackageDownload(controller.handleDownloadThemePack),
+    onDownloadMarketplaceKit: wrapPackageDownload(controller.handleDownloadMarketplaceKit),
     onDownloadThemePackWithPrint: wrapPackageDownload(controller.handleDownloadThemePackWithPrint),
     onExportProductPackage: wrapPackageDownload(controller.handleExportProductPackage),
   }), [
     controller.handleDownloadThemePack,
+    controller.handleDownloadMarketplaceKit,
     controller.handleDownloadThemePackWithPrint,
     controller.handleExportProductPackage,
     wrapPackageDownload,
@@ -299,6 +301,7 @@ export default function PaletteWorkspace({ controller }) {
                 printAssetPack={controller.printAssetPack}
                 canvaPrintHexes={controller.canvaPrintHexes}
                 onDownloadThemePack={packageHandlers.onDownloadThemePack}
+                onDownloadMarketplaceKit={packageHandlers.onDownloadMarketplaceKit}
                 canExport={controller.canDownloadThemePack}
                 showPrintTools={controller.canExport}
                 variantStatus={controller.confirmedVariantStatus}

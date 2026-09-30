@@ -25,7 +25,8 @@ const PackageStage = ({
   printAssetPack,
   canvaPrintHexes,
   onDownloadThemePack,
-  canExport = Boolean(onDownloadThemePack),
+  onDownloadMarketplaceKit,
+  canExport = Boolean(onDownloadThemePack || onDownloadMarketplaceKit),
   showPrintTools = false,
   variantStatus,
 }) => {
@@ -39,6 +40,7 @@ const PackageStage = ({
   );
   const [selectedModes, setSelectedModes] = useState(() => [...availableModes]);
   const [exportSuccessMessage, setExportSuccessMessage] = useState('');
+  const [kitSuccessMessage, setKitSuccessMessage] = useState('');
   const previousAvailableModes = useRef(availableModes);
   const exportCopy = buildThemePackSelectionCopy({ availableModes, missingModes }, selectedModes);
   const coverageKey = `${availableModes.join('|')}|${missingModes.join('|')}`;
@@ -51,6 +53,7 @@ const PackageStage = ({
     )));
     previousAvailableModes.current = availableModes;
     setExportSuccessMessage('');
+    setKitSuccessMessage('');
   }, [availableModes, coverageKey]);
 
   if (!canExport) return null;
@@ -61,6 +64,18 @@ const PackageStage = ({
       const exported = await onDownloadThemePack(exportCopy.selectedModes);
       if (exported === true) {
         setExportSuccessMessage(exportCopy.successMessage);
+      }
+    } catch {
+      // Export errors are reported by the export handler.
+    }
+  };
+
+  const handleMarketplaceKitClick = async () => {
+    setKitSuccessMessage('');
+    try {
+      const exported = await onDownloadMarketplaceKit(exportCopy.selectedModes);
+      if (exported === true) {
+        setKitSuccessMessage('Marketplace kit downloaded.');
       }
     } catch {
       // Export errors are reported by the export handler.
@@ -163,6 +178,34 @@ const PackageStage = ({
               {exportSuccessMessage && (
                 <p className="mt-2 max-w-2xl rounded-lg border panel-surface-soft px-3 py-2 text-xs font-bold panel-text" role="status">
                   {exportSuccessMessage}
+                </p>
+              )}
+            </div>
+          )}
+          {onDownloadMarketplaceKit && (
+            <div className="flex min-w-[240px] flex-1 flex-col gap-1">
+              <button
+                type="button"
+                onClick={handleMarketplaceKitClick}
+                disabled={!exportCopy.canExportSelection}
+                className="flex w-fit items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold hover:-translate-y-[1px] transition shadow disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                style={{
+                  backgroundColor: tokens.brand.accent,
+                  color: primaryTextColor,
+                  boxShadow: `0 12px 30px -20px ${tokens.brand.accent}`,
+                }}
+              >
+                <Download size={14} />
+                <span>Download marketplace kit</span>
+              </button>
+              <p className="max-w-2xl text-xs panel-muted">
+                Sell-ready ZIP in the finished-kit format: per-mode folders with ASE, Procreate,
+                GIMP, CSS, JSON, Figma tokens and Tailwind configs, plus previews, a contrast
+                matrix, manifest, and license. Uses the same mode selection above.
+              </p>
+              {kitSuccessMessage && (
+                <p className="mt-2 max-w-2xl rounded-lg border panel-surface-soft px-3 py-2 text-xs font-bold panel-text" role="status">
+                  {kitSuccessMessage}
                 </p>
               )}
             </div>
