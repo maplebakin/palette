@@ -10,6 +10,8 @@ import HowItWorks from './HowItWorks.jsx';
 import KitGallery from './KitGallery.jsx';
 import PlaygroundHandoff from './PlaygroundHandoff.jsx';
 import PlaygroundAccessibility from './PlaygroundAccessibility.jsx';
+import SuggestKitInvitation from './SuggestKitInvitation.jsx';
+import SuggestKitDialog from './SuggestKitDialog.jsx';
 import TastingFooter from './TastingFooter.jsx';
 import { INSPIRATION_SEEDS, KIT_SEEDS } from '../data/kits.js';
 import { NAME_BANK, randomExplorationName } from '../data/nameBank.js';
@@ -23,6 +25,7 @@ import { resolveHandoffAccent, resolveOnAccentText } from '../lib/handoffAccent.
 import { decodePlaygroundHash, encodePlaygroundHash } from '../lib/playgroundLink.js';
 import { loadPlaygroundSession, savePlaygroundSession } from '../lib/sessionPersistence.js';
 import { buildTheme } from '../lib/theme/engine.js';
+import { captureKitSuggestion } from '../lib/kitSuggestion.js';
 
 const HARMONY_MODES = ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'];
 const DISPLAY_MODES = [
@@ -280,6 +283,9 @@ const TastingRoom = () => {
       ? restoreLinkedPlayground(linkedPlayground)
       : restoredSession?.playground || createPresetState({ id: 'nuclear-winter' })
   ));
+  const [hasModifiedPalette, setHasModifiedPalette] = useState(false);
+  const [isSuggestionDialogOpen, setIsSuggestionDialogOpen] = useState(false);
+  const [suggestionCapture, setSuggestionCapture] = useState(null);
   const [showTuning, setShowTuning] = useState(false);
   const [scene, setScene] = useState('hero');
   const [visionMode, setVisionMode] = useState('normal');
@@ -334,10 +340,14 @@ const TastingRoom = () => {
   );
 
   const selectPreset = (id) => {
-    if (KIT_SEEDS[id]) setPlayground(createPresetState({ id }));
+    if (!KIT_SEEDS[id]) return;
+    const nextPreset = createPresetState({ id });
+    if (JSON.stringify(playground) !== JSON.stringify(nextPreset)) setHasModifiedPalette(true);
+    setPlayground(nextPreset);
   };
 
   const mintChaos = () => {
+    setHasModifiedPalette(true);
     setPlayground((current) => {
       const nextIndex = current.chaosIndex + 1;
       const seed = EXPLORATION_SEEDS[nextIndex % EXPLORATION_SEEDS.length];
@@ -348,6 +358,7 @@ const TastingRoom = () => {
 
   const handleSeedInput = (value) => {
     const candidate = toSeedHex(value);
+    if (candidate && candidate !== playground.baseColor) setHasModifiedPalette(true);
     setPlayground((current) => {
       if (!candidate) return { ...current, baseInput: value };
       if (candidate === current.baseColor) return { ...current, baseInput: value };
@@ -360,6 +371,7 @@ const TastingRoom = () => {
   };
 
   const handleHarmonyChange = (harmony) => {
+    if (harmony !== playground.harmony) setHasModifiedPalette(true);
     setPlayground((current) => {
       if (harmony === current.harmony) return current;
       return markMutation(current, { harmony });
@@ -368,6 +380,7 @@ const TastingRoom = () => {
 
   const handleHueNudge = (value) => {
     const next = Number(value);
+    if (next !== playground.hueNudge) setHasModifiedPalette(true);
     setPlayground((current) => (
       next === current.hueNudge ? current : markMutation(current, { hueNudge: next })
     ));
@@ -375,12 +388,18 @@ const TastingRoom = () => {
 
   const handleSatNudge = (value) => {
     const next = Number(value);
+    if (next !== playground.satNudge) setHasModifiedPalette(true);
     setPlayground((current) => (
       next === current.satNudge ? current : markMutation(current, { satNudge: next })
     ));
   };
 
   const toggleMode = (mode) => {
+    if (
+      mode !== playground.themeMode
+      || Object.keys(playground.swatchOverrides).length > 0
+      || !playground.confirmedModes[mode]
+    ) setHasModifiedPalette(true);
     setPlayground((current) => ({
       ...current,
       themeMode: mode,
@@ -390,6 +409,7 @@ const TastingRoom = () => {
   };
 
   const toggleSwatchLock = (index) => {
+    setHasModifiedPalette(true);
     setPlayground((current) => {
       const currentTheme = buildThemeForState(current, artifactLabel);
       const currentSwatches = getRenderedSwatches(current, currentTheme);
@@ -412,6 +432,7 @@ const TastingRoom = () => {
   };
 
   const regenerateUnlocked = () => {
+    setHasModifiedPalette(true);
     setPlayground((current) => {
       const nextIteration = current.regenerateCount + 1;
       const currentTheme = buildThemeForState(current, artifactLabel);
@@ -446,11 +467,26 @@ const TastingRoom = () => {
 
   const copyPaletteLink = () => {
     if (typeof window === 'undefined') return;
-    const shareUrl = `${window.location.origin}${window.location.pathname}${encodePlaygroundHash(playground)}`;
+    const shareUrl = buildCurrentShareUrl(playground);
     setCopyToast('Copied link to this palette.');
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       void navigator.clipboard.writeText(shareUrl).catch(() => {});
     }
+  };
+
+  const buildCurrentShareUrl = (state) => (
+    typeof window === 'undefined'
+      ? encodePlaygroundHash(state)
+      : `${window.location.origin}${window.location.pathname}${encodePlaygroundHash(state)}`
+  );
+
+  const openSuggestionDialog = () => {
+    setSuggestionCapture(captureKitSuggestion({
+      playground,
+      swatches,
+      shareLink: buildCurrentShareUrl(playground),
+    }));
+    setIsSuggestionDialogOpen(true);
   };
 
   return (
@@ -481,13 +517,24 @@ const TastingRoom = () => {
           <p className="tasting-subtitle">Generate a sketch here. Ship with a finished 59-token kit — Light, Dark, Pop, five production formats — from $9.</p>
         </section>
 
-        {custom && (
-          <PlaygroundHandoff
-            onCopyLink={copyPaletteLink}
-            accent={handoffAccent.accent}
-            onAccent={handoffAccent.onAccent}
-          />
+        {(custom || hasModifiedPalette) && (
+          <div className="playground-handoff-row">
+            {custom && (
+              <PlaygroundHandoff
+                onCopyLink={copyPaletteLink}
+                accent={handoffAccent.accent}
+                onAccent={handoffAccent.onAccent}
+              />
+            )}
+            <SuggestKitInvitation visible={hasModifiedPalette} onSuggest={openSuggestionDialog} />
+          </div>
         )}
+
+        <SuggestKitDialog
+          open={isSuggestionDialogOpen}
+          capture={suggestionCapture}
+          onRequestClose={() => setIsSuggestionDialogOpen(false)}
+        />
 
         <div className="playground-layout">
           <section
