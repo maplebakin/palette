@@ -34,8 +34,8 @@ vi.mock('../stages/ValidateStage.jsx', () => ({
   ),
 }));
 
-vi.mock('../ForgeCta.jsx', () => ({
-  default: () => <section data-testid="forge-cta">Forge CTA</section>,
+vi.mock('../HowItWorks.jsx', () => ({
+  default: () => <section data-testid="how-it-works">How it works</section>,
 }));
 
 vi.mock('../stages/PackageStage.jsx', () => ({
@@ -251,7 +251,7 @@ describe('PaletteWorkspace private pipeline', () => {
 
     expect(screen.getByTestId('validate-stage')).toBeInTheDocument();
     expect(screen.getByTestId('share-link-wired')).toBeInTheDocument();
-    expect(screen.getByTestId('forge-cta')).toBeInTheDocument();
+    expect(screen.getByTestId('how-it-works')).toBeInTheDocument();
     expect(screen.queryByTestId('product-export-builder')).not.toBeInTheDocument();
     expect(screen.queryByTestId('toolbox-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('package-stage')).not.toBeInTheDocument();

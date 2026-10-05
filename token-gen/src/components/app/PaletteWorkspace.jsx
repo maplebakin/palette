@@ -4,7 +4,7 @@ import ListingAssetsCanvas from '../ListingAssetsCanvas.jsx';
 import ValidateStage from '../stages/ValidateStage.jsx';
 import CreateStage from '../stages/CreateStage.jsx';
 import RefineStage from '../stages/RefineStage.jsx';
-import ForgeCta from '../ForgeCta.jsx';
+import HowItWorks from '../HowItWorks.jsx';
 import PipelineRail from './PipelineRail.jsx';
 import PublishStage from '../stages/PublishStage.jsx';
 import { PIPELINE_STAGES, derivePipelineRailStatuses } from '../../lib/forgePipeline.js';
@@ -81,7 +81,7 @@ const LoadingStage = ({ label }) => (
 const PublicWorkspaceFallback = ({ controller }) => (
   <>
     <ReviewStage controller={controller} />
-    <ForgeCta />
+    <HowItWorks />
   </>
 );
 

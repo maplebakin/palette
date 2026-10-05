@@ -6,15 +6,12 @@ import {
   Sparkles,
   Unlock,
 } from 'lucide-react';
-import ForgeCta from './ForgeCta.jsx';
-import ClimaxGate from './ClimaxGate.jsx';
+import HowItWorks from './HowItWorks.jsx';
 import KitGallery from './KitGallery.jsx';
 import PlaygroundHandoff from './PlaygroundHandoff.jsx';
 import PlaygroundAccessibility from './PlaygroundAccessibility.jsx';
-import TokenTeaser from './TokenTeaser.jsx';
 import TastingFooter from './TastingFooter.jsx';
-import VaultStrip from './VaultStrip.jsx';
-import { BUNDLE, KIT_SEEDS, KITS } from '../data/kits.js';
+import { INSPIRATION_SEEDS, KIT_SEEDS } from '../data/kits.js';
 import { NAME_BANK, randomExplorationName } from '../data/nameBank.js';
 import { formatArtifactName } from '../lib/artifactNaming.js';
 import { isCustom } from '../lib/honestyPredicate.js';
@@ -22,12 +19,9 @@ import { buildPreviewRoleTokens } from '../lib/previewTokens.js';
 import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
 import { simulateColorVision } from '../lib/accessibility.js';
 import { buildCopyToastMessage } from '../lib/copyToast.js';
-import { requestGate } from '../lib/gateEvents.js';
 import { resolveHandoffAccent, resolveOnAccentText } from '../lib/handoffAccent.js';
 import { decodePlaygroundHash, encodePlaygroundHash } from '../lib/playgroundLink.js';
-import { getTokenTeaser } from '../lib/tokenTeaser.js';
 import { loadPlaygroundSession, savePlaygroundSession } from '../lib/sessionPersistence.js';
-import { STICKY_DELAY_MS, shouldShowStickyBar } from '../lib/stickyBar.js';
 import { buildTheme } from '../lib/theme/engine.js';
 
 const HARMONY_MODES = ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'];
@@ -284,54 +278,30 @@ const TastingRoom = () => {
   const [playground, setPlayground] = useState(() => (
     linkedPlayground
       ? restoreLinkedPlayground(linkedPlayground)
-      : restoredSession?.playground || createPresetState(KITS[0])
+      : restoredSession?.playground || createPresetState({ id: 'nuclear-winter' })
   ));
   const [showTuning, setShowTuning] = useState(false);
   const [scene, setScene] = useState('hero');
   const [visionMode, setVisionMode] = useState('normal');
   const [copyCount, setCopyCount] = useState(() => restoredSession?.copyCount || 0);
   const [copyToast, setCopyToast] = useState('');
-  const [engagementElapsed, setEngagementElapsed] = useState(false);
-  const [gateOpen, setGateOpen] = useState(false);
-  const [footerVisible, setFooterVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setEngagementElapsed(true), STICKY_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    const footer = document.querySelector('.tasting-footer');
-    if (!footer || typeof IntersectionObserver === 'undefined') return undefined;
-    const observer = new IntersectionObserver(
-      ([entry]) => setFooterVisible(entry.isIntersecting),
-      { threshold: 0 },
-    );
-    observer.observe(footer);
-    return () => observer.disconnect();
-  }, []);
-
-  const kit = playground.kitId ? KITS.find((candidate) => candidate.id === playground.kitId) : null;
-  const manifestKit = kit || KITS[0];
+  const seedInfo = playground.kitId
+    ? INSPIRATION_SEEDS.find((candidate) => candidate.id === playground.kitId)
+    : null;
   const custom = isCustom({
     userHasMutated: playground.userHasMutated,
     isChaosMinted: playground.isChaosMinted,
   });
-  const hasModeConfirmation = Object.values(playground.confirmedModes).some(Boolean);
-  const showStickyBar = shouldShowStickyBar({
-    elapsedMs: engagementElapsed ? STICKY_DELAY_MS : 0,
-    hasModeConfirmation,
-    copyCount,
-  }) && !gateOpen && !footerVisible;
-
   useEffect(() => {
     savePlaygroundSession({ playground, isCustom: custom, copyCount });
   }, [copyCount, custom, playground]);
   const artifactLabel = playground.isChaosMinted
     ? formatArtifactName({ explorationName: playground.explorationName })
-    : custom && kit
-      ? `Custom exploration · inspired by ${kit.name}`
-      : formatArtifactName({ kit });
+    : custom && seedInfo
+      ? `Custom exploration · inspired by ${seedInfo.name}`
+      : seedInfo
+        ? `${seedInfo.name} seed`
+        : formatArtifactName({ explorationName: playground.explorationName });
   const theme = useMemo(
     () => buildThemeForState(playground, artifactLabel),
     [artifactLabel, playground],
@@ -362,14 +332,9 @@ const TastingRoom = () => {
     })),
     [swatches, visionMode],
   );
-  const { tokens: teaserTokens } = useMemo(
-    () => getTokenTeaser(swatches, manifestKit),
-    [manifestKit, swatches],
-  );
 
   const selectPreset = (id) => {
-    const nextKit = KITS.find((candidate) => candidate.id === id);
-    if (nextKit) setPlayground(createPresetState(nextKit));
+    if (KIT_SEEDS[id]) setPlayground(createPresetState({ id }));
   };
 
   const mintChaos = () => {
@@ -467,7 +432,7 @@ const TastingRoom = () => {
   };
 
   const resetToOriginal = () => {
-    if (kit) setPlayground(createPresetState(kit));
+    if (seedInfo) setPlayground(createPresetState({ id: seedInfo.id }));
   };
 
   const copySingleHex = (color) => {
@@ -489,20 +454,11 @@ const TastingRoom = () => {
   };
 
   return (
-    <div className={`tasting-room min-h-screen${showStickyBar ? ' has-sticky-bar' : ''}`}>
+    <div className="tasting-room min-h-screen">
       {copyToast && (
         <div className="playground-copy-toast" role="status" aria-live="polite">
           {copyToast}
         </div>
-      )}
-      {showStickyBar && (
-        <aside className="tasting-sticky-bar" aria-label="Browse finished kits">
-          <p>Like this direction? Browse finished, contrast-tested kits.</p>
-          <button type="button" onClick={() => requestGate('sticky-bar')}>
-            Browse finished kits
-            <ArrowUpRight size={14} aria-hidden="true" />
-          </button>
-        </aside>
       )}
       <a href="#tasting-main" className="tasting-skip-link">Skip to playground</a>
 
@@ -521,9 +477,6 @@ const TastingRoom = () => {
           <p className="tasting-eyebrow">Live palette playground</p>
           <div className="flex flex-wrap items-end gap-3">
             <h1 className="tasting-title">{artifactLabel}</h1>
-            {custom && kit && !playground.isChaosMinted && (
-              <span className="playground-artifact-number">No. {kit.artifactNo}</span>
-            )}
           </div>
           <p className="tasting-subtitle">Generate a sketch here. Ship with a finished 59-token kit — Light, Dark, Pop, five production formats — from $9.</p>
         </section>
@@ -615,12 +568,12 @@ const TastingRoom = () => {
             </div>
 
             <label className="playground-control-label" htmlFor="kit-preset">
-              Curated preset
+              Starting point
               <select id="kit-preset" value={playground.kitId || 'exploration'} onChange={(event) => selectPreset(event.target.value)} className="playground-select">
                 {playground.kitId === null && <option value="exploration">Current exploration</option>}
-                {KITS.map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    Artifact No. {candidate.artifactNo} — {candidate.name}
+                {INSPIRATION_SEEDS.map((seed) => (
+                  <option key={seed.id} value={seed.id}>
+                    {seed.name} seed
                   </option>
                 ))}
               </select>
@@ -746,27 +699,16 @@ const TastingRoom = () => {
               </div>
             </div>
 
-            {kit && custom && (
+            {seedInfo && custom && (
               <button type="button" onClick={resetToOriginal} className="playground-reset-button">
-                Reset to original {kit.name} seed
+                Reset to original {seedInfo.name} seed
               </button>
             )}
             <p className="playground-control-note">
-              {custom ? 'Custom exploration · your edits are part of this palette.' : `${kit?.teaserTokenCount || 12} teaser tokens from the curated kit.`}
+              {custom ? 'Custom exploration · your edits are part of this palette.' : 'Starting seed · make it yours.'}
             </p>
           </aside>
         </div>
-
-        <TokenTeaser manifest={manifestKit} tokens={teaserTokens} onCopy={copySingleHex} />
-
-        <VaultStrip manifest={manifestKit} />
-
-        <ClimaxGate
-          manifest={manifestKit}
-          isCustom={custom}
-          paletteSeed={playground.baseColor}
-          onTierChange={setGateOpen}
-        />
 
         <PlaygroundAccessibility
           roles={previewRoles}
@@ -774,17 +716,9 @@ const TastingRoom = () => {
           onVisionModeChange={setVisionMode}
         />
 
-        <div className="tasting-panel flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="tasting-eyebrow">The shelf</p>
-            <p className="tasting-muted">{BUNDLE.blurb}</p>
-          </div>
-          <p className="text-lg font-bold">${BUNDLE.price} bundle</p>
-        </div>
-
-        <ForgeCta />
-
         <KitGallery />
+
+        <HowItWorks />
       </main>
 
       <TastingFooter />

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRight, Link2 } from 'lucide-react';
-import { CUSTOM_PALETTE_HONEST_LINE } from '../lib/climaxGate.js';
+
+const CUSTOM_PALETTE_HONEST_LINE = "This exact palette isn't for sale — it's a sketch. The kits are the finished paintings: contrast-checked, Light/Dark/Pop variants, supported.";
 
 const PlaygroundHandoff = ({ onCopyLink, accent, onAccent }) => {
   const style = {
@@ -27,7 +28,7 @@ const PlaygroundHandoff = ({ onCopyLink, accent, onAccent }) => {
           <Link2 size={14} aria-hidden="true" />
           Copy link to this palette
         </button>
-        <a href="#kit-collection" className="playground-handoff-link">
+        <a href="#finished-kits" className="playground-handoff-link">
           Browse finished kits
           <ArrowUpRight size={14} aria-hidden="true" />
         </a>

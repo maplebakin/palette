@@ -13,7 +13,7 @@ const PlaygroundAccessibility = ({ roles, visionMode, onVisionModeChange }) => {
     <section className="playground-accessibility tasting-panel" aria-label="Accessibility checks">
       <div className="playground-section-heading">
         <div>
-          <p className="tasting-eyebrow">Built into the palette</p>
+          <p className="tasting-eyebrow">Your live sketch's contrast</p>
           <h2 className="tasting-panel-title">Accessibility checks</h2>
         </div>
         <span className="playground-section-meta">Live with every edit</span>

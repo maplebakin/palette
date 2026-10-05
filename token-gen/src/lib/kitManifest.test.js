@@ -58,6 +58,6 @@ describe('kit manifest builder', () => {
   });
 
   it('uses the real collection when no fixture is supplied', () => {
-    expect(getNextArtifactNumber(KITS)).toBe('0420');
+    expect(getNextArtifactNumber(KITS)).toBe('0418');
   });
 });

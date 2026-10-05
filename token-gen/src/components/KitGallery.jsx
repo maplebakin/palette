@@ -1,9 +1,7 @@
 import React from 'react';
 import { ArrowUpRight, LockKeyhole } from 'lucide-react';
-import { FORGE_KIT_URL } from './ForgeCta.jsx';
 import { KIT_SEEDS, KITS } from '../data/kits.js';
 import { formatArtifactName } from '../lib/artifactNaming.js';
-import { requestGate } from '../lib/gateEvents.js';
 import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
 
 const formatModes = (modes = []) => modes.map((mode) => mode.charAt(0).toUpperCase() + mode.slice(1)).join('/');
@@ -34,13 +32,10 @@ const KitGallery = () => (
         return (
           <article key={kit.id} className="kit-gallery-card">
             <a
-              href={FORGE_KIT_URL}
+              href="https://example.com/apocapalette-forge-kits"
               target="_blank"
               rel="noreferrer"
-              onClick={(event) => {
-                event.preventDefault();
-                requestGate('see-full-kit');
-              }}
+              onClick={(event) => event.preventDefault()}
               className="kit-gallery-link"
             >
               <span className="kit-cover-strip" aria-hidden="true">
