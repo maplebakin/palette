@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'node:path';
 import process from 'node:process';
 
 const parsePort = (value) => {
@@ -30,18 +31,30 @@ const hmrConfig = hmrHost || hmrPort || hmrClientPort || hmrProtocol
   : undefined;
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  base: normalizeBasePath(process.env.VITE_BASE),
-  server: {
-    host: serverHost,
-    port: serverPort,
-    strictPort: true,
-    hmr: hmrConfig,
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: './tests/setup.js',
-  },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const appShellPath = env.VITE_PRIVATE_FORGE === 'true'
+    ? path.resolve(process.cwd(), 'src/components/AppShell.jsx')
+    : path.resolve(process.cwd(), 'src/components/PublicAppShell.jsx');
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@app-shell': appShellPath,
+      },
+    },
+    base: normalizeBasePath(process.env.VITE_BASE),
+    server: {
+      host: serverHost,
+      port: serverPort,
+      strictPort: true,
+      hmr: hmrConfig,
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: './tests/setup.js',
+    },
+  };
 });

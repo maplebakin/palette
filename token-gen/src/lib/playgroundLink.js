@@ -21,6 +21,7 @@ const PAYLOAD_KEYS = [
 const isHexColor = (value) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
 const isRecord = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 
 const normalizeColorRecord = (value) => {
   if (!isRecord(value)) return {};
@@ -29,20 +30,77 @@ const normalizeColorRecord = (value) => {
   );
 };
 
-const toLinkPayload = (playground = {}) => ({
-  v: PLAYGROUND_LINK_VERSION,
-  kitId: typeof playground.kitId === 'string' ? playground.kitId : null,
-  explorationName: typeof playground.explorationName === 'string' ? playground.explorationName : '',
-  baseColor: typeof playground.baseColor === 'string' ? playground.baseColor : '',
-  harmony: typeof playground.harmony === 'string' ? playground.harmony : '',
-  themeMode: typeof playground.themeMode === 'string' ? playground.themeMode : '',
-  hueNudge: isFiniteNumber(Number(playground.hueNudge)) ? Number(playground.hueNudge) : 0,
-  satNudge: isFiniteNumber(Number(playground.satNudge)) ? Number(playground.satNudge) : 0,
-  lockedSwatches: normalizeColorRecord(playground.lockedSwatches),
-  swatchOverrides: normalizeColorRecord(playground.swatchOverrides),
-  isChaosMinted: Boolean(playground.isChaosMinted),
-  chaosIndex: isFiniteNumber(Number(playground.chaosIndex)) ? Number(playground.chaosIndex) : 0,
-});
+const normalizeConfirmedModes = (value, currentMode) => {
+  if (!isRecord(value)) return THEME_MODES.includes(currentMode) ? { [currentMode]: true } : {};
+  return Object.fromEntries(THEME_MODES.filter((mode) => value[mode] === true).map((mode) => [mode, true]));
+};
+
+const normalizeModeStates = (value) => {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(THEME_MODES.flatMap((mode) => {
+    const state = value[mode];
+    if (!isRecord(state)) return [];
+    return [[mode, {
+      lockedSwatches: normalizeColorRecord(state.lockedSwatches),
+      swatchOverrides: normalizeColorRecord(state.swatchOverrides),
+      regenerateCount: Number.isInteger(state.regenerateCount) && state.regenerateCount >= 0
+        ? state.regenerateCount
+        : 0,
+    }]];
+  }));
+};
+
+const isColorRecord = (value) => (
+  isRecord(value)
+  && Object.entries(value).every(([key, color]) => /^\d+$/.test(key) && isHexColor(color))
+);
+
+const isModeStatesRecord = (value) => (
+  isRecord(value)
+  && Object.entries(value).every(([mode, state]) => (
+    THEME_MODES.includes(mode)
+    && isRecord(state)
+    && isColorRecord(state.lockedSwatches)
+    && isColorRecord(state.swatchOverrides)
+    && Number.isInteger(state.regenerateCount)
+    && state.regenerateCount >= 0
+  ))
+);
+
+const toLinkPayload = (playground = {}) => {
+  const modeStates = normalizeModeStates(playground.modeStates);
+  if (THEME_MODES.includes(playground.themeMode)) {
+    modeStates[playground.themeMode] = {
+      lockedSwatches: normalizeColorRecord(playground.lockedSwatches),
+      swatchOverrides: normalizeColorRecord(playground.swatchOverrides),
+      regenerateCount: Number.isInteger(playground.regenerateCount) && playground.regenerateCount >= 0
+        ? playground.regenerateCount
+        : 0,
+    };
+  }
+
+  return {
+    v: PLAYGROUND_LINK_VERSION,
+    kitId: typeof playground.kitId === 'string' ? playground.kitId : null,
+    explorationName: typeof playground.explorationName === 'string' ? playground.explorationName : '',
+    baseColor: typeof playground.baseColor === 'string' ? playground.baseColor : '',
+    baseInput: typeof playground.baseInput === 'string' ? playground.baseInput : playground.baseColor,
+    harmony: typeof playground.harmony === 'string' ? playground.harmony : '',
+    themeMode: typeof playground.themeMode === 'string' ? playground.themeMode : '',
+    hueNudge: isFiniteNumber(Number(playground.hueNudge)) ? Number(playground.hueNudge) : 0,
+    satNudge: isFiniteNumber(Number(playground.satNudge)) ? Number(playground.satNudge) : 0,
+    lockedSwatches: normalizeColorRecord(playground.lockedSwatches),
+    swatchOverrides: normalizeColorRecord(playground.swatchOverrides),
+    regenerateCount: Number.isInteger(playground.regenerateCount) && playground.regenerateCount >= 0
+      ? playground.regenerateCount
+      : 0,
+    userHasMutated: Boolean(playground.userHasMutated),
+    confirmedModes: normalizeConfirmedModes(playground.confirmedModes, playground.themeMode),
+    modeStates,
+    isChaosMinted: Boolean(playground.isChaosMinted),
+    chaosIndex: isFiniteNumber(Number(playground.chaosIndex)) ? Number(playground.chaosIndex) : 0,
+  };
+};
 
 const encodeBase64Url = (value) => {
   const bytes = new TextEncoder().encode(value);
@@ -86,10 +144,16 @@ const isValidPayload = (payload) => (
   && THEME_MODES.includes(payload.themeMode)
   && isFiniteNumber(payload.hueNudge)
   && isFiniteNumber(payload.satNudge)
-  && isRecord(payload.lockedSwatches)
-  && Object.entries(payload.lockedSwatches).every(([key, color]) => /^\d+$/.test(key) && isHexColor(color))
-  && isRecord(payload.swatchOverrides)
-  && Object.entries(payload.swatchOverrides).every(([key, color]) => /^\d+$/.test(key) && isHexColor(color))
+  && isColorRecord(payload.lockedSwatches)
+  && isColorRecord(payload.swatchOverrides)
+  && (!hasOwn(payload, 'baseInput') || typeof payload.baseInput === 'string')
+  && (!hasOwn(payload, 'regenerateCount') || (Number.isInteger(payload.regenerateCount) && payload.regenerateCount >= 0))
+  && (!hasOwn(payload, 'userHasMutated') || typeof payload.userHasMutated === 'boolean')
+  && (!hasOwn(payload, 'confirmedModes') || (
+    isRecord(payload.confirmedModes)
+    && Object.entries(payload.confirmedModes).every(([mode, confirmed]) => THEME_MODES.includes(mode) && typeof confirmed === 'boolean')
+  ))
+  && (!hasOwn(payload, 'modeStates') || isModeStatesRecord(payload.modeStates))
   && typeof payload.isChaosMinted === 'boolean'
   && Number.isInteger(payload.chaosIndex)
   && payload.chaosIndex >= 0

@@ -1,15 +1,24 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TastingRoom from './TastingRoom.jsx';
+import { decodePlaygroundHash, encodePlaygroundHash } from '../lib/playgroundLink.js';
+import { SAVED_PLAYGROUND_PALETTES_KEY } from '../lib/savedPlaygroundPalettes.js';
+
+let localStore;
+let failSavedPaletteWrites;
 
 beforeEach(() => {
-  const store = new Map();
+  localStore = new Map();
+  failSavedPaletteWrites = false;
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
     value: {
-      getItem: (key) => store.get(key) ?? null,
-      setItem: (key, value) => store.set(key, String(value)),
+      getItem: (key) => localStore.get(key) ?? null,
+      setItem: (key, value) => {
+        if (failSavedPaletteWrites && key === SAVED_PLAYGROUND_PALETTES_KEY) throw new Error('quota');
+        localStore.set(key, String(value));
+      },
     },
   });
   window.history.replaceState({}, '', '/');
@@ -39,5 +48,140 @@ describe('TastingRoom suggestion invitation', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Palette preview' })).toBeInTheDocument();
     expect(screen.getByLabelText(/required so I can contact you about this suggestion/i)).toHaveFocus();
+  });
+
+  it('edits an individual swatch, copies token values, and keeps edits across disclosure toggles', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<TastingRoom />);
+
+    const advanced = screen.getByText('Advanced refinement');
+    fireEvent.click(advanced);
+    const primaryEditor = screen.getByLabelText('Edit Primary swatch color');
+    fireEvent.change(primaryEditor, { target: { value: '#123abc' } });
+    expect(screen.getAllByRole('button', { name: 'Copy Primary swatch #123abc' }).length).toBeGreaterThan(0);
+
+    fireEvent.click(advanced);
+    expect(screen.queryByLabelText('Edit Primary swatch color')).not.toBeVisible();
+    fireEvent.click(advanced);
+    expect(screen.getByLabelText('Edit Primary swatch color')).toHaveValue('#123abc');
+
+    fireEvent.click(screen.getByText('Copy token values'));
+    const copyToken = screen.getByRole('button', { name: 'Copy brand.primary token value' });
+    fireEvent.click(copyToken);
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(writeText).toHaveBeenLastCalledWith('#123abc');
+    expect(screen.getByRole('status')).toHaveTextContent(/^Copied brand\.primary:/);
+
+    fireEvent.change(screen.getByLabelText('Edit Accent swatch color'), { target: { value: '#654321' } });
+    expect(document.querySelector('.playground-hero-colorfield').style.background).toContain('rgb(101, 67, 33)');
+  });
+
+  it('keeps each confirmed mode sketch in a share link and restores it in a fresh render', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const { unmount } = render(<TastingRoom />);
+    fireEvent.click(screen.getByText('Advanced refinement'));
+    fireEvent.change(screen.getByLabelText('Edit Primary swatch color'), { target: { value: '#123abc' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Light' }));
+    fireEvent.change(screen.getByLabelText('Edit Primary swatch color'), { target: { value: '#abcdef' } });
+    fireEvent.click(within(screen.getByRole('group', { name: 'Preview mode' })).getByRole('button', { name: /Dark/ }));
+
+    expect(screen.getByLabelText('Edit Primary swatch color')).toHaveValue('#123abc');
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link to this palette' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+
+    const shareUrl = new URL(writeText.mock.lastCall[0]);
+    const linkedPayload = decodePlaygroundHash(shareUrl.hash);
+    expect(linkedPayload.modeStates).toMatchObject({
+      dark: { swatchOverrides: { 0: '#123abc' } },
+      light: { swatchOverrides: { 0: '#abcdef' } },
+    });
+
+    unmount();
+    window.history.replaceState({}, '', `/${shareUrl.hash}`);
+    render(<TastingRoom />);
+    fireEvent.click(screen.getByText('Advanced refinement'));
+    expect(screen.getByLabelText('Edit Primary swatch color')).toHaveValue('#123abc');
+    fireEvent.click(within(screen.getByRole('group', { name: 'Preview mode' })).getByRole('button', { name: /Light/ }));
+    expect(screen.getByLabelText('Edit Primary swatch color')).toHaveValue('#abcdef');
+  });
+
+  it('saves only after browser storage succeeds and can load the saved sketch', async () => {
+    render(<TastingRoom />);
+    fireEvent.click(screen.getByRole('button', { name: 'Save palette' }));
+
+    await screen.findByRole('status');
+    expect(screen.getByRole('status')).toHaveTextContent('Palette saved in this browser.');
+    const saved = JSON.parse(localStore.get(SAVED_PLAYGROUND_PALETTES_KEY));
+    expect(saved.palettes).toHaveLength(1);
+    expect(saved.palettes[0].playground.baseColor).toBe('#7f1d1d');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tertiary' }));
+    fireEvent.change(screen.getByLabelText('Load a saved palette'), { target: { value: saved.palettes[0].id } });
+    fireEvent.click(screen.getByRole('button', { name: 'Load palette' }));
+    expect(screen.getByRole('button', { name: 'Apocalypse' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('shows a save failure without a success confirmation', () => {
+    failSavedPaletteWrites = true;
+    render(<TastingRoom />);
+    fireEvent.click(screen.getByRole('button', { name: 'Save palette' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Couldn\'t save this palette.');
+    expect(screen.queryByText('Palette saved in this browser.')).not.toBeInTheDocument();
+  });
+
+  it('restores edits, locks, overrides, and confirmed modes from a fresh share link', () => {
+    const linkedState = {
+      kitId: 'nuclear-winter',
+      explorationName: '',
+      baseColor: '#7f1d1d',
+      baseInput: '#7f1d1d',
+      harmony: 'Tertiary',
+      themeMode: 'light',
+      hueNudge: 11,
+      satNudge: -8,
+      lockedSwatches: { 0: '#123456' },
+      swatchOverrides: { 1: '#abcdef' },
+      regenerateCount: 4,
+      userHasMutated: true,
+      isChaosMinted: false,
+      chaosIndex: 0,
+      confirmedModes: { dark: true, light: true },
+    };
+    window.history.replaceState({}, '', `/${encodePlaygroundHash(linkedState)}`);
+    render(<TastingRoom />);
+
+    expect(screen.getByLabelText('Seed color hex')).toHaveValue('#7f1d1d');
+    expect(screen.getByRole('button', { name: 'Tertiary' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getAllByRole('button', { name: 'Unlock Primary swatch' }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByText('Advanced refinement'));
+    expect(screen.getAllByLabelText(/Edit .* swatch color/).map((input) => input.value)).toContain('#abcdef');
+    expect(screen.getByRole('button', { name: /^Light/ })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save palette' }));
+    const saved = JSON.parse(localStore.get(SAVED_PLAYGROUND_PALETTES_KEY)).palettes[0].playground;
+    expect(saved).toMatchObject({
+      hueNudge: 11,
+      satNudge: -8,
+      lockedSwatches: { 0: '#123456' },
+      swatchOverrides: { 1: '#abcdef' },
+      regenerateCount: 4,
+      confirmedModes: { dark: true, light: true },
+    });
+  });
+
+  it('keeps downloads out of the public playground UI', () => {
+    render(<TastingRoom />);
+
+    expect(screen.queryByRole('button', { name: /download|export/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /download|export/i })).not.toBeInTheDocument();
   });
 });
