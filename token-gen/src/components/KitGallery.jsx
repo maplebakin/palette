@@ -25,20 +25,48 @@ const KitGallery = () => (
       <span className="playground-section-meta">Curated kits</span>
     </div>
 
-    <div className="kit-gallery-grid">
+    <div className="kit-gallery-features">
       {KITS.map((kit) => {
         const coverColors = buildCoverColors(kit);
         return (
-          <article key={kit.id} className="kit-gallery-card">
-            <div className="kit-gallery-content">
+          <article key={kit.id} className="kit-gallery-feature">
+            <div
+              className="kit-gallery-preview"
+              role="img"
+              aria-label={`${formatArtifactName({ kit })} color preview`}
+            >
               <span className="kit-cover-strip" aria-hidden="true">
                 {coverColors.map((color) => <span key={color} style={{ backgroundColor: color }} />)}
               </span>
-              <div className="kit-gallery-copy">
-                <span className="kit-gallery-name">{formatArtifactName({ kit })}</span>
-                <span className="kit-gallery-meta">${kit.price} · {kit.totalTokens} tokens · {formatModes(kit.modes)} · {kit.formats.length} formats</span>
-                <p className="kit-gallery-status">Shop opening soon</p>
+            </div>
+            <div className="kit-gallery-content">
+              <div className="kit-gallery-heading">
+                <h3 className="kit-gallery-name">{formatArtifactName({ kit })}</h3>
+                <p className="kit-gallery-price">${kit.price}</p>
               </div>
+              <dl className="kit-gallery-contents">
+                <div>
+                  <dt>Tokens</dt>
+                  <dd>{kit.totalTokens} tokens per mode</dd>
+                </div>
+                <div>
+                  <dt>Variants</dt>
+                  <dd>{formatModes(kit.modes)}</dd>
+                </div>
+                <div>
+                  <dt>Formats</dt>
+                  <dd>{kit.formats.length} formats</dd>
+                </div>
+                <div>
+                  <dt>Contrast data</dt>
+                  <dd>{kit.includesContrastMatrix ? 'Matrix included' : 'Not included'}</dd>
+                </div>
+                <div>
+                  <dt>Licence</dt>
+                  <dd>Usage licence included</dd>
+                </div>
+              </dl>
+              <p className="kit-gallery-status">Shop opening soon</p>
             </div>
           </article>
         );

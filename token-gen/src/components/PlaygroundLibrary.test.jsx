@@ -18,6 +18,7 @@ describe('PlaygroundLibrary', () => {
       />,
     );
 
+    expect(screen.getByText('Save in this browser')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save palette' })).toBeInTheDocument();
     expect(screen.getByText("Saved palettes stay in this browser. They won't sync across devices, and clearing browser data can remove them. Keep a share link if you want to return elsewhere.")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy link to this palette' })).toBeInTheDocument();

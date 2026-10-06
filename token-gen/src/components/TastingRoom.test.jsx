@@ -25,16 +25,32 @@ beforeEach(() => {
 });
 
 describe('TastingRoom suggestion invitation', () => {
+  it('keeps the hero stable and shows the current palette status by the controls', () => {
+    render(<TastingRoom />);
+
+    expect(screen.getByText('LIVE PALETTE PLAYGROUND')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Make a palette worth keeping.' })).toBeInTheDocument();
+    expect(screen.getByText('Generate a sketch here. Ship with a finished 59-token kit — Light, Dark, Pop, seven production formats — from $9.')).toBeInTheDocument();
+
+    const controls = screen.getByRole('complementary', { name: 'Playground controls' });
+    expect(within(controls).getByText('Nuclear Winter seed', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Nuclear Winter seed' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analogous' }));
+    expect(within(controls).getByText('Custom exploration · inspired by Nuclear Winter', { selector: 'p' })).toBeInTheDocument();
+  });
+
   it('hides the invitation on the initial palette and reveals it after a palette change', () => {
     render(<TastingRoom />);
 
     expect(screen.queryByRole('heading', { name: 'Love this palette?' })).not.toBeInTheDocument();
+    expect(screen.getByText('Save in this browser')).toBeInTheDocument();
 
-    const previewModes = screen.getByRole('group', { name: 'Preview mode' });
-    fireEvent.click(within(previewModes).getByRole('button', { name: 'Light' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Analogous' }));
 
     expect(screen.getByRole('heading', { name: 'Love this palette?' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Suggest this for a finished kit' })).toBeInTheDocument();
+    expect(screen.getByText('Share this sketch')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
@@ -69,7 +85,8 @@ describe('TastingRoom suggestion invitation', () => {
     fireEvent.click(advanced);
     expect(screen.getByLabelText('Edit Primary swatch color')).toHaveValue('#123abc');
 
-    fireEvent.click(screen.getByText('Tokens'));
+    const tokenInspector = screen.getByRole('region', { name: 'Sketch token inspector' });
+    fireEvent.click(within(tokenInspector).getByText('Tokens'));
     const copyToken = screen.getByRole('button', { name: 'Copy --brand-primary value #123abc' });
     fireEvent.click(copyToken);
     await waitFor(() => expect(writeText).toHaveBeenCalled());

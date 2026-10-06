@@ -17,7 +17,7 @@ const PlaygroundHandoff = ({ onCopyLink, accent, onAccent }) => {
     >
       <div className="playground-handoff-header">
         <div>
-          <p className="tasting-eyebrow">Keep this sketch</p>
+          <p className="tasting-eyebrow">Share this sketch</p>
           <h2 id="playground-handoff-title" className="tasting-panel-title">This sketch is yours.</h2>
         </div>
         <p className="playground-handoff-saved">Saved in this browser — it won&apos;t vanish if you refresh.</p>

@@ -15,7 +15,7 @@ const PlaygroundLibrary = ({
   <section className="playground-library tasting-panel" aria-labelledby="playground-library-title">
     <div className="playground-library-heading">
       <div>
-        <p className="tasting-eyebrow">Keep your work</p>
+        <p className="tasting-eyebrow">Save in this browser</p>
         <h2 id="playground-library-title" className="tasting-panel-title">Save and return</h2>
       </div>
       {savedPalettes.length > 0 && (

@@ -664,11 +664,11 @@ const TastingRoom = () => {
 
       <main id="tasting-main" className="tasting-frame space-y-7 py-10 sm:py-14">
         <section className="tasting-hero">
-          <p className="tasting-eyebrow">Live palette playground</p>
+          <p className="tasting-eyebrow">LIVE PALETTE PLAYGROUND</p>
           <div className="flex flex-wrap items-end gap-3">
-            <h1 className="tasting-title">{artifactLabel}</h1>
+            <h1 className="tasting-title">Make a palette worth keeping.</h1>
           </div>
-          <p className="tasting-subtitle">Generate a sketch here. Ship with a finished 59-token kit — Light, Dark, Pop, five production formats — from $9.</p>
+          <p className="tasting-subtitle">Generate a sketch here. Ship with a finished 59-token kit — Light, Dark, Pop, seven production formats — from $9.</p>
         </section>
 
         {(custom || hasModifiedPalette) && (
@@ -780,6 +780,7 @@ const TastingRoom = () => {
                 Chaos
               </button>
             </div>
+            <p className="playground-palette-status">{artifactLabel}</p>
 
             <label className="playground-control-label" htmlFor="kit-preset">
               Starting point
