@@ -374,23 +374,23 @@ body {
 }
 
 .tasting-hero {
-  max-width: 52rem;
+  max-width: none;
 }
 
 .tasting-title {
-  margin-top: 0.65rem;
+  margin-top: 0.25rem;
   color: var(--tasting-warm-white);
-  font-size: clamp(2.25rem, 7vw, 5.5rem);
+  font-size: clamp(1.45rem, 2.2vw, 2.05rem);
   font-weight: 900;
-  letter-spacing: -0.055em;
-  line-height: 0.96;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
 }
 
 .tasting-subtitle {
-  margin-top: 1.25rem;
+  margin-top: 0.4rem;
   color: var(--tasting-muted);
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .tasting-meta-row {
@@ -529,11 +529,86 @@ body {
   color: var(--tasting-muted) !important;
 }
 
-.playground-layout {
+.playground-generator-panel {
+  padding: 1rem;
+}
+
+.playground-generator-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem);
-  align-items: start;
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.1fr) minmax(20rem, 0.9fr);
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.playground-current-palette {
+  min-width: 0;
+}
+
+.playground-current-palette > .playground-kicker {
+  margin-bottom: 0.75rem;
+  color: var(--tasting-muted);
+}
+
+.playground-current-swatches {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.playground-current-swatch {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--tasting-line);
+  border-radius: 0.7rem;
+  background: var(--tasting-ink-panel);
+  color: var(--tasting-warm-white);
+  padding: 0;
+  text-align: left;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.playground-current-swatch:hover {
+  border-color: var(--tasting-accent);
+  transform: translateY(-1px);
+}
+
+.playground-current-swatch:focus-visible {
+  outline: 2px solid var(--tasting-accent);
+  outline-offset: 2px;
+}
+
+.playground-current-swatch-color {
+  display: block;
+  width: 100%;
+  height: clamp(3rem, 5vw, 4.5rem);
+}
+
+.playground-current-swatch-meta {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+  padding: 0.45rem 0.5rem;
+}
+
+.playground-current-swatch-meta > span {
+  overflow: hidden;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playground-current-swatch-meta code {
+  overflow: hidden;
+  color: var(--tasting-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.57rem;
+  text-overflow: ellipsis;
+}
+
+.playground-controls {
+  min-width: 0;
 }
 
 .playground-mobile-quick-controls {
@@ -2207,8 +2282,9 @@ body {
 }
 
 @media (max-width: 960px) {
-  .playground-layout {
-    grid-template-columns: 1fr;
+  .playground-generator-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
   }
 
   .playground-controls {
@@ -2225,6 +2301,46 @@ body {
 }
 
 @media (max-width: 640px) {
+  .playground-generator-panel {
+    padding: 0.85rem;
+  }
+
+  .playground-generator-grid {
+    gap: 0.8rem;
+  }
+
+  .playground-current-swatches {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.4rem;
+    overscroll-behavior-x: contain;
+    padding: 0.1rem 0.1rem 0.4rem;
+    scroll-snap-type: x proximity;
+  }
+
+  .playground-current-swatch {
+    flex: 0 0 4.6rem;
+    scroll-snap-align: start;
+  }
+
+  .playground-current-swatch-color {
+    height: 3rem;
+  }
+
+  .playground-current-swatch-meta {
+    padding: 0.4rem;
+  }
+
+  .playground-control-block {
+    margin-top: 0.7rem;
+    padding-top: 0.7rem;
+  }
+
+  .playground-advanced-refinement {
+    margin-top: 0.7rem;
+    padding-top: 0.65rem;
+  }
+
   .playground-handoff-row {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -662,7 +662,7 @@ const TastingRoom = () => {
         </div>
       </header>
 
-      <main id="tasting-main" className="tasting-frame space-y-7 py-10 sm:py-14">
+      <main id="tasting-main" className="tasting-frame space-y-5 py-5 sm:py-6">
         <section className="tasting-hero">
           <p className="tasting-eyebrow">LIVE PALETTE PLAYGROUND</p>
           <div className="flex flex-wrap items-end gap-3">
@@ -671,10 +671,270 @@ const TastingRoom = () => {
           <p className="tasting-subtitle">Generate a sketch here. Ship with a finished 59-token kit — Light, Dark, Pop, seven production formats — from $9.</p>
         </section>
 
+        <section className="playground-generator-panel tasting-panel" aria-labelledby="playground-generator-title">
+          <div className="playground-generator-grid">
+            <div className="playground-current-palette">
+              <p className="playground-kicker">Current palette</p>
+              <div className="playground-current-swatches" role="group" aria-label="Current palette swatches">
+                {swatches.slice(0, 8).map(({ name, color }, index) => (
+                  <button
+                    key={`${name}-${index}`}
+                    type="button"
+                    className="playground-current-swatch"
+                    onClick={() => copySingleHex(color)}
+                    aria-label={`Copy ${name} swatch ${color}`}
+                    title={`Copy ${name} ${color}`}
+                  >
+                    <span className="playground-current-swatch-color" style={{ backgroundColor: color }} aria-hidden="true" />
+                    <span className="playground-current-swatch-meta">
+                      <span>{name}</span>
+                      <code>{color.toUpperCase()}</code>
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="playground-mobile-quick-controls" aria-label="Quick palette controls">
+                <button type="button" className="mobile-quick-chaos" onClick={mintChaos}>
+                  <Sparkles size={14} aria-hidden="true" />
+                  Chaos
+                </button>
+                <div className="mobile-quick-locks" aria-label="Quick swatch locks">
+                  {swatches.slice(0, 4).map(({ name, color, locked }, index) => (
+                    <button
+                      key={`${name}-${index}`}
+                      type="button"
+                      className={`mobile-lock-chip ${locked ? 'is-locked' : ''}`}
+                      onClick={() => toggleSwatchLock(index)}
+                      aria-label={`${locked ? 'Unlock' : 'Lock'} ${name} swatch`}
+                      title={`${locked ? 'Unlock' : 'Lock'} ${name}`}
+                    >
+                      <span style={{ backgroundColor: color }} />
+                      {locked ? <Lock size={12} aria-hidden="true" /> : <Unlock size={12} aria-hidden="true" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <aside className="playground-controls" aria-label="Playground controls">
+              <div className="playground-control-heading">
+                <div>
+                  <p className="tasting-eyebrow">Make it yours</p>
+                  <h2 id="playground-generator-title" className="tasting-panel-title">Tune the palette</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={mintChaos}
+                  className="playground-chaos-button"
+                  aria-label="Mint a new chaos exploration"
+                >
+                  <Sparkles size={14} aria-hidden="true" />
+                  Chaos
+                </button>
+              </div>
+              <p className="playground-palette-status">{artifactLabel}</p>
+
+              <label className="playground-control-label" htmlFor="kit-preset">
+                Starting point
+                <select id="kit-preset" value={playground.kitId || 'exploration'} onChange={(event) => selectPreset(event.target.value)} className="playground-select">
+                  {playground.kitId === null && <option value="exploration">Current exploration</option>}
+                  {INSPIRATION_SEEDS.map((seed) => (
+                    <option key={seed.id} value={seed.id}>
+                      {seed.name} seed
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="playground-control-block">
+                <span className="playground-control-label">Seed color</span>
+                <div className="playground-seed-row">
+                  <input
+                    type="color"
+                    value={playground.baseColor}
+                    onChange={(event) => handleSeedInput(event.target.value)}
+                    aria-label="Seed color swatch"
+                    className="playground-color-input"
+                  />
+                  <input
+                    type="text"
+                    value={playground.baseInput}
+                    onChange={(event) => handleSeedInput(event.target.value)}
+                    onBlur={handleSeedBlur}
+                    aria-label="Seed color hex"
+                    className="playground-hex-input"
+                    spellCheck="false"
+                  />
+                </div>
+              </div>
+
+              <div className="playground-control-block">
+                <span className="playground-control-label">Harmony</span>
+                <div className="playground-chip-grid" role="group" aria-label="Harmony mode">
+                  {HARMONY_MODES.map((harmony) => (
+                    <button
+                      key={harmony}
+                      type="button"
+                      onClick={() => handleHarmonyChange(harmony)}
+                      aria-pressed={playground.harmony === harmony}
+                      className={`playground-chip ${playground.harmony === harmony ? 'is-active' : ''}`}
+                    >
+                      {harmony}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="playground-control-block">
+                <span className="playground-control-label">Preview mode</span>
+                <div className="playground-mode-row" role="group" aria-label="Preview mode">
+                  {DISPLAY_MODES.map((mode) => (
+                    <button
+                      key={mode.value}
+                      type="button"
+                      onClick={() => toggleMode(mode.value)}
+                      aria-pressed={playground.themeMode === mode.value}
+                      className={`playground-mode-pill ${playground.themeMode === mode.value ? 'is-active' : ''}`}
+                    >
+                      {mode.label}
+                      {playground.confirmedModes[mode.value] && (
+                        <Sparkles size={11} aria-label="confirmed" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <details className="playground-advanced-refinement">
+                <summary>Advanced refinement</summary>
+                <div className="playground-advanced-content">
+                  <details className="playground-advanced-subpanel">
+                    <summary>Fine-tune nudges</summary>
+                    <div className="playground-tuning-panel">
+                      <label>
+                        Hue nudge
+                        <input type="range" min="-30" max="30" value={playground.hueNudge} onChange={(event) => handleHueNudge(event.target.value)} aria-label="Hue nudge" />
+                        <span>{playground.hueNudge}°</span>
+                      </label>
+                      <label>
+                        Saturation nudge
+                        <input type="range" min="-30" max="30" value={playground.satNudge} onChange={(event) => handleSatNudge(event.target.value)} aria-label="Saturation nudge" />
+                        <span>{playground.satNudge}%</span>
+                      </label>
+                    </div>
+                    <p className="playground-session-note">Tweaks are kept in this browser.</p>
+                  </details>
+
+                  <div className="playground-control-block">
+                    <div className="playground-advanced-heading">
+                      <span className="playground-control-label">Swatch edits and locks</span>
+                      <button type="button" onClick={regenerateUnlocked} className="playground-regenerate-button">
+                        <RefreshCcw size={13} aria-hidden="true" />
+                        Regenerate unlocked
+                      </button>
+                    </div>
+                    <div className="playground-swatch-grid">
+                      {swatches.slice(0, 8).map(({ name, color, locked }, index) => (
+                        <div key={`${name}-${index}`} className="playground-swatch-card">
+                          <button
+                            type="button"
+                            className="playground-swatch-color"
+                            style={{ backgroundColor: color }}
+                            onClick={() => copySingleHex(color)}
+                            aria-label={`Copy ${name} swatch ${color}`}
+                            title={`Copy ${name} ${color}`}
+                          />
+                          <div className="playground-swatch-meta">
+                            <div>
+                              <span className="playground-swatch-name">{name}</span>
+                              <code>{color.toUpperCase()}</code>
+                            </div>
+                            <label className="playground-swatch-edit">
+                              <span className="sr-only">Edit {name} swatch color</span>
+                              <input
+                                type="color"
+                                value={color}
+                                onChange={(event) => handleSwatchColorChange(index, event.target.value)}
+                                aria-label={`Edit ${name} swatch color`}
+                                title={`Edit ${name} color`}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => toggleSwatchLock(index)}
+                              className="playground-lock-button"
+                              aria-label={`${locked ? 'Unlock' : 'Lock'} ${name} swatch`}
+                              title={`${locked ? 'Unlock' : 'Lock'} ${name}`}
+                            >
+                              {locked ? <Lock size={12} aria-hidden="true" /> : <Unlock size={12} aria-hidden="true" />}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              </details>
+
+              {seedInfo && custom && (
+                <button type="button" onClick={resetToOriginal} className="playground-reset-button">
+                  Reset to original {seedInfo.name} seed
+                </button>
+              )}
+              <p className="playground-control-note">
+                {custom ? 'Custom exploration · your edits are part of this palette.' : 'Starting seed · make it yours.'}
+              </p>
+            </aside>
+          </div>
+        </section>
+
+        <section
+          className="playground-preview"
+          aria-label="Live website preview"
+          style={{
+            backgroundColor: previewRoles.background,
+            borderColor: previewRoles.border,
+            color: previewRoles.text,
+          }}
+        >
+          <div className="playground-preview-topline">
+            <div>
+              <p className="playground-kicker">Live scene</p>
+              <p className="text-xs font-semibold opacity-70">{playground.themeMode} mode · updates as you tune</p>
+            </div>
+            <div className="playground-scene-tabs" role="tablist" aria-label="Preview scenes">
+              {SCENES.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={scene === option.id}
+                  onClick={() => setScene(option.id)}
+                  className={scene === option.id ? 'is-active' : ''}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <PreviewScene
+            scene={scene}
+            roles={visionRoles}
+            swatches={visionSwatches}
+            artifactLabel={artifactLabel}
+            onCopy={copySingleHex}
+            harmony={playground.harmony}
+            themeMode={playground.themeMode}
+          />
+        </section>
+
         {(custom || hasModifiedPalette) && (
-          <div className="playground-handoff-row">
+          <div className="playground-handoff-row" key="playground-handoff-row">
             {custom && (
               <PlaygroundHandoff
+                key="playground-share-panel"
                 onCopyLink={copyPaletteLink}
                 accent={handoffAccent.accent}
                 onAccent={handoffAccent.onAccent}
@@ -684,7 +944,15 @@ const TastingRoom = () => {
           </div>
         )}
 
+        <SuggestKitDialog
+          key="kit-suggestion-dialog"
+          open={isSuggestionDialogOpen}
+          capture={suggestionCapture}
+          onRequestClose={() => setIsSuggestionDialogOpen(false)}
+        />
+
         <PlaygroundLibrary
+          key="playground-library"
           savedPalettes={savedPalettes}
           selectedPaletteId={selectedSavedPaletteId}
           saveStatus={saveStatus}
@@ -695,248 +963,11 @@ const TastingRoom = () => {
           showShareLink={!custom}
         />
 
-        <SuggestKitDialog
-          open={isSuggestionDialogOpen}
-          capture={suggestionCapture}
-          onRequestClose={() => setIsSuggestionDialogOpen(false)}
+        <PlaygroundTokenInspector
+          key="playground-token-inspector"
+          tokens={mainTokenValues}
+          onCopy={copyTokenValue}
         />
-
-        <div className="playground-layout">
-          <section
-            className="playground-preview"
-            aria-label="Live website preview"
-            style={{
-              backgroundColor: previewRoles.background,
-              borderColor: previewRoles.border,
-              color: previewRoles.text,
-            }}
-          >
-            <div className="playground-preview-topline">
-              <div>
-                <p className="playground-kicker">Live scene</p>
-                <p className="text-xs font-semibold opacity-70">{playground.themeMode} mode · updates as you tune</p>
-              </div>
-              <div className="playground-scene-tabs" role="tablist" aria-label="Preview scenes">
-                {SCENES.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={scene === option.id}
-                    onClick={() => setScene(option.id)}
-                    className={scene === option.id ? 'is-active' : ''}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <PreviewScene
-              scene={scene}
-              roles={visionRoles}
-              swatches={visionSwatches}
-              artifactLabel={artifactLabel}
-              onCopy={copySingleHex}
-              harmony={playground.harmony}
-              themeMode={playground.themeMode}
-            />
-          </section>
-
-          <div className="playground-mobile-quick-controls" aria-label="Quick palette controls">
-            <button type="button" className="mobile-quick-chaos" onClick={mintChaos}>
-              <Sparkles size={14} aria-hidden="true" />
-              Chaos
-            </button>
-            <div className="mobile-quick-locks" aria-label="Quick swatch locks">
-              {swatches.slice(0, 4).map(({ name, color, locked }, index) => (
-                <button
-                  key={`${name}-${index}`}
-                  type="button"
-                  className={`mobile-lock-chip ${locked ? 'is-locked' : ''}`}
-                  onClick={() => toggleSwatchLock(index)}
-                  aria-label={`${locked ? 'Unlock' : 'Lock'} ${name} swatch`}
-                  title={`${locked ? 'Unlock' : 'Lock'} ${name}`}
-                >
-                  <span style={{ backgroundColor: color }} />
-                  {locked ? <Lock size={12} aria-hidden="true" /> : <Unlock size={12} aria-hidden="true" />}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <aside className="playground-controls tasting-panel" aria-label="Playground controls">
-            <div className="playground-control-heading">
-              <div>
-                <p className="tasting-eyebrow">Make it yours</p>
-                <h2 className="tasting-panel-title">Tune the palette</h2>
-              </div>
-              <button
-                type="button"
-                onClick={mintChaos}
-                className="playground-chaos-button"
-                aria-label="Mint a new chaos exploration"
-              >
-                <Sparkles size={14} aria-hidden="true" />
-                Chaos
-              </button>
-            </div>
-            <p className="playground-palette-status">{artifactLabel}</p>
-
-            <label className="playground-control-label" htmlFor="kit-preset">
-              Starting point
-              <select id="kit-preset" value={playground.kitId || 'exploration'} onChange={(event) => selectPreset(event.target.value)} className="playground-select">
-                {playground.kitId === null && <option value="exploration">Current exploration</option>}
-                {INSPIRATION_SEEDS.map((seed) => (
-                  <option key={seed.id} value={seed.id}>
-                    {seed.name} seed
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="playground-control-block">
-              <span className="playground-control-label">Seed color</span>
-              <div className="playground-seed-row">
-                <input
-                  type="color"
-                  value={playground.baseColor}
-                  onChange={(event) => handleSeedInput(event.target.value)}
-                  aria-label="Seed color swatch"
-                  className="playground-color-input"
-                />
-                <input
-                  type="text"
-                  value={playground.baseInput}
-                  onChange={(event) => handleSeedInput(event.target.value)}
-                  onBlur={handleSeedBlur}
-                  aria-label="Seed color hex"
-                  className="playground-hex-input"
-                  spellCheck="false"
-                />
-              </div>
-            </div>
-
-            <div className="playground-control-block">
-              <span className="playground-control-label">Harmony</span>
-              <div className="playground-chip-grid" role="group" aria-label="Harmony mode">
-                {HARMONY_MODES.map((harmony) => (
-                  <button
-                    key={harmony}
-                    type="button"
-                    onClick={() => handleHarmonyChange(harmony)}
-                    aria-pressed={playground.harmony === harmony}
-                    className={`playground-chip ${playground.harmony === harmony ? 'is-active' : ''}`}
-                  >
-                    {harmony}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="playground-control-block">
-              <span className="playground-control-label">Preview mode</span>
-              <div className="playground-mode-row" role="group" aria-label="Preview mode">
-                {DISPLAY_MODES.map((mode) => (
-                  <button
-                    key={mode.value}
-                    type="button"
-                    onClick={() => toggleMode(mode.value)}
-                    aria-pressed={playground.themeMode === mode.value}
-                    className={`playground-mode-pill ${playground.themeMode === mode.value ? 'is-active' : ''}`}
-                  >
-                    {mode.label}
-                    {playground.confirmedModes[mode.value] && (
-                      <Sparkles size={11} aria-label="confirmed" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <details className="playground-advanced-refinement">
-              <summary>Advanced refinement</summary>
-              <div className="playground-advanced-content">
-                <details className="playground-advanced-subpanel">
-                  <summary>Fine-tune nudges</summary>
-                  <div className="playground-tuning-panel">
-                    <label>
-                      Hue nudge
-                      <input type="range" min="-30" max="30" value={playground.hueNudge} onChange={(event) => handleHueNudge(event.target.value)} aria-label="Hue nudge" />
-                      <span>{playground.hueNudge}°</span>
-                    </label>
-                    <label>
-                      Saturation nudge
-                      <input type="range" min="-30" max="30" value={playground.satNudge} onChange={(event) => handleSatNudge(event.target.value)} aria-label="Saturation nudge" />
-                      <span>{playground.satNudge}%</span>
-                    </label>
-                  </div>
-                  <p className="playground-session-note">Tweaks are kept in this browser.</p>
-                </details>
-
-                <div className="playground-control-block">
-                  <div className="playground-advanced-heading">
-                    <span className="playground-control-label">Swatch edits and locks</span>
-                    <button type="button" onClick={regenerateUnlocked} className="playground-regenerate-button">
-                      <RefreshCcw size={13} aria-hidden="true" />
-                      Regenerate unlocked
-                    </button>
-                  </div>
-                  <div className="playground-swatch-grid">
-                    {swatches.slice(0, 8).map(({ name, color, locked }, index) => (
-                      <div key={`${name}-${index}`} className="playground-swatch-card">
-                        <button
-                          type="button"
-                          className="playground-swatch-color"
-                          style={{ backgroundColor: color }}
-                          onClick={() => copySingleHex(color)}
-                          aria-label={`Copy ${name} swatch ${color}`}
-                          title={`Copy ${name} ${color}`}
-                        />
-                        <div className="playground-swatch-meta">
-                          <div>
-                            <span className="playground-swatch-name">{name}</span>
-                            <code>{color.toUpperCase()}</code>
-                          </div>
-                          <label className="playground-swatch-edit">
-                            <span className="sr-only">Edit {name} swatch color</span>
-                            <input
-                              type="color"
-                              value={color}
-                              onChange={(event) => handleSwatchColorChange(index, event.target.value)}
-                              aria-label={`Edit ${name} swatch color`}
-                              title={`Edit ${name} color`}
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => toggleSwatchLock(index)}
-                            className="playground-lock-button"
-                            aria-label={`${locked ? 'Unlock' : 'Lock'} ${name} swatch`}
-                            title={`${locked ? 'Unlock' : 'Lock'} ${name}`}
-                          >
-                            {locked ? <Lock size={12} aria-hidden="true" /> : <Unlock size={12} aria-hidden="true" />}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-            </details>
-
-            {seedInfo && custom && (
-              <button type="button" onClick={resetToOriginal} className="playground-reset-button">
-                Reset to original {seedInfo.name} seed
-              </button>
-            )}
-            <p className="playground-control-note">
-              {custom ? 'Custom exploration · your edits are part of this palette.' : 'Starting seed · make it yours.'}
-            </p>
-          </aside>
-        </div>
-
-        <PlaygroundTokenInspector tokens={mainTokenValues} onCopy={copyTokenValue} />
 
         <PlaygroundAccessibility
           roles={previewRoles}

@@ -40,6 +40,33 @@ describe('TastingRoom suggestion invitation', () => {
     expect(within(controls).getByText('Custom exploration · inspired by Nuclear Winter', { selector: 'p' })).toBeInTheDocument();
   });
 
+  it('places the palette and core controls before preview, share/save, tokens, contrast, and the shelf', () => {
+    render(<TastingRoom />);
+
+    expect(within(screen.getByRole('group', { name: 'Current palette swatches' })).getAllByRole('button')).toHaveLength(8);
+    expect(screen.getByLabelText('Seed color hex')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Harmony mode' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Preview mode' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analogous' }));
+
+    const main = document.getElementById('tasting-main');
+    const orderedBlocks = [
+      main.querySelector('.playground-generator-panel'),
+      main.querySelector('.playground-preview'),
+      main.querySelector('.playground-handoff-row'),
+      main.querySelector('.playground-library'),
+      main.querySelector('.playground-token-inspector'),
+      main.querySelector('.playground-accessibility'),
+      main.querySelector('#kit-collection'),
+      main.querySelector('[aria-label="How Apocapalette works"]'),
+    ];
+    const positions = orderedBlocks.map((block) => Array.from(main.children).indexOf(block));
+
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((left, right) => left - right));
+  });
+
   it('hides the invitation on the initial palette and reveals it after a palette change', () => {
     render(<TastingRoom />);
 
