@@ -50,7 +50,7 @@ describe('TastingRoom suggestion invitation', () => {
     expect(screen.getByLabelText(/required so I can contact you about this suggestion/i)).toHaveFocus();
   });
 
-  it('edits an individual swatch, copies token values, and keeps edits across disclosure toggles', async () => {
+  it('edits an individual swatch, copies curated token values, and keeps edits across disclosure toggles', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -69,8 +69,8 @@ describe('TastingRoom suggestion invitation', () => {
     fireEvent.click(advanced);
     expect(screen.getByLabelText('Edit Primary swatch color')).toHaveValue('#123abc');
 
-    fireEvent.click(screen.getByText('Copy token values'));
-    const copyToken = screen.getByRole('button', { name: 'Copy brand.primary token value' });
+    fireEvent.click(screen.getByText('Tokens'));
+    const copyToken = screen.getByRole('button', { name: 'Copy --brand-primary value #123abc' });
     fireEvent.click(copyToken);
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     expect(writeText).toHaveBeenLastCalledWith('#123abc');
@@ -78,6 +78,29 @@ describe('TastingRoom suggestion invitation', () => {
 
     fireEvent.change(screen.getByLabelText('Edit Accent swatch color'), { target: { value: '#654321' } });
     expect(document.querySelector('.playground-hero-colorfield').style.background).toContain('rgb(101, 67, 33)');
+  });
+
+  it('shows a mood board that follows harmony, mode, swatch edits, locks, and regeneration', () => {
+    render(<TastingRoom />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Mood' }));
+
+    const moodBoard = screen.getByRole('region', { name: 'Mood board sketch preview' });
+    expect(within(moodBoard).getByText('Apocalypse · dark')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analogous' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Preview mode' })).getByRole('button', { name: 'Light' }));
+    expect(within(moodBoard).getByText('Analogous · light')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Advanced refinement'));
+    fireEvent.change(screen.getByLabelText('Edit Primary swatch color'), { target: { value: '#2468ac' } });
+    expect(within(moodBoard).getByText('#2468AC')).toBeInTheDocument();
+
+    const primaryLocks = screen.getAllByRole('button', { name: 'Lock Primary swatch' });
+    fireEvent.click(primaryLocks[primaryLocks.length - 1]);
+    expect(within(moodBoard).getByText('Locked')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate unlocked' }));
+    expect(within(moodBoard).getByText('#2468AC')).toBeInTheDocument();
+    expect(within(moodBoard).getAllByText('Unlocked').length).toBeGreaterThan(0);
   });
 
   it('keeps each confirmed mode sketch in a share link and restores it in a fresh render', async () => {

@@ -1,6 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, LockKeyhole } from 'lucide-react';
-import { KIT_SEEDS, KITS } from '../data/kits.js';
+import { IN_THE_FORGE, KIT_SEEDS, KITS } from '../data/kits.js';
 import { formatArtifactName } from '../lib/artifactNaming.js';
 import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
 
@@ -31,30 +30,24 @@ const KitGallery = () => (
         const coverColors = buildCoverColors(kit);
         return (
           <article key={kit.id} className="kit-gallery-card">
-            <a
-              href="https://example.com/apocapalette-forge-kits"
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => event.preventDefault()}
-              className="kit-gallery-link"
-            >
+            <div className="kit-gallery-content">
               <span className="kit-cover-strip" aria-hidden="true">
                 {coverColors.map((color) => <span key={color} style={{ backgroundColor: color }} />)}
               </span>
-              <span className="kit-gallery-copy">
+              <div className="kit-gallery-copy">
                 <span className="kit-gallery-name">{formatArtifactName({ kit })}</span>
                 <span className="kit-gallery-meta">${kit.price} · {kit.totalTokens} tokens · {formatModes(kit.modes)} · {kit.formats.length} formats</span>
-                <span className="kit-gallery-cta">
-                  <LockKeyhole size={13} aria-hidden="true" />
-                  View the kit
-                  <ArrowUpRight size={13} aria-hidden="true" />
-                </span>
-              </span>
-            </a>
+                <p className="kit-gallery-status">Shop opening soon</p>
+              </div>
+            </div>
           </article>
         );
       })}
     </div>
+
+    <p className="kit-forge-strip">
+      In the forge: {IN_THE_FORGE.map(({ name }) => name).join(' and ')}. Selected community suggestions may join them.
+    </p>
   </section>
 );
 

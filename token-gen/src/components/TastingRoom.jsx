@@ -11,6 +11,8 @@ import KitGallery from './KitGallery.jsx';
 import PlaygroundHandoff from './PlaygroundHandoff.jsx';
 import PlaygroundAccessibility from './PlaygroundAccessibility.jsx';
 import PlaygroundLibrary from './PlaygroundLibrary.jsx';
+import PlaygroundMoodBoard from './PlaygroundMoodBoard.jsx';
+import PlaygroundTokenInspector from './PlaygroundTokenInspector.jsx';
 import SuggestKitInvitation from './SuggestKitInvitation.jsx';
 import SuggestKitDialog from './SuggestKitDialog.jsx';
 import TastingFooter from './TastingFooter.jsx';
@@ -42,6 +44,19 @@ const SCENES = [
   { id: 'hero', label: 'Hero' },
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'shop', label: 'Shop' },
+  { id: 'mood', label: 'Mood' },
+];
+const MAIN_TOKEN_PATHS = [
+  'brand.primary',
+  'brand.secondary',
+  'brand.accent',
+  'brand.cta',
+  'surfaces.background',
+  'cards.card-panel-surface',
+  'cards.card-panel-border',
+  'typography.text-body',
+  'typography.heading',
+  'typography.text-muted',
 ];
 const EXPLORATION_SEEDS = [
   { baseColor: '#7f6bb3', mode: 'Analogous', themeMode: 'dark' },
@@ -164,6 +179,11 @@ const getRenderedTokenValues = (state, theme) => {
   }));
 };
 
+const selectMainTokenValues = (tokens) => {
+  const byPath = new Map(tokens.map((token) => [token.path, token]));
+  return MAIN_TOKEN_PATHS.map((path) => byPath.get(path)).filter(Boolean);
+};
+
 const regenerateSwatch = (color, index, iteration) => {
   const hsl = hexToHsl(color);
   const hueShift = 9 + ((index * 17 + iteration * 23) % 48);
@@ -195,7 +215,18 @@ const applyRenderedSwatchesToTokens = (tokens, swatches) => swatches.reduce(
   tokens,
 );
 
-const PreviewScene = ({ scene, roles, swatches, artifactLabel, onCopy }) => {
+const PreviewScene = ({ scene, roles, swatches, artifactLabel, onCopy, harmony, themeMode }) => {
+  if (scene === 'mood') {
+    return (
+      <PlaygroundMoodBoard
+        roles={roles}
+        swatches={swatches}
+        harmony={harmony}
+        themeMode={themeMode}
+      />
+    );
+  }
+
   if (scene === 'dashboard') {
     return (
       <div className="playground-scene playground-dashboard-scene" style={{ backgroundColor: roles.surface }}>
@@ -371,6 +402,10 @@ const TastingRoom = () => {
   const tokenValues = useMemo(
     () => getRenderedTokenValues(playground, theme),
     [playground, theme],
+  );
+  const mainTokenValues = useMemo(
+    () => selectMainTokenValues(tokenValues),
+    [tokenValues],
   );
   const visionRoles = useMemo(
     () => Object.fromEntries(Object.entries(previewRoles).map(([key, color]) => [
@@ -702,6 +737,8 @@ const TastingRoom = () => {
               swatches={visionSwatches}
               artifactLabel={artifactLabel}
               onCopy={copySingleHex}
+              harmony={playground.harmony}
+              themeMode={playground.themeMode}
             />
           </section>
 
@@ -884,24 +921,6 @@ const TastingRoom = () => {
                   </div>
                 </div>
 
-                <details className="playground-advanced-subpanel playground-token-values">
-                  <summary>Copy token values</summary>
-                  <ul>
-                    {tokenValues.map(({ name, path, value }, index) => (
-                      <li key={`${path}-${index}`}>
-                        <span><strong>{name}</strong><code>{path}</code></span>
-                        <code className="playground-token-value">{String(value)}</code>
-                        <button
-                          type="button"
-                          onClick={() => copyTokenValue({ path, value })}
-                          aria-label={`Copy ${path} token value`}
-                        >
-                          Copy
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
               </div>
             </details>
 
@@ -915,6 +934,8 @@ const TastingRoom = () => {
             </p>
           </aside>
         </div>
+
+        <PlaygroundTokenInspector tokens={mainTokenValues} onCopy={copyTokenValue} />
 
         <PlaygroundAccessibility
           roles={previewRoles}
