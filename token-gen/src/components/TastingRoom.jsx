@@ -6,7 +6,6 @@ import {
   Unlock,
 } from 'lucide-react';
 import KitGallery from './KitGallery.jsx';
-import PlaygroundHandoff from './PlaygroundHandoff.jsx';
 import PlaygroundAccessibility from './PlaygroundAccessibility.jsx';
 import PlaygroundCodeExport from './PlaygroundCodeExport.jsx';
 import PlaygroundLibrary from './PlaygroundLibrary.jsx';
@@ -25,7 +24,6 @@ import {
   SEMANTIC_PALETTE_ROLES,
 } from '../lib/playgroundPalette.js';
 import { buildCopyToastMessage } from '../lib/copyToast.js';
-import { resolveHandoffAccent, resolveOnAccentText } from '../lib/handoffAccent.js';
 import { decodePlaygroundHash, encodePlaygroundHash } from '../lib/playgroundLink.js';
 import { loadPlaygroundSession, savePlaygroundSession } from '../lib/sessionPersistence.js';
 import { buildTheme } from '../lib/theme/engine.js';
@@ -400,10 +398,6 @@ const TastingRoom = () => {
     () => buildThemeForState(playground, artifactLabel),
     [artifactLabel, playground],
   );
-  const handoffAccent = useMemo(() => {
-    const accent = resolveHandoffAccent({ theme, baseColor: playground.baseColor });
-    return { accent, onAccent: resolveOnAccentText(accent) };
-  }, [playground.baseColor, theme]);
   const previewRoles = useMemo(
     () => {
       const renderedSwatches = getRenderedSwatches(playground, theme);
@@ -934,18 +928,9 @@ const TastingRoom = () => {
           onCopyLink={copyPaletteLink}
         />
 
-        {(custom || hasModifiedPalette) && (
-          <div className="playground-handoff-row" key="playground-handoff-row">
-            {custom && (
-              <PlaygroundHandoff
-                key="playground-share-panel"
-                onCopyLink={copyPaletteLink}
-                linkCopied={copyToast === 'Copied share link.'}
-                accent={handoffAccent.accent}
-                onAccent={handoffAccent.onAccent}
-              />
-            )}
-            <SuggestKitInvitation visible={hasModifiedPalette} onSuggest={openSuggestionDialog} />
+        {hasModifiedPalette && (
+          <div className="playground-suggestion-row" key="playground-suggestion-row">
+            <SuggestKitInvitation visible onSuggest={openSuggestionDialog} />
           </div>
         )}
 

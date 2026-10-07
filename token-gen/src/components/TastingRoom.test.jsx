@@ -66,7 +66,7 @@ describe('TastingRoom creator-first layout', () => {
     const consoleChildren = Array.from(creatorConsole.children);
     const followup = main.querySelector('.playground-followup-grid');
     const library = main.querySelector('.playground-library');
-    const handoff = main.querySelector('.playground-handoff-row');
+    const suggestion = main.querySelector('.playground-suggestion-row');
     const followupChildren = Array.from(followup.children);
     const topLevel = Array.from(main.children);
 
@@ -79,8 +79,8 @@ describe('TastingRoom creator-first layout', () => {
     ]);
     expect(topLevel.indexOf(creatorConsole)).toBeLessThan(topLevel.indexOf(followup));
     expect(topLevel.indexOf(creatorConsole)).toBeLessThan(topLevel.indexOf(library));
-    expect(topLevel.indexOf(library)).toBeLessThan(topLevel.indexOf(handoff));
-    expect(topLevel.indexOf(handoff)).toBeLessThan(topLevel.indexOf(followup));
+    expect(topLevel.indexOf(library)).toBeLessThan(topLevel.indexOf(suggestion));
+    expect(topLevel.indexOf(suggestion)).toBeLessThan(topLevel.indexOf(followup));
     expect(topLevel.indexOf(followup)).toBeLessThan(topLevel.indexOf(main.querySelector('#kit-collection')));
     expect(screen.getByRole('heading', { name: 'Save or share this palette' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'How readable is this palette?' })).toBeInTheDocument();
@@ -176,7 +176,8 @@ describe('TastingRoom creator-first layout', () => {
 
     expect(screen.getByRole('heading', { name: 'Love this palette?' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Suggest this for a finished kit' })).toBeInTheDocument();
-    expect(screen.getByText('Share this palette')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Your palette is yours.' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Copy share link' })).toHaveLength(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
@@ -341,7 +342,7 @@ describe('TastingRoom creator-first layout', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save in this browser' }));
 
     await screen.findByRole('status');
-    expect(screen.getByRole('status')).toHaveTextContent('Palette saved in this browser.');
+    expect(screen.getByRole('status')).toHaveTextContent('Saved in this browser — it stays after refresh.');
     const saved = JSON.parse(localStore.get(SAVED_PLAYGROUND_PALETTES_KEY));
     expect(saved.palettes).toHaveLength(1);
     expect(saved.palettes[0].playground.baseColor).toBe('#7f1d1d');
@@ -351,7 +352,7 @@ describe('TastingRoom creator-first layout', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tertiary' }));
     fireEvent.change(screen.getByLabelText('Load a saved palette'), { target: { value: saved.palettes[0].id } });
     fireEvent.click(screen.getByRole('button', { name: 'Load palette' }));
-    expect(screen.getByRole('status')).toHaveTextContent('Saved palette loaded.');
+    expect(screen.getByRole('status')).toHaveTextContent('Saved in this browser — it stays after refresh.');
     expect(screen.getByRole('button', { name: 'Apocalypse' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText('Edit Accent role color')).toHaveValue('#123abc');
     expect(screen.getByRole('button', { name: 'Unlock Background role' })).toBeInTheDocument();
@@ -363,7 +364,7 @@ describe('TastingRoom creator-first layout', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save in this browser' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent('Couldn\'t save this palette.');
-    expect(screen.queryByText('Palette saved in this browser.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Saved in this browser — it stays after refresh.')).not.toBeInTheDocument();
   });
 
   it('restores edits, locks, overrides, and confirmed modes from a fresh share link', () => {

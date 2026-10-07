@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowUpRight } from 'lucide-react';
 
 const PlaygroundLibrary = ({
   swatches = [],
@@ -14,8 +15,11 @@ const PlaygroundLibrary = ({
   <section className={`playground-library tasting-panel${['success', 'loaded'].includes(saveStatus) ? ' is-saved' : ''}`} aria-labelledby="playground-library-title">
     <div className="playground-library-heading">
       <div>
-        <p className="tasting-eyebrow">Keep it in this browser or share a link</p>
+        <p className="tasting-eyebrow">KEEP IT IN THIS BROWSER OR SHARE A LINK</p>
         <h2 id="playground-library-title" className="tasting-panel-title">Save or share this palette</h2>
+        {(saveStatus === 'success' || saveStatus === 'loaded') && (
+          <p className="playground-library-saved" role="status">Saved in this browser — it stays after refresh.</p>
+        )}
       </div>
       <div className="playground-library-miniature" aria-hidden="true">
         {swatches.map(({ id, color }) => <span key={id} style={{ backgroundColor: color }} />)}
@@ -26,11 +30,9 @@ const PlaygroundLibrary = ({
     </div>
 
     <div className="playground-library-actions">
-      <div className="playground-library-save">
-        <button type="button" aria-label="Save in this browser" className="playground-library-primary" onClick={onSave}>
-          {saveStatus === 'success' ? 'Saved in this browser' : 'Save in this browser'}
-        </button>
-      </div>
+      <button type="button" aria-label="Save in this browser" className="playground-library-primary" onClick={onSave}>
+        Save in this browser
+      </button>
 
       <button type="button" aria-label="Copy share link" className={`playground-library-secondary${linkCopied ? ' is-copied' : ''}`} onClick={onCopyLink}>
         {linkCopied ? 'Link copied' : 'Copy share link'}
@@ -64,12 +66,11 @@ const PlaygroundLibrary = ({
     </div>
 
     <p className="playground-library-promise">
-      Free to use and copy. Want the full system with files? <a href="#kit-collection">See the kit ↓</a>
+      This exact palette is yours. Finished kits turn it into a contrast-checked system with Light, Dark, and Pop modes.
     </p>
 
-    {saveStatus === 'success' && <p className="playground-library-status" role="status">Palette saved in this browser.</p>}
-    {saveStatus === 'loaded' && <p className="playground-library-status" role="status">Saved palette loaded.</p>}
     {saveStatus === 'error' && <p className="playground-library-status is-error" role="alert">Couldn&apos;t save this palette. Browser storage may be unavailable or full.</p>}
+    <a className="playground-library-kits-link" href="#finished-kits">Browse finished kits <ArrowUpRight size={14} aria-hidden="true" /></a>
   </section>
 );
 

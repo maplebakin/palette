@@ -44,7 +44,7 @@
 .tasting-room :is(.playground-library-load select, .playground-vision-select-label select) { min-height: 2.75rem; font-size: 0.76rem; }
 
 /* The same physical button language, with three distinct levels of emphasis. */
-.tasting-room :is(.playground-generate-button, .playground-surprise-button, .playground-library-primary, .playground-library-secondary, .playground-code-copy, .playground-handoff-copy, .playground-handoff-link, .playground-scene-button) {
+.tasting-room :is(.playground-generate-button, .playground-surprise-button, .playground-library-primary, .playground-library-secondary, .playground-code-copy, .playground-scene-button) {
   min-height: 2.75rem;
   border-radius: var(--tasting-radius);
   gap: 0.5rem;
@@ -131,15 +131,20 @@
 .tasting-room .playground-library-status.is-error { border-color: #ac786c; background: #362420; color: #f2c7b8; }
 
 .tasting-room .playground-followup-grid { gap: 1.85rem; }
-.tasting-room .playground-handoff-row { gap: 1.5rem; }
-.tasting-room .playground-handoff { align-content: center; padding: clamp(1.2rem, 2.4vw, 1.9rem); gap: 1.2rem; border-color: #665445; background: #231e19; }
-.tasting-room .playground-handoff-header { flex-direction: column; gap: 0.8rem; }
-.tasting-room .playground-handoff .tasting-eyebrow { color: var(--tasting-caption); }
-.tasting-room .playground-handoff-saved { max-width: none; border: 0; border-left: 2px solid #839173; border-radius: 0; padding: 0.2rem 0.65rem; text-align: left; font-size: 0.72rem; font-weight: 600; }
-.tasting-room .playground-handoff-honesty { max-width: 55ch; font-size: 0.85rem; line-height: 1.7; }
-.tasting-room .playground-handoff-copy { background: #362b23; border: 1px solid #8c7059; color: #f0dbc6; }
-.tasting-room .playground-handoff-copy:is(:hover, :focus-visible) { filter: none; border-color: #c1a386; background: #44352a; }
-.tasting-room :is(.playground-library-secondary, .playground-handoff-copy, .playground-code-copy).is-copied { border-color: #879875; background: #2b3326; color: var(--tasting-success); }
+.tasting-room :is(.playground-library-secondary, .playground-code-copy).is-copied { border-color: #879875; background: #2b3326; color: var(--tasting-success); }
+.tasting-room .playground-library-heading { display: flex; align-items: flex-start; flex-wrap: nowrap; gap: 1.5rem; }
+.tasting-room .playground-library-heading > div:first-child { min-width: 0; }
+.tasting-room .playground-library-saved { margin-top: 0.55rem; border-left: 2px solid #879875; padding-left: 0.65rem; color: var(--tasting-success); font-size: 0.76rem; line-height: 1.45; }
+.tasting-room .playground-library-miniature { flex: 0 0 11.5rem; }
+.tasting-room .playground-library-actions { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; }
+.tasting-room .playground-library-primary { background: #3a2d24; border-color: #99765c; color: #f5dfc9; }
+.tasting-room .playground-library-primary:hover { background: #49382c; border-color: #c3a187; }
+.tasting-room .playground-library-load { grid-column: 1 / -1; grid-template-columns: minmax(9rem, 0.32fr) minmax(0, 1fr); align-items: end; padding-left: 0; border-left: 0; gap: 0.7rem; }
+.tasting-room .playground-library-promise { max-width: 68ch; font-size: 0.83rem; line-height: 1.65; }
+.tasting-room .playground-library-kits-link { display: inline-flex; width: fit-content; min-height: 2.5rem; align-items: center; gap: 0.35rem; color: #d4b99f; font-size: 0.75rem; font-weight: 650; text-decoration: underline; text-decoration-color: #806950; text-underline-offset: 0.2rem; transition: color 160ms ease, transform 120ms ease; }
+.tasting-room .playground-library-kits-link:hover { color: #f2dfce; transform: translateX(1px); }
+.tasting-room .playground-suggestion-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+.tasting-room .playground-suggestion-row .suggest-kit-invitation { grid-column: 1; }
 .tasting-room .playground-accessibility { background: #1d1916; gap: 1rem; }
 .tasting-room .playground-contrast-summary { background: transparent; border: 0; border-radius: 0; border-bottom: 1px solid var(--tasting-line); padding: 0.3rem 0 0.85rem; }
 .tasting-room .playground-contrast-summary strong { font-size: 1.05rem; letter-spacing: -0.015em; }
@@ -237,7 +242,11 @@
   .tasting-room .playground-contrast-card :is(p, small) { font-size: 0.68rem; }
   .tasting-room .playground-code-preview { padding: 1rem; font-size: 0.76rem; }
   .tasting-room .playground-code-tabs button { min-height: 2.75rem; flex: 1; }
-  .tasting-room .playground-handoff-actions > * { width: 100%; justify-content: center; }
+  .tasting-room .playground-library-heading { flex-wrap: wrap; gap: 0.75rem; }
+  .tasting-room .playground-library-miniature { flex: 0 0 6.5rem; margin-left: auto; }
+  .tasting-room .playground-library-load { grid-template-columns: minmax(0, 1fr); gap: 0.35rem; }
+  .tasting-room .playground-library-load > div { grid-template-columns: minmax(0, 1fr); }
+  .tasting-room .playground-library-kits-link { min-height: 2.75rem; }
   .tasting-room .playground-code-copy { width: 100%; }
   .tasting-room .kit-gallery-content { padding: 1rem; }
 }

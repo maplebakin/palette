@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import PlaygroundLibrary from './PlaygroundLibrary.jsx';
 
 describe('PlaygroundLibrary', () => {
-  it('offers browser save, share, restore, and the free sketch promise', () => {
+  it('offers browser save, share, restore, and the finished-kit handoff', () => {
     render(
       <PlaygroundLibrary
         savedPalettes={[]}
@@ -19,10 +19,11 @@ describe('PlaygroundLibrary', () => {
 
     expect(screen.getByRole('heading', { name: 'Save or share this palette' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save in this browser' })).toBeInTheDocument();
-    expect(screen.getByText(/Free to use and copy\. Want the full system with files\?/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'See the kit ↓' })).toHaveAttribute('href', '#kit-collection');
+    expect(screen.getByText('This exact palette is yours. Finished kits turn it into a contrast-checked system with Light, Dark, and Pop modes.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Browse finished kits' })).toHaveAttribute('href', '#finished-kits');
     expect(screen.getByRole('button', { name: 'Copy share link' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Load palette' })).toBeDisabled();
+    expect(screen.queryByText('Your palette is yours.')).not.toBeInTheDocument();
   });
 
   it('loads a selected saved palette and only confirms a successful save', () => {
@@ -41,7 +42,7 @@ describe('PlaygroundLibrary', () => {
       />,
     );
 
-    expect(screen.getByRole('status')).toHaveTextContent('Palette saved in this browser.');
+    expect(screen.getByRole('status')).toHaveTextContent('Saved in this browser — it stays after refresh.');
     fireEvent.click(screen.getByRole('button', { name: 'Save in this browser' }));
     fireEvent.click(screen.getByRole('button', { name: 'Load palette' }));
     expect(onSave).toHaveBeenCalledOnce();
