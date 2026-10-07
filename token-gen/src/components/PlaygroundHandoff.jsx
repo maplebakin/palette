@@ -3,7 +3,7 @@ import { ArrowUpRight, Link2 } from 'lucide-react';
 
 const CUSTOM_PALETTE_HONEST_LINE = "This exact palette isn't for sale. The finished kit carries it into a contrast-checked system with Light, Dark, and Pop modes.";
 
-const PlaygroundHandoff = ({ onCopyLink, accent, onAccent }) => {
+const PlaygroundHandoff = ({ onCopyLink, accent, onAccent, linkCopied = false }) => {
   const style = {
     ...(accent ? { '--handoff-accent': accent } : {}),
     ...(onAccent ? { '--handoff-on-accent': onAccent } : {}),
@@ -24,9 +24,9 @@ const PlaygroundHandoff = ({ onCopyLink, accent, onAccent }) => {
       </div>
       <p className="playground-handoff-honesty">{CUSTOM_PALETTE_HONEST_LINE}</p>
       <div className="playground-handoff-actions">
-        <button type="button" className="playground-handoff-copy" onClick={onCopyLink}>
+        <button type="button" aria-label="Copy palette link" className={`playground-handoff-copy${linkCopied ? ' is-copied' : ''}`} onClick={onCopyLink}>
           <Link2 size={14} aria-hidden="true" />
-          Copy palette link
+          {linkCopied ? 'Link copied' : 'Copy palette link'}
         </button>
         <a href="#finished-kits" className="playground-handoff-link">
           Browse finished kits

@@ -5,12 +5,13 @@ const PlaygroundLibrary = ({
   savedPalettes,
   selectedPaletteId,
   saveStatus,
+  linkCopied = false,
   onSave,
   onSelectedPaletteChange,
   onLoad,
   onCopyLink,
 }) => (
-  <section className={`playground-library tasting-panel${saveStatus === 'success' ? ' is-saved' : ''}`} aria-labelledby="playground-library-title">
+  <section className={`playground-library tasting-panel${['success', 'loaded'].includes(saveStatus) ? ' is-saved' : ''}`} aria-labelledby="playground-library-title">
     <div className="playground-library-heading">
       <div>
         <p className="tasting-eyebrow">Keep it in this browser or share a link</p>
@@ -26,13 +27,13 @@ const PlaygroundLibrary = ({
 
     <div className="playground-library-actions">
       <div className="playground-library-save">
-        <button type="button" className="playground-library-primary" onClick={onSave}>
-          Save in this browser
+        <button type="button" aria-label="Save in this browser" className="playground-library-primary" onClick={onSave}>
+          {saveStatus === 'success' ? 'Saved in this browser' : 'Save in this browser'}
         </button>
       </div>
 
-      <button type="button" className="playground-library-secondary" onClick={onCopyLink}>
-        Copy share link
+      <button type="button" aria-label="Copy share link" className={`playground-library-secondary${linkCopied ? ' is-copied' : ''}`} onClick={onCopyLink}>
+        {linkCopied ? 'Link copied' : 'Copy share link'}
       </button>
 
       <div className="playground-library-load">
@@ -67,6 +68,7 @@ const PlaygroundLibrary = ({
     </p>
 
     {saveStatus === 'success' && <p className="playground-library-status" role="status">Palette saved in this browser.</p>}
+    {saveStatus === 'loaded' && <p className="playground-library-status" role="status">Saved palette loaded.</p>}
     {saveStatus === 'error' && <p className="playground-library-status is-error" role="alert">Couldn&apos;t save this palette. Browser storage may be unavailable or full.</p>}
   </section>
 );

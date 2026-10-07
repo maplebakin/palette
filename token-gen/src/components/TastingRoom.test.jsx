@@ -214,9 +214,23 @@ describe('TastingRoom creator-first layout', () => {
     expect(copied.colors['cta-text']).toMatch(/^#[0-9a-f]{6}$/);
     expect(Object.keys(copied.colors)).toHaveLength(9);
     expect(screen.getByRole('status')).toHaveTextContent('Palette code copied.');
+    expect(screen.getByRole('button', { name: 'Copy code' })).toHaveTextContent('Copied');
 
     fireEvent.change(screen.getByLabelText('Edit Accent role color'), { target: { value: '#654321' } });
     expect(document.querySelector('.playground-hero-colorfield').style.background).toContain('rgb(101, 67, 33)');
+  });
+
+  it.each(['Copy code', 'Copy share link'])('does not show success when %s is rejected by the clipboard', async (action) => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('Permission denied')) },
+    });
+    render(<TastingRoom />);
+    fireEvent.click(screen.getByRole('button', { name: action }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Could not copy. Please try again.');
+    expect(screen.getByRole('button', { name: action })).toHaveTextContent(action);
+    expect(document.querySelector('.is-copied')).not.toBeInTheDocument();
   });
 
   it('regenerates from the seed while keeping locked roles and re-deriving unlocked roles', () => {
@@ -337,6 +351,7 @@ describe('TastingRoom creator-first layout', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tertiary' }));
     fireEvent.change(screen.getByLabelText('Load a saved palette'), { target: { value: saved.palettes[0].id } });
     fireEvent.click(screen.getByRole('button', { name: 'Load palette' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Saved palette loaded.');
     expect(screen.getByRole('button', { name: 'Apocalypse' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText('Edit Accent role color')).toHaveValue('#123abc');
     expect(screen.getByRole('button', { name: 'Unlock Background role' })).toBeInTheDocument();

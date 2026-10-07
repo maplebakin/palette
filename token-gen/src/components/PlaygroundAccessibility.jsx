@@ -35,7 +35,10 @@ const PlaygroundAccessibility = ({ roles }) => {
                 {check.passes ? 'Pass' : 'Fail'}
               </span>
             </div>
-            <strong>{check.ratio.toFixed(2)}:1</strong>
+            <div className="playground-contrast-measure">
+              <strong>{check.ratio.toFixed(2)}:1</strong>
+              <span className="playground-contrast-sample" aria-hidden="true" style={{ backgroundColor: check.background, color: check.foreground }}>{check.id === 'border-background' ? '—' : 'Aa'}</span>
+            </div>
             <p>{check.foreground.toUpperCase()} on {check.background.toUpperCase()}</p>
             <small>{check.minimumRatio}:1 minimum</small>
           </article>

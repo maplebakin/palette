@@ -645,21 +645,25 @@ const TastingRoom = () => {
     }
   };
 
-  const copyPaletteCode = (code) => {
-    setCopyToast('Palette code copied.');
-    setCopyCount((current) => current + 1);
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(code).catch(() => {});
+  const copyPaletteArtifact = async (value, confirmation) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(value);
+      setCopyToast(confirmation);
+    } catch {
+      setCopyToast('Could not copy. Please try again.');
     }
+  };
+
+  const copyPaletteCode = (code) => {
+    setCopyCount((current) => current + 1);
+    void copyPaletteArtifact(code, 'Palette code copied.');
   };
 
   const copyPaletteLink = () => {
     if (typeof window === 'undefined') return;
     const shareUrl = buildCurrentShareUrl(playground);
-    setCopyToast('Copied share link.');
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(shareUrl).catch(() => {});
-    }
+    void copyPaletteArtifact(shareUrl, 'Copied share link.');
   };
 
   const buildCurrentShareUrl = (state) => (
@@ -693,12 +697,13 @@ const TastingRoom = () => {
     if (!savedPalette) return;
     markPaletteModified();
     setPlayground(JSON.parse(JSON.stringify(savedPalette.playground)));
+    setSaveStatus('loaded');
   };
 
   return (
     <div className="tasting-room min-h-screen">
       {copyToast && (
-        <div className="playground-copy-toast" role="status" aria-live="polite">
+        <div className={copyToast === 'Palette code copied.' || copyToast === 'Copied share link.' ? 'sr-only' : 'playground-copy-toast'} role="status" aria-live="polite">
           {copyToast}
         </div>
       )}
@@ -922,6 +927,7 @@ const TastingRoom = () => {
           savedPalettes={savedPalettes}
           selectedPaletteId={selectedSavedPaletteId}
           saveStatus={saveStatus}
+          linkCopied={copyToast === 'Copied share link.'}
           onSave={saveCurrentPalette}
           onSelectedPaletteChange={setSelectedSavedPaletteId}
           onLoad={loadSelectedPalette}
@@ -934,6 +940,7 @@ const TastingRoom = () => {
               <PlaygroundHandoff
                 key="playground-share-panel"
                 onCopyLink={copyPaletteLink}
+                linkCopied={copyToast === 'Copied share link.'}
                 accent={handoffAccent.accent}
                 onAccent={handoffAccent.onAccent}
               />
@@ -944,7 +951,7 @@ const TastingRoom = () => {
 
         <div className="playground-followup-grid">
           <PlaygroundAccessibility roles={previewRoles} />
-          <PlaygroundCodeExport roles={codeRoles} onCopy={copyPaletteCode} />
+          <PlaygroundCodeExport roles={codeRoles} onCopy={copyPaletteCode} copied={copyToast === 'Palette code copied.'} />
         </div>
 
         <KitGallery />

@@ -7,7 +7,7 @@ const CODE_FORMATS = [
   { id: 'tailwind', label: 'Tailwind' },
 ];
 
-const PlaygroundCodeExport = ({ roles, onCopy }) => {
+const PlaygroundCodeExport = ({ roles, onCopy, copied = false }) => {
   const [format, setFormat] = useState('css');
   const code = buildSevenRoleSketchCode({ roles, format });
 
@@ -35,8 +35,8 @@ const PlaygroundCodeExport = ({ roles, onCopy }) => {
       <pre className="playground-code-preview"><code>{code.split(/(#[0-9a-f]{6}|--color-[\w-]+|"[^"]+"|'[^']+'|:root)/gi).map((part, index) => (
         <span key={index} className={/^["']?#[0-9a-f]{6}/i.test(part) ? 'code-value' : /^(--|"|'|:root)/.test(part) ? 'code-property' : undefined}>{part}</span>
       ))}</code></pre>
-      <button type="button" className="playground-code-copy" onClick={() => onCopy(code)}>
-        Copy code
+      <button type="button" aria-label="Copy code" className={`playground-code-copy${copied ? ' is-copied' : ''}`} onClick={() => onCopy(code)}>
+        {copied ? 'Copied' : 'Copy code'}
       </button>
     </section>
   );
