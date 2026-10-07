@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import PlaygroundLibrary from './PlaygroundLibrary.jsx';
 
 describe('PlaygroundLibrary', () => {
-  it('shows the exact local-save disclosure beside the save action', () => {
+  it('offers browser save, share, restore, and the free sketch promise', () => {
     render(
       <PlaygroundLibrary
         savedPalettes={[]}
@@ -14,14 +14,14 @@ describe('PlaygroundLibrary', () => {
         onSelectedPaletteChange={vi.fn()}
         onLoad={vi.fn()}
         onCopyLink={vi.fn()}
-        showShareLink
       />,
     );
 
-    expect(screen.getByText('Save in this browser')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save palette' })).toBeInTheDocument();
-    expect(screen.getByText("Saved palettes stay in this browser. They won't sync across devices, and clearing browser data can remove them. Keep a share link if you want to return elsewhere.")).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Copy link to this palette' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Keep this palette' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save in this browser' })).toBeInTheDocument();
+    expect(screen.getByText(/Free to use and copy\. Want the full system with files\?/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'See the kit ↓' })).toHaveAttribute('href', '#kit-collection');
+    expect(screen.getByRole('button', { name: 'Copy share link' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Load palette' })).toBeDisabled();
   });
 
@@ -38,15 +38,14 @@ describe('PlaygroundLibrary', () => {
         onSelectedPaletteChange={onSelectedPaletteChange}
         onLoad={onLoad}
         onCopyLink={vi.fn()}
-        showShareLink={false}
       />,
     );
 
     expect(screen.getByRole('status')).toHaveTextContent('Palette saved in this browser.');
-    fireEvent.click(screen.getByRole('button', { name: 'Save palette' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save in this browser' }));
     fireEvent.click(screen.getByRole('button', { name: 'Load palette' }));
     expect(onSave).toHaveBeenCalledOnce();
     expect(onLoad).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('button', { name: 'Copy link to this palette' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy share link' })).toBeInTheDocument();
   });
 });
