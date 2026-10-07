@@ -99,6 +99,7 @@ const toLinkPayload = (playground = {}) => {
     modeStates,
     isChaosMinted: Boolean(playground.isChaosMinted),
     chaosIndex: isFiniteNumber(Number(playground.chaosIndex)) ? Number(playground.chaosIndex) : 0,
+    ...(typeof playground.semanticPalette === 'boolean' ? { semanticPalette: playground.semanticPalette } : {}),
   };
 };
 
@@ -154,6 +155,7 @@ const isValidPayload = (payload) => (
     && Object.entries(payload.confirmedModes).every(([mode, confirmed]) => THEME_MODES.includes(mode) && typeof confirmed === 'boolean')
   ))
   && (!hasOwn(payload, 'modeStates') || isModeStatesRecord(payload.modeStates))
+  && (!hasOwn(payload, 'semanticPalette') || typeof payload.semanticPalette === 'boolean')
   && typeof payload.isChaosMinted === 'boolean'
   && Number.isInteger(payload.chaosIndex)
   && payload.chaosIndex >= 0

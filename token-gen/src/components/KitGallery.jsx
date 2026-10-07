@@ -4,6 +4,15 @@ import { formatArtifactName } from '../lib/artifactNaming.js';
 import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
 
 const formatModes = (modes = []) => modes.map((mode) => mode.charAt(0).toUpperCase() + mode.slice(1)).join('/');
+const FORMAT_LABELS = {
+  ase: 'ASE',
+  swatches: 'Procreate swatches',
+  gpl: 'GPL',
+  css: 'CSS',
+  json: 'JSON',
+  'figma-tokens': 'Tokens Studio JSON',
+  tailwind: 'Tailwind v3 snippet',
+};
 
 const buildCoverColors = (kit) => {
   const seed = KIT_SEEDS[kit.id]?.baseColor || '#8b6f9c';
@@ -19,11 +28,14 @@ const KitGallery = () => (
   <section id="kit-collection" className="kit-gallery tasting-panel" aria-label="Curated kit gallery">
     <div className="playground-section-heading">
       <div>
-        <p className="tasting-eyebrow">The collection</p>
-        <h2 className="tasting-panel-title">Three ways in</h2>
+        <p className="tasting-eyebrow">Finished systems</p>
+        <h2 className="tasting-panel-title">Finished palette systems</h2>
       </div>
-      <span className="playground-section-meta">Curated kits</span>
+      <span className="playground-section-meta">Designed palettes</span>
     </div>
+    <p className="kit-gallery-intro">
+      Your sketch colors are yours to keep and copy. A finished kit adds 59 semantic tokens per mode, Light/Dark/Pop variants, seven production file types, contrast data, and a usage licence.
+    </p>
 
     <div className="kit-gallery-features">
       {KITS.map((kit) => {
@@ -47,7 +59,7 @@ const KitGallery = () => (
               <dl className="kit-gallery-contents">
                 <div>
                   <dt>Tokens</dt>
-                  <dd>{kit.totalTokens} tokens per mode</dd>
+                  <dd>{kit.totalTokens} semantic tokens per mode</dd>
                 </div>
                 <div>
                   <dt>Variants</dt>
@@ -55,7 +67,7 @@ const KitGallery = () => (
                 </div>
                 <div>
                   <dt>Formats</dt>
-                  <dd>{kit.formats.length} formats</dd>
+                  <dd>{kit.formats.map((format) => FORMAT_LABELS[format] || format).join(', ')}</dd>
                 </div>
                 <div>
                   <dt>Contrast data</dt>

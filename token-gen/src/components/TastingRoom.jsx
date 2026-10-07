@@ -21,7 +21,11 @@ import { NAME_BANK, randomExplorationName } from '../data/nameBank.js';
 import { formatArtifactName } from '../lib/artifactNaming.js';
 import { isCustom } from '../lib/honestyPredicate.js';
 import { buildPreviewRoleTokens } from '../lib/previewTokens.js';
-import { hexToHsl, hslToHex } from '../lib/colorUtils.js';
+import { hexToHsl, hslToHex, pickReadableText } from '../lib/colorUtils.js';
+import {
+  buildSemanticPaletteSwatches,
+  SEMANTIC_PALETTE_ROLES,
+} from '../lib/playgroundPalette.js';
 import { simulateColorVision } from '../lib/accessibility.js';
 import { buildCopyToastMessage } from '../lib/copyToast.js';
 import { resolveHandoffAccent, resolveOnAccentText } from '../lib/handoffAccent.js';
@@ -64,6 +68,8 @@ const EXPLORATION_SEEDS = [
   { baseColor: '#2f8c83', mode: 'Complementary', themeMode: 'pop' },
   { baseColor: '#c4a24d', mode: 'Monochromatic', themeMode: 'dark' },
 ];
+const GENERATION_HARMONY_INTENSITIES = [100, 114, 86, 126, 94, 108, 78, 120];
+const GENERATION_HUE_OFFSETS = [0, 15, -15, 28, -28, 42, -42, 8];
 
 const isHexColor = (value) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
@@ -84,6 +90,7 @@ const createPresetState = (kit) => {
     explorationName: '',
     baseColor: seed.baseColor,
     baseInput: seed.baseColor,
+    semanticPalette: true,
     harmony: seed.mode,
     themeMode: seed.themeMode,
     hueNudge: 0,
@@ -104,6 +111,7 @@ const createExplorationState = (seed, name, chaosIndex) => ({
   explorationName: name,
   baseColor: seed.baseColor,
   baseInput: seed.baseColor,
+  semanticPalette: true,
   harmony: seed.mode,
   themeMode: seed.themeMode,
   hueNudge: 0,
@@ -118,26 +126,25 @@ const createExplorationState = (seed, name, chaosIndex) => ({
   confirmedModes: { [seed.themeMode]: true },
 });
 
-const restoreLinkedPlayground = (payload) => ({
-  ...payload,
-  baseInput: payload.baseInput ?? payload.baseColor,
-  regenerateCount: payload.regenerateCount ?? 0,
-  modeStates: payload.modeStates ?? {},
-  userHasMutated: payload.userHasMutated ?? Boolean(payload.kitId && !payload.isChaosMinted),
-  confirmedModes: payload.confirmedModes || { [payload.themeMode]: true },
-});
+const buildThemeForState = (state, name) => {
+  const generationIndex = (state.regenerateCount || 0) % GENERATION_HARMONY_INTENSITIES.length;
+  const baseHsl = hexToHsl(state.baseColor);
+  const generatedBase = GENERATION_HUE_OFFSETS[generationIndex] === 0
+    ? state.baseColor
+    : hslToHex(baseHsl.h + GENERATION_HUE_OFFSETS[generationIndex], baseHsl.s, baseHsl.l);
+  return buildTheme({
+    name,
+    baseColor: generatedBase,
+    mode: state.harmony,
+    themeMode: state.themeMode,
+    isDark: state.themeMode === 'dark',
+    harmonyIntensity: GENERATION_HARMONY_INTENSITIES[generationIndex],
+    accentHueShift: state.hueNudge,
+    accentSaturationShift: state.satNudge,
+  });
+};
 
-const buildThemeForState = (state, name) => buildTheme({
-  name,
-  baseColor: state.baseColor,
-  mode: state.harmony,
-  themeMode: state.themeMode,
-  isDark: state.themeMode === 'dark',
-  accentHueShift: state.hueNudge,
-  accentSaturationShift: state.satNudge,
-});
-
-const getPaletteSwatches = (theme) => {
+const getLegacyPaletteSwatches = (theme) => {
   const generated = theme.orderedStack
     .map(({ name, path, value }) => ({ name, path, color: value }))
     .filter(({ color }) => isHexColor(color));
@@ -156,6 +163,52 @@ const getPaletteSwatches = (theme) => {
     seen.add(key);
     return true;
   }).slice(0, 12);
+};
+
+const getPaletteSwatches = (theme) => buildSemanticPaletteSwatches(theme.tokens)
+  .filter(({ color }) => isHexColor(color));
+
+const remapLegacySwatchRecord = (record, theme) => {
+  const legacySwatches = getLegacyPaletteSwatches(theme);
+  const roleIndices = new Map(SEMANTIC_PALETTE_ROLES.map(({ path }, index) => [path, index]));
+  roleIndices.set('brand.primary', SEMANTIC_PALETTE_ROLES.findIndex(({ id }) => id === 'cta'));
+  return Object.entries(record || {}).reduce((mapped, [legacyIndex, color]) => {
+    const roleIndex = roleIndices.get(legacySwatches[Number(legacyIndex)]?.path);
+    if (roleIndex !== undefined && isHexColor(color)) mapped[roleIndex] = color;
+    return mapped;
+  }, {});
+};
+
+const restoreLinkedPlayground = (payload) => {
+  const normalized = {
+    ...payload,
+    baseInput: payload.baseInput ?? payload.baseColor,
+    regenerateCount: payload.regenerateCount ?? 0,
+    modeStates: payload.modeStates ?? {},
+    lockedSwatches: payload.lockedSwatches ?? {},
+    swatchOverrides: payload.swatchOverrides ?? {},
+    userHasMutated: payload.userHasMutated ?? Boolean(payload.kitId && !payload.isChaosMinted),
+    confirmedModes: payload.confirmedModes || { [payload.themeMode]: true },
+  };
+  if (normalized.semanticPalette === true) return normalized;
+
+  const currentTheme = buildThemeForState({ ...normalized, regenerateCount: 0 }, 'Current palette');
+  const modeStates = Object.fromEntries(Object.entries(normalized.modeStates).map(([mode, modeState]) => {
+    const modeTheme = buildThemeForState({ ...normalized, themeMode: mode, regenerateCount: 0 }, 'Current palette');
+    return [mode, {
+      ...modeState,
+      lockedSwatches: remapLegacySwatchRecord(modeState.lockedSwatches, modeTheme),
+      swatchOverrides: remapLegacySwatchRecord(modeState.swatchOverrides, modeTheme),
+    }];
+  }));
+
+  return {
+    ...normalized,
+    semanticPalette: true,
+    lockedSwatches: remapLegacySwatchRecord(normalized.lockedSwatches, currentTheme),
+    swatchOverrides: remapLegacySwatchRecord(normalized.swatchOverrides, currentTheme),
+    modeStates,
+  };
 };
 
 const getRenderedSwatches = (state, theme) => getPaletteSwatches(theme).map((swatch, index) => {
@@ -184,14 +237,6 @@ const selectMainTokenValues = (tokens) => {
   return MAIN_TOKEN_PATHS.map((path) => byPath.get(path)).filter(Boolean);
 };
 
-const regenerateSwatch = (color, index, iteration) => {
-  const hsl = hexToHsl(color);
-  const hueShift = 9 + ((index * 17 + iteration * 23) % 48);
-  const saturation = Math.max(8, Math.min(96, hsl.s + (index % 2 === 0 ? 5 : -4)));
-  const lightness = Math.max(8, Math.min(92, hsl.l + (index % 3 === 0 ? 3 : -3)));
-  return hslToHex(hsl.h + hueShift, saturation, lightness);
-};
-
 const markMutation = (state, patch) => ({
   ...state,
   ...patch,
@@ -215,14 +260,32 @@ const applyRenderedSwatchesToTokens = (tokens, swatches) => swatches.reduce(
   tokens,
 );
 
-const PreviewScene = ({ scene, roles, swatches, artifactLabel, onCopy, harmony, themeMode }) => {
+const PreviewScene = ({
+  scene,
+  roles,
+  swatches,
+  sourceSwatches,
+  artifactLabel,
+  onCopy,
+  harmony,
+  themeMode,
+  seedColor,
+  selectedRole,
+  onRoleSelect,
+  onApplySuggestion,
+}) => {
   if (scene === 'mood') {
     return (
       <PlaygroundMoodBoard
         roles={roles}
         swatches={swatches}
+        sourceSwatches={sourceSwatches}
         harmony={harmony}
         themeMode={themeMode}
+        seedColor={seedColor}
+        selectedRole={selectedRole}
+        onRoleSelect={onRoleSelect}
+        onApplySuggestion={onApplySuggestion}
       />
     );
   }
@@ -233,7 +296,7 @@ const PreviewScene = ({ scene, roles, swatches, artifactLabel, onCopy, harmony, 
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="playground-kicker">Studio overview</p>
-            <h2 className="playground-scene-title">Good morning, Mira.</h2>
+            <h2 className="playground-scene-title" style={{ color: roles.heading }}>Good morning, Mira.</h2>
             <p className="playground-scene-copy">A calm place to see what is moving through the collection.</p>
           </div>
           <span className="playground-scene-date">Tuesday · 09:41</span>
@@ -284,7 +347,7 @@ const PreviewScene = ({ scene, roles, swatches, artifactLabel, onCopy, harmony, 
           </div>
           <div className="flex flex-col justify-center">
             <p className="playground-kicker">The current edit</p>
-            <h2 className="playground-scene-title">Objects for slow mornings.</h2>
+            <h2 className="playground-scene-title" style={{ color: roles.heading }}>Objects for slow mornings.</h2>
             <p className="playground-scene-copy">A considered set of small things, chosen for the way they sit together.</p>
             <div className="mt-5 flex items-center gap-3">
               <button type="button" className="playground-scene-button" style={{ backgroundColor: roles.cta, color: roles.ctaForeground }}>
@@ -303,7 +366,7 @@ const PreviewScene = ({ scene, roles, swatches, artifactLabel, onCopy, harmony, 
     <div className="playground-scene playground-hero-scene" style={{ backgroundColor: roles.surface }}>
       <div className="playground-hero-copy">
         <p className="playground-kicker">A living collection of useful beauty</p>
-        <h2 className="playground-scene-title playground-hero-title">Explore the collection.</h2>
+        <h2 className="playground-scene-title playground-hero-title" style={{ color: roles.heading }}>Explore the collection.</h2>
         <p className="playground-scene-copy">
           Pieces with a pulse, gathered for rooms, rituals, and the quiet pleasure of finding the right thing.
         </p>
@@ -346,12 +409,13 @@ const TastingRoom = () => {
   const [playground, setPlayground] = useState(() => (
     linkedPlayground
       ? restoreLinkedPlayground(linkedPlayground)
-      : restoredSession?.playground || createPresetState({ id: 'nuclear-winter' })
+      : restoreLinkedPlayground(restoredSession?.playground || createPresetState({ id: 'nuclear-winter' }))
   ));
   const [hasModifiedPalette, setHasModifiedPalette] = useState(false);
   const [isSuggestionDialogOpen, setIsSuggestionDialogOpen] = useState(false);
   const [suggestionCapture, setSuggestionCapture] = useState(null);
   const [scene, setScene] = useState('hero');
+  const [selectedMoodRole, setSelectedMoodRole] = useState(null);
   const [visionMode, setVisionMode] = useState('normal');
   const [copyCount, setCopyCount] = useState(() => restoredSession?.copyCount || 0);
   const [copyToast, setCopyToast] = useState('');
@@ -389,10 +453,18 @@ const TastingRoom = () => {
     return { accent, onAccent: resolveOnAccentText(accent) };
   }, [playground.baseColor, theme]);
   const previewRoles = useMemo(
-    () => buildPreviewRoleTokens(
-      applyRenderedSwatchesToTokens(theme.tokens, getRenderedSwatches(playground, theme)),
-      playground.themeMode,
-    ),
+    () => {
+      const renderedSwatches = getRenderedSwatches(playground, theme);
+      const appliedTokens = applyRenderedSwatchesToTokens(theme.tokens, renderedSwatches);
+      const preview = buildPreviewRoleTokens(appliedTokens, playground.themeMode);
+      const cta = renderedSwatches.find(({ id }) => id === 'cta')?.color || preview.cta;
+      return {
+        ...preview,
+        heading: renderedSwatches.find(({ id }) => id === 'heading')?.color || preview.text,
+        cta,
+        ctaForeground: pickReadableText(cta),
+      };
+    },
     [playground, theme],
   );
   const swatches = useMemo(
@@ -557,22 +629,19 @@ const TastingRoom = () => {
     });
   };
 
+  const applyMoodSuggestion = (roleId, color) => {
+    const roleIndex = SEMANTIC_PALETTE_ROLES.findIndex(({ id }) => id === (roleId || selectedMoodRole || 'accent'));
+    if (roleIndex >= 0) handleSwatchColorChange(roleIndex, color);
+  };
+
   const regenerateUnlocked = () => {
     markPaletteModified();
     setPlayground((current) => {
       const nextIteration = current.regenerateCount + 1;
-      const currentTheme = buildThemeForState(current, artifactLabel);
-      const currentSwatches = getRenderedSwatches(current, currentTheme);
-      const nextOverrides = { ...current.swatchOverrides };
-      currentSwatches.forEach((swatch, index) => {
-        if (!hasOwn(current.lockedSwatches, index)) {
-          nextOverrides[index] = regenerateSwatch(swatch.color, index, nextIteration);
-        }
-      });
       return {
         ...current,
         regenerateCount: nextIteration,
-        swatchOverrides: nextOverrides,
+        swatchOverrides: {},
         userHasMutated: current.kitId ? true : current.userHasMutated,
       };
     });
@@ -668,52 +737,60 @@ const TastingRoom = () => {
           <div className="flex flex-wrap items-end gap-3">
             <h1 className="tasting-title">Make a palette worth keeping.</h1>
           </div>
-          <p className="tasting-subtitle">Generate a sketch here. Ship with a finished 59-token kit — Light, Dark, Pop, seven production formats — from $9.</p>
+          <p className="tasting-subtitle">Generate seven roles from one seed. Copy every color.</p>
         </section>
 
         <section className="playground-generator-panel tasting-panel" aria-labelledby="playground-generator-title">
           <div className="playground-generator-grid">
             <div className="playground-current-palette">
-              <p className="playground-kicker">Current palette</p>
-              <div className="playground-current-swatches" role="group" aria-label="Current palette swatches">
-                {swatches.slice(0, 8).map(({ name, color }, index) => (
-                  <button
-                    key={`${name}-${index}`}
-                    type="button"
-                    className="playground-current-swatch"
-                    onClick={() => copySingleHex(color)}
-                    aria-label={`Copy ${name} swatch ${color}`}
-                    title={`Copy ${name} ${color}`}
-                  >
-                    <span className="playground-current-swatch-color" style={{ backgroundColor: color }} aria-hidden="true" />
-                    <span className="playground-current-swatch-meta">
-                      <span>{name}</span>
-                      <code>{color.toUpperCase()}</code>
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="playground-mobile-quick-controls" aria-label="Quick palette controls">
-                <button type="button" className="mobile-quick-chaos" onClick={mintChaos}>
-                  <Sparkles size={14} aria-hidden="true" />
-                  Chaos
-                </button>
-                <div className="mobile-quick-locks" aria-label="Quick swatch locks">
-                  {swatches.slice(0, 4).map(({ name, color, locked }, index) => (
-                    <button
-                      key={`${name}-${index}`}
-                      type="button"
-                      className={`mobile-lock-chip ${locked ? 'is-locked' : ''}`}
-                      onClick={() => toggleSwatchLock(index)}
-                      aria-label={`${locked ? 'Unlock' : 'Lock'} ${name} swatch`}
-                      title={`${locked ? 'Unlock' : 'Lock'} ${name}`}
-                    >
-                      <span style={{ backgroundColor: color }} />
-                      {locked ? <Lock size={12} aria-hidden="true" /> : <Unlock size={12} aria-hidden="true" />}
-                    </button>
-                  ))}
+              <div className="playground-palette-heading">
+                <div>
+                  <p className="playground-kicker">Generated from one seed</p>
+                  <h2 className="tasting-panel-title">Seven semantic roles</h2>
                 </div>
+                  <p>Copy, edit, lock, or select a role.</p>
+              </div>
+              <div className="playground-role-grid" role="group" aria-label="Generated semantic palette">
+                {swatches.map(({ id, name, color, locked }, index) => (
+                  <article className={`playground-role-card ${selectedMoodRole === id ? 'is-selected' : ''}`} key={id}>
+                    <div className="playground-role-card-heading">
+                      <button
+                        type="button"
+                        className="playground-role-select"
+                        onClick={() => setSelectedMoodRole(id)}
+                        aria-pressed={selectedMoodRole === id}
+                        aria-label={`Select ${name} for Mood suggestions`}
+                      >
+                        {name}
+                      </button>
+                      <button
+                        type="button"
+                        className={`playground-role-lock ${locked ? 'is-locked' : ''}`}
+                        onClick={() => toggleSwatchLock(index)}
+                        aria-label={`${locked ? 'Unlock' : 'Lock'} ${name} role`}
+                        title={`${locked ? 'Unlock' : 'Lock'} ${name} role`}
+                      >
+                        {locked ? <Lock size={13} aria-hidden="true" /> : <Unlock size={13} aria-hidden="true" />}
+                      </button>
+                    </div>
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(event) => handleSwatchColorChange(index, event.target.value)}
+                      aria-label={`Edit ${name} role color`}
+                      title={`Edit ${name} role color`}
+                      className="playground-role-color-picker"
+                    />
+                    <button
+                      type="button"
+                      className="playground-role-copy"
+                      onClick={() => copySingleHex(color)}
+                      aria-label={`Copy ${name} role color ${color.toUpperCase()}`}
+                    >
+                      <code>{color.toUpperCase()}</code>
+                    </button>
+                  </article>
+                ))}
               </div>
             </div>
 
@@ -734,18 +811,6 @@ const TastingRoom = () => {
                 </button>
               </div>
               <p className="playground-palette-status">{artifactLabel}</p>
-
-              <label className="playground-control-label" htmlFor="kit-preset">
-                Starting point
-                <select id="kit-preset" value={playground.kitId || 'exploration'} onChange={(event) => selectPreset(event.target.value)} className="playground-select">
-                  {playground.kitId === null && <option value="exploration">Current exploration</option>}
-                  {INSPIRATION_SEEDS.map((seed) => (
-                    <option key={seed.id} value={seed.id}>
-                      {seed.name} seed
-                    </option>
-                  ))}
-                </select>
-              </label>
 
               <div className="playground-control-block">
                 <span className="playground-control-label">Seed color</span>
@@ -806,9 +871,28 @@ const TastingRoom = () => {
                 </div>
               </div>
 
+              <button type="button" onClick={regenerateUnlocked} className="playground-generate-button">
+                <RefreshCcw size={15} aria-hidden="true" />
+                {playground.regenerateCount === 0 ? 'Generate palette' : 'Regenerate palette'}
+              </button>
+              <p className="playground-regeneration-note">
+                <strong>Regeneration respects locks.</strong> Locked roles stay fixed while the engine regenerates the rest from this seed and harmony.
+              </p>
+
               <details className="playground-advanced-refinement">
                 <summary>Advanced refinement</summary>
                 <div className="playground-advanced-content">
+                  <label className="playground-control-label" htmlFor="kit-preset">
+                    Inspiration seed
+                    <select id="kit-preset" value={playground.kitId || 'exploration'} onChange={(event) => selectPreset(event.target.value)} className="playground-select">
+                      {playground.kitId === null && <option value="exploration">Current exploration</option>}
+                      {INSPIRATION_SEEDS.map((seed) => (
+                        <option key={seed.id} value={seed.id}>
+                          {seed.name} seed
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <details className="playground-advanced-subpanel">
                     <summary>Fine-tune nudges</summary>
                     <div className="playground-tuning-panel">
@@ -825,56 +909,6 @@ const TastingRoom = () => {
                     </div>
                     <p className="playground-session-note">Tweaks are kept in this browser.</p>
                   </details>
-
-                  <div className="playground-control-block">
-                    <div className="playground-advanced-heading">
-                      <span className="playground-control-label">Swatch edits and locks</span>
-                      <button type="button" onClick={regenerateUnlocked} className="playground-regenerate-button">
-                        <RefreshCcw size={13} aria-hidden="true" />
-                        Regenerate unlocked
-                      </button>
-                    </div>
-                    <div className="playground-swatch-grid">
-                      {swatches.slice(0, 8).map(({ name, color, locked }, index) => (
-                        <div key={`${name}-${index}`} className="playground-swatch-card">
-                          <button
-                            type="button"
-                            className="playground-swatch-color"
-                            style={{ backgroundColor: color }}
-                            onClick={() => copySingleHex(color)}
-                            aria-label={`Copy ${name} swatch ${color}`}
-                            title={`Copy ${name} ${color}`}
-                          />
-                          <div className="playground-swatch-meta">
-                            <div>
-                              <span className="playground-swatch-name">{name}</span>
-                              <code>{color.toUpperCase()}</code>
-                            </div>
-                            <label className="playground-swatch-edit">
-                              <span className="sr-only">Edit {name} swatch color</span>
-                              <input
-                                type="color"
-                                value={color}
-                                onChange={(event) => handleSwatchColorChange(index, event.target.value)}
-                                aria-label={`Edit ${name} swatch color`}
-                                title={`Edit ${name} color`}
-                              />
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => toggleSwatchLock(index)}
-                              className="playground-lock-button"
-                              aria-label={`${locked ? 'Unlock' : 'Lock'} ${name} swatch`}
-                              title={`${locked ? 'Unlock' : 'Lock'} ${name}`}
-                            >
-                              {locked ? <Lock size={12} aria-hidden="true" /> : <Unlock size={12} aria-hidden="true" />}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
                 </div>
               </details>
 
@@ -889,6 +923,39 @@ const TastingRoom = () => {
             </aside>
           </div>
         </section>
+
+        {(custom || hasModifiedPalette) && (
+          <div className="playground-handoff-row" key="playground-handoff-row">
+            {custom && (
+              <PlaygroundHandoff
+                key="playground-share-panel"
+                onCopyLink={copyPaletteLink}
+                accent={handoffAccent.accent}
+                onAccent={handoffAccent.onAccent}
+              />
+            )}
+            <SuggestKitInvitation visible={hasModifiedPalette} onSuggest={openSuggestionDialog} />
+          </div>
+        )}
+
+        <PlaygroundLibrary
+          key="playground-library"
+          savedPalettes={savedPalettes}
+          selectedPaletteId={selectedSavedPaletteId}
+          saveStatus={saveStatus}
+          onSave={saveCurrentPalette}
+          onSelectedPaletteChange={setSelectedSavedPaletteId}
+          onLoad={loadSelectedPalette}
+          onCopyLink={copyPaletteLink}
+          showShareLink={!custom}
+        />
+
+        <SuggestKitDialog
+          key="kit-suggestion-dialog"
+          open={isSuggestionDialogOpen}
+          capture={suggestionCapture}
+          onRequestClose={() => setIsSuggestionDialogOpen(false)}
+        />
 
         <section
           className="playground-preview"
@@ -923,45 +990,17 @@ const TastingRoom = () => {
             scene={scene}
             roles={visionRoles}
             swatches={visionSwatches}
+            sourceSwatches={swatches}
             artifactLabel={artifactLabel}
             onCopy={copySingleHex}
             harmony={playground.harmony}
             themeMode={playground.themeMode}
+            seedColor={playground.baseColor}
+            selectedRole={selectedMoodRole}
+            onRoleSelect={setSelectedMoodRole}
+            onApplySuggestion={applyMoodSuggestion}
           />
         </section>
-
-        {(custom || hasModifiedPalette) && (
-          <div className="playground-handoff-row" key="playground-handoff-row">
-            {custom && (
-              <PlaygroundHandoff
-                key="playground-share-panel"
-                onCopyLink={copyPaletteLink}
-                accent={handoffAccent.accent}
-                onAccent={handoffAccent.onAccent}
-              />
-            )}
-            <SuggestKitInvitation visible={hasModifiedPalette} onSuggest={openSuggestionDialog} />
-          </div>
-        )}
-
-        <SuggestKitDialog
-          key="kit-suggestion-dialog"
-          open={isSuggestionDialogOpen}
-          capture={suggestionCapture}
-          onRequestClose={() => setIsSuggestionDialogOpen(false)}
-        />
-
-        <PlaygroundLibrary
-          key="playground-library"
-          savedPalettes={savedPalettes}
-          selectedPaletteId={selectedSavedPaletteId}
-          saveStatus={saveStatus}
-          onSave={saveCurrentPalette}
-          onSelectedPaletteChange={setSelectedSavedPaletteId}
-          onLoad={loadSelectedPalette}
-          onCopyLink={copyPaletteLink}
-          showShareLink={!custom}
-        />
 
         <PlaygroundTokenInspector
           key="playground-token-inspector"

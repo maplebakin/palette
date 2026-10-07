@@ -11,9 +11,9 @@ describe('KitGallery', () => {
     expect(screen.getByRole('img', { name: 'Artifact No. 0417 — Nuclear Winter color preview' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Artifact No. 0417 — Nuclear Winter' })).toBeInTheDocument();
     expect(screen.getByText('$9')).toBeInTheDocument();
-    expect(screen.getByText('59 tokens per mode')).toBeInTheDocument();
+    expect(screen.getByText('59 semantic tokens per mode')).toBeInTheDocument();
     expect(screen.getByText('Light/Dark/Pop')).toBeInTheDocument();
-    expect(screen.getByText('7 formats')).toBeInTheDocument();
+    expect(screen.getByText('ASE, Procreate swatches, GPL, CSS, JSON, Tokens Studio JSON, Tailwind v3 snippet')).toBeInTheDocument();
     expect(screen.getByText('Matrix included')).toBeInTheDocument();
     expect(screen.getByText('Usage licence included')).toBeInTheDocument();
 

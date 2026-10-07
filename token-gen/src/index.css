@@ -535,80 +535,185 @@ body {
 
 .playground-generator-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(20rem, 0.9fr);
-  align-items: center;
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1.15fr) minmax(19rem, 0.85fr);
+  align-items: start;
+  gap: 1.25rem;
 }
 
 .playground-current-palette {
   min-width: 0;
 }
 
-.playground-current-palette > .playground-kicker {
+.playground-palette-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
   margin-bottom: 0.75rem;
+}
+
+.playground-palette-heading .playground-kicker {
+  margin-bottom: 0.3rem;
   color: var(--tasting-muted);
 }
 
-.playground-current-swatches {
+.playground-palette-heading > p {
+  max-width: 27ch;
+  color: var(--tasting-muted);
+  font-size: 0.65rem;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.playground-role-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
-.playground-current-swatch {
+.playground-role-card {
   display: grid;
   min-width: 0;
-  overflow: hidden;
+  align-content: start;
+  gap: 0.35rem;
   border: 1px solid var(--tasting-line);
-  border-radius: 0.7rem;
+  border-radius: 0.75rem;
   background: var(--tasting-ink-panel);
-  color: var(--tasting-warm-white);
-  padding: 0;
-  text-align: left;
-  transition: border-color 160ms ease, transform 160ms ease;
+  padding: 0.55rem;
+  transition: border-color 160ms ease, background-color 160ms ease;
 }
 
-.playground-current-swatch:hover {
+.playground-role-card.is-selected {
   border-color: var(--tasting-accent);
-  transform: translateY(-1px);
+  background: var(--tasting-ink-raised);
 }
 
-.playground-current-swatch:focus-visible {
-  outline: 2px solid var(--tasting-accent);
-  outline-offset: 2px;
-}
-
-.playground-current-swatch-color {
-  display: block;
-  width: 100%;
-  height: clamp(3rem, 5vw, 4.5rem);
-}
-
-.playground-current-swatch-meta {
-  display: grid;
+.playground-role-card-heading {
+  display: flex;
   min-width: 0;
-  gap: 0.15rem;
-  padding: 0.45rem 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
 }
 
-.playground-current-swatch-meta > span {
+.playground-role-select {
   overflow: hidden;
-  font-size: 0.62rem;
-  font-weight: 800;
+  color: var(--tasting-warm-white);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.playground-current-swatch-meta code {
-  overflow: hidden;
+.playground-role-select[aria-pressed='true'] {
+  color: var(--tasting-accent);
+}
+
+.playground-role-lock {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--tasting-line);
+  border-radius: 999px;
+  color: var(--tasting-muted);
+}
+
+.playground-role-lock.is-locked {
+  border-color: var(--tasting-accent);
+  color: var(--tasting-accent);
+}
+
+.playground-role-color-picker {
+  display: block;
+  width: 100%;
+  height: 4rem;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.55rem;
+  background: transparent;
+  padding: 0.12rem;
+}
+
+.playground-role-color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.playground-role-color-picker::-webkit-color-swatch,
+.playground-role-color-picker::-moz-color-swatch {
+  border: 0;
+  border-radius: 0.38rem;
+}
+
+.playground-role-copy {
   color: var(--tasting-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.57rem;
-  text-overflow: ellipsis;
+  font-size: 0.6rem;
+  text-align: left;
+}
+
+.playground-role-copy:hover {
+  color: var(--tasting-warm-white);
+}
+
+.playground-role-copy:focus-visible,
+.playground-role-select:focus-visible,
+.playground-role-lock:focus-visible,
+.playground-role-color-picker:focus-visible {
+  outline: 2px solid var(--tasting-accent);
+  outline-offset: 2px;
 }
 
 .playground-controls {
   min-width: 0;
+}
+
+.playground-controls .playground-control-block {
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+}
+
+.playground-generate-button {
+  display: flex;
+  width: 100%;
+  min-height: 2.8rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid var(--tasting-accent);
+  border-radius: 0.75rem;
+  background: var(--tasting-accent);
+  color: var(--tasting-ink);
+  font-size: 0.76rem;
+  font-weight: 900;
+  margin-top: 0.8rem;
+  padding: 0.65rem 0.8rem;
+  transition: filter 160ms ease, transform 160ms ease;
+}
+
+.playground-generate-button:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.playground-generate-button:focus-visible {
+  outline: 2px solid var(--tasting-warm-white);
+  outline-offset: 3px;
+}
+
+.playground-regeneration-note {
+  border-left: 2px solid var(--tasting-accent);
+  color: var(--tasting-muted);
+  font-size: 0.66rem;
+  line-height: 1.45;
+  margin-top: 0.5rem;
+  padding-left: 0.6rem;
+}
+
+.playground-regeneration-note strong {
+  color: var(--tasting-warm-white);
 }
 
 .playground-mobile-quick-controls {
@@ -810,6 +915,97 @@ body {
 
 .playground-mood-swatch code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.58rem;
+}
+
+.playground-mood-suggestions {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border: 1px solid var(--tasting-line);
+  border-radius: 0.9rem;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 0.85rem;
+}
+
+.playground-mood-suggestions-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.playground-mood-suggestions-heading h3 {
+  margin-top: 0.2rem;
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.playground-mood-suggestions-heading label {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--tasting-muted);
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+.playground-mood-suggestions-heading select {
+  min-width: 9rem;
+  border: 1px solid var(--tasting-line);
+  border-radius: 0.55rem;
+  background: var(--tasting-ink-panel);
+  color: var(--tasting-warm-white);
+  font: inherit;
+  padding: 0.45rem 0.55rem;
+}
+
+.playground-mood-suggestions-heading select:focus-visible,
+.playground-mood-candidate:focus-visible {
+  outline: 2px solid var(--tasting-accent);
+  outline-offset: 2px;
+}
+
+.playground-mood-suggestions-copy {
+  color: var(--tasting-muted);
+  font-size: 0.65rem;
+  line-height: 1.5;
+  margin-top: 0.45rem;
+}
+
+.playground-mood-candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.playground-mood-candidate {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+  border: 1px solid var(--tasting-line);
+  border-radius: 0.65rem;
+  background: var(--tasting-ink-raised);
+  color: var(--tasting-warm-white);
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.playground-mood-candidate:hover {
+  border-color: var(--tasting-accent);
+}
+
+.playground-mood-candidate > span {
+  height: 2.25rem;
+  border-radius: 0.4rem;
+}
+
+.playground-mood-candidate strong {
+  font-size: 0.62rem;
+  line-height: 1.3;
+}
+
+.playground-mood-candidate code {
+  color: var(--tasting-muted);
   font-size: 0.58rem;
 }
 
@@ -1066,8 +1262,7 @@ body {
   line-height: 1.4;
 }
 
-.playground-chaos-button,
-.playground-regenerate-button {
+.playground-chaos-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1081,8 +1276,7 @@ body {
   transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
-.playground-chaos-button:hover,
-.playground-regenerate-button:hover {
+.playground-chaos-button:hover {
   background: var(--tasting-accent);
   color: var(--tasting-ink);
   transform: translateY(-1px);
@@ -1117,10 +1311,7 @@ body {
 .playground-mode-pill:focus-visible,
 .playground-scene-tabs button:focus-visible,
 .playground-chaos-button:focus-visible,
-.playground-regenerate-button:focus-visible,
-.playground-lock-button:focus-visible,
-.playground-reset-button:focus-visible,
-.playground-tuning-toggle:focus-visible {
+.playground-reset-button:focus-visible {
   outline: 2px solid var(--tasting-accent);
   outline-offset: 2px;
 }
@@ -1192,22 +1383,6 @@ body {
   color: var(--tasting-warm-white);
 }
 
-.playground-tuning-toggle {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  color: var(--tasting-warm-white);
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.playground-tuning-toggle span:last-child {
-  color: var(--tasting-muted);
-  font-size: 0.64rem;
-  text-transform: uppercase;
-}
-
 .playground-tuning-panel {
   display: grid;
   gap: 0.9rem;
@@ -1234,59 +1409,11 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.playground-swatch-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.45rem;
-  margin-top: 0.75rem;
-}
-
-.playground-swatch-card {
-  position: relative;
-  min-width: 0;
-}
-
-.playground-swatch-color {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1;
-  cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 0.55rem;
-  padding: 0;
-  appearance: none;
-  transition: transform 160ms ease, border-color 160ms ease;
-}
-
-.playground-swatch-color:hover,
-.playground-swatch-color:focus-visible {
-  border-color: var(--tasting-accent);
-  transform: translateY(-2px);
-}
-
-.playground-swatch-name {
-  display: block;
-  overflow: hidden;
-  margin-top: 0.3rem;
+.kit-gallery-intro {
+  max-width: 76ch;
   color: var(--tasting-muted);
-  font-size: 0.58rem;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-}
-
-.playground-lock-button {
-  display: grid;
-  width: 1.5rem;
-  height: 1.5rem;
-  place-items: center;
-  border: 1px solid var(--tasting-line);
-  border-radius: 999px;
-  background: var(--tasting-ink-panel);
-  color: var(--tasting-warm-white);
-}
-
-.playground-swatch-meta .playground-swatch-name {
-  margin-top: 0;
+  font-size: 0.76rem;
+  line-height: 1.55;
 }
 
 .playground-reset-button {
@@ -1486,7 +1613,6 @@ body {
 .playground-library-primary:focus-visible,
 .playground-library-secondary:focus-visible,
 .playground-library-load select:focus-visible,
-.playground-swatch-edit input:focus-visible,
 .playground-token-inspector button:focus-visible {
   outline: 2px solid var(--tasting-accent);
   outline-offset: 2px;
@@ -1577,53 +1703,6 @@ body {
 
 .playground-advanced-subpanel[open] > summary {
   margin-bottom: 0.75rem;
-}
-
-.playground-advanced-content > .playground-control-block {
-  margin-top: 0;
-}
-
-.playground-advanced-heading {
-  align-items: center;
-}
-
-.playground-swatch-meta {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 1.5rem 1.5rem;
-  align-items: center;
-  gap: 0.22rem;
-  margin-top: 0.28rem;
-}
-
-.playground-swatch-meta > div {
-  display: grid;
-  min-width: 0;
-}
-
-.playground-swatch-meta code {
-  overflow: hidden;
-  color: var(--tasting-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.48rem;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-}
-
-.playground-swatch-edit {
-  display: grid;
-  width: 1.5rem;
-  height: 1.5rem;
-  place-items: center;
-}
-
-.playground-swatch-edit input {
-  width: 1.5rem;
-  height: 1.5rem;
-  cursor: pointer;
-  border: 1px solid var(--tasting-line);
-  border-radius: 0.45rem;
-  background: var(--tasting-ink-panel);
-  padding: 0.12rem;
 }
 
 .playground-token-inspector details {
@@ -2301,34 +2380,106 @@ body {
 }
 
 @media (max-width: 640px) {
+  .tasting-header .tasting-frame {
+    padding-block: 0.75rem;
+  }
+
+  .tasting-room #tasting-main {
+    padding-block: 0.75rem;
+  }
+
+  .tasting-room #tasting-main > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.85rem;
+  }
+
+  .tasting-room .tasting-subtitle {
+    font-size: 0.76rem;
+  }
+
   .playground-generator-panel {
     padding: 0.85rem;
   }
 
   .playground-generator-grid {
-    gap: 0.8rem;
+    gap: 0.75rem;
   }
 
-  .playground-current-swatches {
-    display: flex;
-    overflow-x: auto;
-    gap: 0.4rem;
-    overscroll-behavior-x: contain;
-    padding: 0.1rem 0.1rem 0.4rem;
-    scroll-snap-type: x proximity;
+  .playground-palette-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-bottom: 0.55rem;
   }
 
-  .playground-current-swatch {
-    flex: 0 0 4.6rem;
-    scroll-snap-align: start;
+  .playground-palette-heading > p {
+    max-width: none;
+    font-size: 0.58rem;
+    text-align: left;
   }
 
-  .playground-current-swatch-color {
-    height: 3rem;
+  .playground-role-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.35rem;
   }
 
-  .playground-current-swatch-meta {
-    padding: 0.4rem;
+  .playground-role-card {
+    gap: 0.25rem;
+    border-radius: 0.6rem;
+    padding: 0.35rem;
+  }
+
+  .playground-role-card-heading {
+    gap: 0.1rem;
+  }
+
+  .playground-role-select {
+    font-size: 0.45rem;
+    letter-spacing: -0.045em;
+  }
+
+  .playground-role-lock {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .playground-role-color-picker {
+    height: 2.55rem;
+    border-radius: 0.45rem;
+    padding: 0.08rem;
+  }
+
+  .playground-role-copy {
+    font-size: 0.5rem;
+    letter-spacing: -0.04em;
+  }
+
+  .playground-controls .playground-control-block {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+  }
+
+  .playground-controls .playground-control-block .playground-chip {
+    font-size: 0.57rem;
+    padding: 0.34rem 0.4rem;
+  }
+
+  .playground-chip-grid {
+    gap: 0.28rem;
+  }
+
+  .playground-generate-button {
+    min-height: 2.55rem;
+    margin-top: 0.6rem;
+  }
+
+  .playground-regeneration-note {
+    font-size: 0.6rem;
+    margin-top: 0.4rem;
+  }
+
+  .playground-advanced-refinement {
+    margin-top: 0.6rem;
+    padding-top: 0.55rem;
   }
 
   .playground-control-block {
@@ -2360,11 +2511,6 @@ body {
 
   .playground-library-load > div button {
     width: 100%;
-  }
-
-  .playground-advanced-heading {
-    align-items: flex-start;
-    flex-direction: column;
   }
 
   .suggest-kit-dialog-backdrop {
@@ -2428,6 +2574,19 @@ body {
   .playground-mood-grid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
+  }
+
+  .playground-mood-suggestions-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .playground-mood-suggestions-heading select {
+    width: 100%;
+  }
+
+  .playground-mood-candidate-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .playground-mood-feature {
@@ -2533,10 +2692,6 @@ body {
 
   .kit-gallery-contents {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .playground-swatch-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .playground-section-meta {

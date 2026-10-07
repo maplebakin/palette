@@ -22,6 +22,7 @@ describe('playground share links', () => {
       regenerateCount: 3,
       userHasMutated: true,
       confirmedModes: { dark: true, light: true },
+      semanticPalette: true,
       modeStates: {
         dark: {
           lockedSwatches: { 0: '#ffffff', 4: '#222222' },
