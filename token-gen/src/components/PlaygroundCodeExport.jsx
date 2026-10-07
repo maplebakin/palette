@@ -15,10 +15,10 @@ const PlaygroundCodeExport = ({ roles, onCopy }) => {
     <section className="playground-code-export tasting-panel" aria-labelledby="playground-code-title">
       <div className="playground-section-heading">
         <div>
-          <p className="tasting-eyebrow">Free. These are your seven roles, yours to use.</p>
-          <h2 id="playground-code-title" className="tasting-panel-title">Copy your sketch</h2>
+          <p className="tasting-eyebrow">Seven roles, ready to use.</p>
+          <h2 id="playground-code-title" className="tasting-panel-title">Use it in your project</h2>
         </div>
-        <div className="playground-code-tabs" role="tablist" aria-label="Sketch code format">
+        <div className="playground-code-tabs" role="tablist" aria-label="Project code format">
           {CODE_FORMATS.map((option) => (
             <button
               key={option.id}

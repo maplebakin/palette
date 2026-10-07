@@ -17,7 +17,7 @@ describe('PlaygroundLibrary', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: 'Keep this palette' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Save or share this palette' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save in this browser' })).toBeInTheDocument();
     expect(screen.getByText(/Free to use and copy\. Want the full system with files\?/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'See the kit ↓' })).toHaveAttribute('href', '#kit-collection');

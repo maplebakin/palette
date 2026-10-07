@@ -42,7 +42,7 @@ describe('TastingRoom creator-first layout', () => {
     expect(within(controls).getByText('Custom exploration · inspired by Nuclear Winter', { selector: 'p' })).toBeInTheDocument();
   });
 
-  it('keeps controls, roles, and preview in one console, with contrast and copy side by side below', () => {
+  it('keeps the creator first, then follows save, readability, implementation, and kit order', () => {
     render(<TastingRoom />);
 
     const generatedRoles = within(screen.getByRole('group', { name: 'Generated semantic palette' }))
@@ -55,6 +55,7 @@ describe('TastingRoom creator-first layout', () => {
     expect(screen.getByRole('button', { name: 'Regenerate' })).toBeInTheDocument();
     expect(screen.getByText('Press Space to regenerate. Locked roles stay put. Everything else is rebuilt from your seed.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save in this browser' })).toBeInTheDocument();
+    expect(screen.getByText('Advanced options')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Analogous' }));
 
@@ -64,6 +65,8 @@ describe('TastingRoom creator-first layout', () => {
     const workspace = creatorConsole.querySelector('.playground-creator-workspace');
     const consoleChildren = Array.from(creatorConsole.children);
     const followup = main.querySelector('.playground-followup-grid');
+    const library = main.querySelector('.playground-library');
+    const handoff = main.querySelector('.playground-handoff-row');
     const followupChildren = Array.from(followup.children);
     const topLevel = Array.from(main.children);
 
@@ -75,8 +78,26 @@ describe('TastingRoom creator-first layout', () => {
       followup.querySelector('.playground-code-export'),
     ]);
     expect(topLevel.indexOf(creatorConsole)).toBeLessThan(topLevel.indexOf(followup));
+    expect(topLevel.indexOf(creatorConsole)).toBeLessThan(topLevel.indexOf(library));
+    expect(topLevel.indexOf(library)).toBeLessThan(topLevel.indexOf(handoff));
+    expect(topLevel.indexOf(handoff)).toBeLessThan(topLevel.indexOf(followup));
     expect(topLevel.indexOf(followup)).toBeLessThan(topLevel.indexOf(main.querySelector('#kit-collection')));
+    expect(screen.getByRole('heading', { name: 'Save or share this palette' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'How readable is this palette?' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Use it in your project' })).toBeInTheDocument();
     expect(screen.getByLabelText('Colour-vision simulator')).toBeInTheDocument();
+  });
+
+  it('shows a clear failure when a contrast pairing misses its target', () => {
+    render(<TastingRoom />);
+    fireEvent.change(screen.getByLabelText('Edit Background role color'), { target: { value: '#111111' } });
+    fireEvent.change(screen.getByLabelText('Edit Text role color'), { target: { value: '#111111' } });
+
+    const textPair = Array.from(document.querySelectorAll('.playground-contrast-card'))
+      .find((card) => card.querySelector('h3')?.textContent === 'Text on background');
+    expect(textPair.querySelector('.playground-contrast-badge')).toHaveTextContent('Fail');
+    expect(textPair).toHaveTextContent('1.00:1');
+    expect(document.querySelector('.playground-contrast-summary')).toHaveTextContent(/need(s)? adjustment/);
   });
 
   it('uses a deterministic phrase seed and restores its generated palette on a fresh render', () => {
@@ -114,6 +135,37 @@ describe('TastingRoom creator-first layout', () => {
     expect(screen.getAllByLabelText(/Edit .* role color/).map(({ value }) => value)).toEqual(paletteWhileTyping);
   });
 
+  it('keeps fine tuning behind Advanced options and applies its controls when opened', () => {
+    render(<TastingRoom />);
+    const advancedOptions = screen.getByText('Advanced options');
+    const disclosure = advancedOptions.closest('details');
+    const initialAccent = screen.getByLabelText('Edit Accent role color').value;
+
+    expect(disclosure).not.toHaveAttribute('open');
+    fireEvent.click(advancedOptions);
+    expect(disclosure).toHaveAttribute('open');
+
+    fireEvent.change(screen.getByLabelText('Hue shift'), { target: { value: '18' } });
+    expect(screen.getByLabelText('Hue shift')).toHaveValue('18');
+    expect(screen.getByLabelText('Edit Accent role color').value).not.toBe(initialAccent);
+  });
+
+  it('surprises with a new seed and rebuilds the palette from it', () => {
+    const randomBytes = vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation((bytes) => {
+      bytes.set([0x12, 0x34, 0x56]);
+      return bytes;
+    });
+    render(<TastingRoom />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Surprise me' }));
+    randomBytes.mockRestore();
+
+    expect(screen.getByLabelText('Seed color hex or phrase')).toHaveValue('#123456');
+    expect(screen.getByLabelText('Seed color swatch')).toHaveValue('#123456');
+    expect(screen.getAllByLabelText(/Edit .* role color/)).toHaveLength(7);
+    expect(document.querySelector('.playground-palette-status')).toHaveTextContent('Exploration — Surprise palette');
+  });
+
   it('hides the invitation on the initial palette and reveals it after a palette change', () => {
     render(<TastingRoom />);
 
@@ -124,7 +176,7 @@ describe('TastingRoom creator-first layout', () => {
 
     expect(screen.getByRole('heading', { name: 'Love this palette?' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Suggest this for a finished kit' })).toBeInTheDocument();
-    expect(screen.getByText('Share this sketch')).toBeInTheDocument();
+    expect(screen.getByText('Share this palette')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
@@ -161,7 +213,7 @@ describe('TastingRoom creator-first layout', () => {
     expect(copied.colors.border).toMatch(/^#[0-9a-f]{6}$/);
     expect(copied.colors['cta-text']).toMatch(/^#[0-9a-f]{6}$/);
     expect(Object.keys(copied.colors)).toHaveLength(9);
-    expect(screen.getByRole('status')).toHaveTextContent('Copied your seven-role sketch code.');
+    expect(screen.getByRole('status')).toHaveTextContent('Palette code copied.');
 
     fireEvent.change(screen.getByLabelText('Edit Accent role color'), { target: { value: '#654321' } });
     expect(document.querySelector('.playground-hero-colorfield').style.background).toContain('rgb(101, 67, 33)');

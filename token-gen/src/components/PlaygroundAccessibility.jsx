@@ -3,15 +3,27 @@ import { buildPlaygroundContrastChecks } from '../lib/playgroundAccessibility.js
 
 const PlaygroundAccessibility = ({ roles }) => {
   const contrastChecks = buildPlaygroundContrastChecks(roles);
+  const passingCount = contrastChecks.filter((check) => check.passes).length;
+  const failingCount = contrastChecks.length - passingCount;
 
   return (
     <section className="playground-accessibility tasting-panel" aria-labelledby="playground-accessibility-title">
       <div className="playground-section-heading">
         <div>
-          <p className="tasting-eyebrow">Measured against WCAG contrast ratios</p>
-          <h2 id="playground-accessibility-title" className="tasting-panel-title">Is it readable?</h2>
+          <p className="tasting-eyebrow">Readability report</p>
+          <h2 id="playground-accessibility-title" className="tasting-panel-title">How readable is this palette?</h2>
         </div>
-        <span className="playground-section-meta">Updates with every edit</span>
+        <span className="playground-section-meta">{contrastChecks.length} pairings · WCAG contrast</span>
+      </div>
+
+      <div
+        className="playground-contrast-summary"
+        role="group"
+        aria-label={`${passingCount} of ${contrastChecks.length} pairings meet their contrast target; ${failingCount} need adjustment`}
+      >
+        <strong>{passingCount} of {contrastChecks.length} pairings meet their target</strong>
+        {failingCount > 0 && <span>{failingCount} {failingCount === 1 ? 'needs' : 'need'} adjustment</span>}
+        {failingCount === 0 && <span>All {contrastChecks.length} checks pass</span>}
       </div>
 
       <div className="playground-contrast-grid">

@@ -9,11 +9,11 @@ const PlaygroundLibrary = ({
   onLoad,
   onCopyLink,
 }) => (
-  <section className="playground-library" aria-labelledby="playground-library-title">
+  <section className="playground-library tasting-panel" aria-labelledby="playground-library-title">
     <div className="playground-library-heading">
       <div>
-        <p className="tasting-eyebrow">Save in this browser or share a link</p>
-        <h2 id="playground-library-title" className="tasting-panel-title">Keep this palette</h2>
+        <p className="tasting-eyebrow">Keep it in this browser or share a link</p>
+        <h2 id="playground-library-title" className="tasting-panel-title">Save or share this palette</h2>
       </div>
       {savedPalettes.length > 0 && (
         <span className="playground-section-meta">{savedPalettes.length} saved {savedPalettes.length === 1 ? 'palette' : 'palettes'}</span>

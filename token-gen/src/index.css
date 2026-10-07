@@ -3601,3 +3601,302 @@ body {
     min-height: 6rem;
   }
 }
+
+/* Tasting Room hierarchy and density refinements. */
+.playground-controls .playground-advanced-refinement {
+  margin-top: 0.15rem;
+  padding-top: 0.55rem;
+}
+
+.playground-controls .playground-advanced-refinement > summary {
+  color: var(--tasting-muted);
+  font-size: 0.68rem;
+}
+
+.playground-library {
+  margin: 0;
+  border: 1px solid var(--tasting-line);
+  border-radius: 1rem;
+  padding: 1rem 1.1rem;
+}
+
+.playground-library-heading .tasting-panel-title {
+  font-size: clamp(1.05rem, 1.7vw, 1.35rem);
+}
+
+.playground-library-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.playground-library-save {
+  display: block;
+  grid-column: auto;
+}
+
+.playground-library-primary,
+.playground-library-secondary {
+  min-height: 2.7rem;
+  font-size: 0.72rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.playground-library-load {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(10rem, 0.35fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.playground-library-load > label {
+  font-size: 0.68rem;
+}
+
+.playground-library-load > div {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.playground-library-load select {
+  min-height: 2.7rem;
+  font-size: 0.72rem;
+}
+
+.playground-library-promise {
+  font-size: 0.68rem;
+}
+
+.playground-preview .playground-hero-scene {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(15rem, 1.1fr);
+  align-items: stretch;
+  gap: 0.9rem;
+}
+
+.playground-preview .playground-hero-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.playground-preview .playground-hero-copy .playground-scene-title,
+.playground-preview .playground-hero-copy .playground-scene-copy {
+  margin-top: 0;
+}
+
+.playground-preview .playground-hero-copy .mt-6 {
+  margin-top: 0.4rem;
+}
+
+.playground-preview .playground-hero-colorfield {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  align-self: stretch;
+  justify-self: stretch;
+  gap: 0.7rem;
+  padding: 0.8rem;
+}
+
+.playground-preview .playground-colorfield-swatches button {
+  width: clamp(1.5rem, 2.3vw, 2rem);
+  height: clamp(1.5rem, 2.3vw, 2rem);
+}
+
+.playground-followup-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem;
+}
+
+.playground-accessibility {
+  gap: 0.8rem;
+}
+
+.playground-accessibility .playground-section-heading {
+  align-items: center;
+}
+
+.playground-contrast-summary {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+  border: 1px solid var(--tasting-line);
+  border-left: 2px solid var(--tasting-accent);
+  border-radius: 0.7rem;
+  background: rgba(229, 165, 108, 0.045);
+  color: var(--tasting-warm-white);
+  padding: 0.65rem 0.8rem;
+}
+
+.playground-contrast-summary strong {
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.playground-contrast-summary span {
+  color: var(--tasting-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.playground-contrast-grid {
+  gap: 0.55rem;
+}
+
+.playground-contrast-card {
+  min-height: 0;
+  gap: 0.35rem;
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 0.75rem;
+}
+
+.playground-contrast-card h3 {
+  font-size: 0.68rem;
+}
+
+.playground-contrast-card strong {
+  margin-top: 0.1rem;
+  font-size: 1.35rem;
+}
+
+.playground-contrast-card p,
+.playground-contrast-card small {
+  font-size: 0.62rem;
+}
+
+.playground-contrast-card p {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.playground-contrast-card small {
+  color: var(--tasting-muted);
+}
+
+.playground-contrast-card.is-fail {
+  border-color: rgba(185, 108, 97, 0.75);
+  background: rgba(113, 60, 60, 0.08);
+}
+
+.playground-contrast-card.is-pass {
+  border-color: rgba(86, 118, 94, 0.7);
+}
+
+.playground-code-export {
+  gap: 0.7rem;
+}
+
+.playground-code-export .tasting-eyebrow {
+  color: var(--tasting-accent);
+}
+
+.playground-code-preview {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.kit-gallery-intro {
+  max-width: 78ch;
+  color: var(--tasting-warm-white);
+  font-size: 0.8rem;
+}
+
+.kit-gallery-feature {
+  border-color: rgba(229, 165, 108, 0.32);
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.14);
+}
+
+.kit-gallery-content {
+  gap: 0.7rem;
+}
+
+.kit-gallery-tagline {
+  color: var(--tasting-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.kit-system-contents {
+  gap: 0.45rem 1rem;
+}
+
+.kit-gallery-status {
+  border-color: rgba(229, 165, 108, 0.42);
+  background: rgba(229, 165, 108, 0.07);
+  color: var(--tasting-warm-white);
+}
+
+@media (max-width: 720px) {
+  .playground-library-load {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.35rem;
+  }
+
+  .playground-preview .playground-hero-scene {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(7rem, 1fr);
+    gap: 0.6rem;
+    height: auto;
+    min-height: 20.5rem;
+  }
+
+  .playground-preview .playground-hero-copy {
+    justify-content: flex-start;
+  }
+
+  .playground-preview .playground-hero-colorfield {
+    min-height: 7rem;
+  }
+
+  .playground-followup-grid {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .playground-library-actions,
+  .playground-library-load > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .playground-library-save,
+  .playground-library-load {
+    grid-column: auto;
+  }
+
+  .playground-library-heading,
+  .playground-accessibility .playground-section-heading {
+    display: grid;
+  }
+
+  .playground-library-heading .playground-section-meta,
+  .playground-accessibility .playground-section-meta {
+    text-align: left;
+  }
+
+  .playground-library-primary,
+  .playground-library-secondary,
+  .playground-library-load > div button {
+    width: 100%;
+  }
+
+  .playground-contrast-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .playground-contrast-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

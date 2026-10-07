@@ -310,17 +310,17 @@ const PreviewScene = ({
   return (
     <div className="playground-scene playground-hero-scene" style={{ backgroundColor: roles.surface }}>
       <div className="playground-hero-copy">
-        <p className="playground-kicker">A living collection of useful beauty</p>
+        <p className="playground-kicker">A living collection</p>
         <h2 className="playground-scene-title playground-hero-title" style={{ color: roles.heading }}>Explore the collection.</h2>
         <p className="playground-scene-copy">
-          Pieces with a pulse, gathered for rooms, rituals, and the quiet pleasure of finding the right thing.
+          Useful pieces, chosen for rooms and rituals.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <button type="button" className="playground-scene-button" style={{ backgroundColor: roles.cta, color: roles.ctaForeground }}>
             Browse the edit
             <ArrowUpRight size={14} aria-hidden="true" />
           </button>
-          <span className="text-xs font-semibold opacity-70">Curated weekly · made to linger</span>
+          <span className="text-xs font-semibold opacity-70">Curated with care</span>
         </div>
       </div>
       <div className="playground-hero-colorfield" style={{ background: `linear-gradient(145deg, ${roles.cta}, ${roles.accent}, ${roles.secondaryAction})` }}>
@@ -639,7 +639,7 @@ const TastingRoom = () => {
   };
 
   const copyPaletteCode = (code) => {
-    setCopyToast('Copied your seven-role sketch code.');
+    setCopyToast('Palette code copied.');
     setCopyCount((current) => current + 1);
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       void navigator.clipboard.writeText(code).catch(() => {});
@@ -781,7 +781,7 @@ const TastingRoom = () => {
             </button>
 
             <details className="playground-advanced-refinement">
-              <summary>Fine tune</summary>
+              <summary>Advanced options</summary>
               <div className="playground-tuning-panel">
                 <label>
                   Hue shift
@@ -795,16 +795,6 @@ const TastingRoom = () => {
                 </label>
               </div>
             </details>
-
-            <PlaygroundLibrary
-              savedPalettes={savedPalettes}
-              selectedPaletteId={selectedSavedPaletteId}
-              saveStatus={saveStatus}
-              onSave={saveCurrentPalette}
-              onSelectedPaletteChange={setSelectedSavedPaletteId}
-              onLoad={loadSelectedPalette}
-              onCopyLink={copyPaletteLink}
-            />
           </aside>
 
           <section className="playground-creator-workspace" aria-label="Live palette and preview">
@@ -915,22 +905,32 @@ const TastingRoom = () => {
                 onApplySuggestion={applyMoodSuggestion}
               />
             </section>
-
-            {(custom || hasModifiedPalette) && (
-              <div className="playground-handoff-row" key="playground-handoff-row">
-                {custom && (
-                  <PlaygroundHandoff
-                    key="playground-share-panel"
-                    onCopyLink={copyPaletteLink}
-                    accent={handoffAccent.accent}
-                    onAccent={handoffAccent.onAccent}
-                  />
-                )}
-                <SuggestKitInvitation visible={hasModifiedPalette} onSuggest={openSuggestionDialog} />
-              </div>
-            )}
           </section>
         </div>
+
+        <PlaygroundLibrary
+          savedPalettes={savedPalettes}
+          selectedPaletteId={selectedSavedPaletteId}
+          saveStatus={saveStatus}
+          onSave={saveCurrentPalette}
+          onSelectedPaletteChange={setSelectedSavedPaletteId}
+          onLoad={loadSelectedPalette}
+          onCopyLink={copyPaletteLink}
+        />
+
+        {(custom || hasModifiedPalette) && (
+          <div className="playground-handoff-row" key="playground-handoff-row">
+            {custom && (
+              <PlaygroundHandoff
+                key="playground-share-panel"
+                onCopyLink={copyPaletteLink}
+                accent={handoffAccent.accent}
+                onAccent={handoffAccent.onAccent}
+              />
+            )}
+            <SuggestKitInvitation visible={hasModifiedPalette} onSuggest={openSuggestionDialog} />
+          </div>
+        )}
 
         <div className="playground-followup-grid">
           <PlaygroundAccessibility roles={previewRoles} />

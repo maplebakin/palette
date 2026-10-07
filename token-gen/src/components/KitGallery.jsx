@@ -30,7 +30,7 @@ const KitGallery = () => (
       <span className="playground-section-meta">Finished palette system</span>
     </div>
     <p className="kit-gallery-intro">
-      A sketch is seven colors. A finished kit is every token, tint, mode and file format a project needs, already contrast-checked.
+      You&apos;ve found a direction. The finished kit carries it into production with every mode, tint, export, and contrast check already organized.
     </p>
 
     <div className="kit-compare-grid">
@@ -66,12 +66,15 @@ const KitGallery = () => (
                   <h3 className="kit-gallery-name">{formatArtifactName({ kit }).replace(/^Artifact No\. \d+ — /, '')}</h3>
                   <p className="kit-gallery-price">${kit.price}</p>
                 </div>
+                <p className="kit-gallery-tagline">A polished system, ready to build with.</p>
                 <ul className="kit-system-contents">
-                  <li>{kit.totalTokens} semantic tokens per mode in Light/Dark/Pop</li>
-                  <li>{kit.coreColors} core colours with {kit.tintsPerColor} tints each</li>
+                  <li>{kit.modes.length} modes: Light, Dark, and Pop</li>
+                  <li>{kit.totalTokens} semantic tokens in each mode</li>
+                  <li>{kit.coreColors} core colors, {kit.tintsPerColor} tints each</li>
                   <li>{formats}</li>
-                  <li>Contrast matrix with measured WCAG ratios</li>
-                  <li>Usage licence included</li>
+                  <li>Manifest and measured WCAG contrast matrix</li>
+                  <li>Commercial-use license for finished work</li>
+                  <li>Production-ready file structure</li>
                 </ul>
                 <p className="kit-gallery-status">Shop opening soon</p>
               </div>
