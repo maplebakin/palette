@@ -275,6 +275,7 @@ export default function PaletteWorkspace({ controller }) {
               <MoodBoard
                 tokens={controller.tokens}
                 baseColor={controller.paletteState.baseColor}
+                currentSwatches={controller.orderedSwatches}
                 onApplyPaletteSpec={controller.applyMoodBoardSpec}
                 onSaveDraft={controller.saveMoodBoardDraft}
                 copyHexValue={controller.copyHexValue}

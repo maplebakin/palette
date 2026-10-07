@@ -10,7 +10,9 @@ vi.mock('../../lib/capabilities.js', () => ({
 }));
 
 vi.mock('../MoodBoard.jsx', () => ({
-  default: () => <section data-testid="mood-board">Mood Board</section>,
+  default: ({ currentSwatches = [] }) => (
+    <section data-testid="mood-board" data-current-swatch-count={currentSwatches.length}>Mood Board</section>
+  ),
 }));
 
 vi.mock('../ListingAssetsCanvas.jsx', () => ({
@@ -222,6 +224,7 @@ describe('PaletteWorkspace private pipeline', () => {
     expect(screen.getByTestId('create-stage')).toBeInTheDocument();
     expect(screen.getByTestId('refine-stage')).toBeInTheDocument();
     expect(screen.getByTestId('mood-board')).toBeInTheDocument();
+    expect(screen.getByTestId('mood-board').closest('[data-pipeline-stage="refine"]')).toBeInTheDocument();
     expect(screen.getByTestId('validate-stage')).toBeInTheDocument();
     expect(await screen.findByTestId('package-stage')).toBeInTheDocument();
     expect(await screen.findByTestId('available-theme-kits')).toBeInTheDocument();
@@ -257,6 +260,16 @@ describe('PaletteWorkspace private pipeline', () => {
     expect(screen.queryByTestId('package-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('publish-stage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('listing-assets-canvas')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mood-board')).not.toBeInTheDocument();
+  });
+
+  it('passes the live palette swatches to the private Mood Board', () => {
+    const controller = createController({
+      orderedSwatches: [{ name: 'Primary', color: '#6633ff' }, { name: 'Accent', color: '#aa5577' }],
+    });
+    render(<PaletteWorkspace controller={controller} />);
+
+    expect(screen.getByTestId('mood-board')).toHaveAttribute('data-current-swatch-count', '2');
   });
 
   it('keeps product package export wired inside the visible Package section', async () => {

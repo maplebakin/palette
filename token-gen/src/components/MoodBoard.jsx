@@ -18,10 +18,12 @@ const sanitizeHexInput = (value, fallback = null) => {
 const MoodBoard = ({
   tokens,
   baseColor,
+  currentSwatches = [],
   onApplyPaletteSpec,
   onSaveDraft,
   onExportSingleMoodBoard,
   onExportAllMoodBoards,
+  copyHexValue,
   canSaveDraft = false,
 }) => {
   const { savedMoodBoards, saveMoodBoard, deleteMoodBoard } = useMoodBoard();
@@ -136,51 +138,83 @@ const MoodBoard = ({
     <StageSection
       id="mood-board"
       title="Mood Board"
-      subtitle="Planning-only cluster explorations. Apply to update the editor."
+      eyebrow="Advanced tools"
+      subtitle="Explore colour families that might belong with this palette."
+      className="forge-mood-board"
+      collapsible
+      defaultOpen={false}
     >
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleRegenerate}
-          className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold shadow-md hover:-translate-y-[1px] active:scale-95 transition border panel-surface-strong"
-          style={{
-            backgroundColor: tokens.brand.primary,
-            color: pickReadableText(tokens.brand.primary),
-            borderColor: hexWithAlpha(tokens.brand.primary, 0.4),
-          }}
-        >
-          <Wand2 size={14} />
-          Regenerate Unlocked
-        </button>
+      <div className="forge-mood-board-content">
+        <section className="forge-mood-board-current" aria-labelledby="mood-board-current-title">
+          <div className="forge-mood-board-current-heading">
+            <div>
+              <p id="mood-board-current-title" className="forge-mood-board-kicker">Current palette</p>
+              <p className="forge-mood-board-seed">Seed <code>{normalizeHex(baseColor || '#6366f1')}</code></p>
+            </div>
+            <span className="forge-mood-board-context-note">The colours you’re expanding from</span>
+          </div>
+          <div className="forge-mood-board-current-swatches" role="list" aria-label="Current palette colours">
+            {currentSwatches
+              .filter((swatch) => typeof swatch?.color === 'string' && swatch.color.trim())
+              .slice(0, 7)
+              .map((swatch, index) => (
+                <div className="forge-mood-board-current-swatch" role="listitem" key={`${swatch.name}-${index}`}>
+                  <span className="forge-mood-board-current-chip" style={{ backgroundColor: swatch.color }} aria-hidden="true" />
+                  <span className="forge-mood-board-current-meta">
+                    <span>{swatch.name}</span>
+                    <code>{swatch.color.toUpperCase()}</code>
+                  </span>
+                </div>
+              ))}
+          </div>
+        </section>
 
-        <button
-          type="button"
-          onClick={() => setShowSavedMoodBoards(!showSavedMoodBoards)}
-          className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold shadow-md hover:-translate-y-[1px] active:scale-95 transition border panel-surface-strong"
-          style={{
-            backgroundColor: tokens.brand.secondary,
-            color: pickReadableText(tokens.brand.secondary),
-            borderColor: hexWithAlpha(tokens.brand.secondary, 0.4),
-          }}
-        >
-          <Palette size={14} />
-          {showSavedMoodBoards ? 'Hide Saved' : 'View Saved'} ({savedMoodBoards.length})
-        </button>
-        <label className="flex items-center gap-2 text-xs font-semibold panel-muted">
-          Required hex
-          <input
-            type="text"
-            value={requiredHex}
-            onChange={(e) => handleRequiredChange(e.target.value)}
-            className="px-2 py-1 rounded-md panel-surface-strong text-xs border focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
-            aria-label="Required hex color"
-            maxLength={7}
-          />
-        </label>
-        {generatedAt && (
-          <span className="text-xs panel-muted">Last generated at {generatedAt}</span>
-        )}
-      </div>
+        <div className="forge-mood-board-tools">
+          <div className="forge-mood-board-actions">
+            <button
+              type="button"
+              onClick={handleRegenerate}
+              className="forge-mood-board-button forge-mood-board-button-secondary"
+              aria-label="Regenerate unlocked colour suggestions"
+            >
+              <Wand2 size={14} />
+              Regenerate suggestions
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowSavedMoodBoards(!showSavedMoodBoards)}
+              className="forge-mood-board-button forge-mood-board-button-secondary"
+              aria-expanded={showSavedMoodBoards}
+            >
+              <Palette size={14} />
+              {showSavedMoodBoards ? 'Hide saved' : 'View saved'} ({savedMoodBoards.length})
+            </button>
+          </div>
+          <label className="flex items-center gap-2 text-xs font-semibold panel-muted">
+            Required hex
+            <input
+              type="text"
+              value={requiredHex}
+              onChange={(e) => handleRequiredChange(e.target.value)}
+              className="px-2 py-1 rounded-md panel-surface-strong text-xs border focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
+              aria-label="Required hex color"
+              maxLength={7}
+            />
+          </label>
+          {generatedAt && (
+            <span className="text-xs panel-muted">Suggestions refreshed at {generatedAt}</span>
+          )}
+        </div>
+
+        <section className="forge-mood-board-suggestions" aria-labelledby="mood-board-suggestions-title">
+          <div className="forge-mood-board-section-heading">
+            <div>
+              <p id="mood-board-suggestions-title" className="forge-mood-board-kicker">Suggested colours</p>
+              <p className="forge-mood-board-instruction">Use a swatch as a new palette seed, or apply a full colour family to the editor.</p>
+            </div>
+            <span className="forge-mood-board-note">Unlock only the samples you want to refresh</span>
+          </div>
 
       {/* Display saved mood boards if requested */}
       {showSavedMoodBoards && (
@@ -223,13 +257,13 @@ const MoodBoard = ({
                           key={idx}
                           type="button"
                           onClick={() => handleGenerateThemeFromColor(color)}
-                          className="w-6 h-6 rounded border shadow-sm hover:scale-110 transition-transform"
+                          className="w-8 h-8 rounded border shadow-sm transition-transform hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
                           style={{
                             backgroundColor: color,
                             borderColor: hexWithAlpha('#000', 0.2),
                           }}
-                          title={`Generate theme from ${color}`}
-                          aria-label={`Generate theme from ${color}`}
+                          title={`Use ${color} as the new palette seed`}
+                          aria-label={`Use ${color} as the new palette seed; replaces the current palette`}
                         />
                       ))}
                     </div>
@@ -251,7 +285,7 @@ const MoodBoard = ({
                         borderColor: hexWithAlpha(tokens.brand.cta, 0.4),
                       }}
                     >
-                      Apply First Cluster
+                      Apply first colour family to editor
                     </button>
 
                     {onExportSingleMoodBoard && (
@@ -327,8 +361,8 @@ const MoodBoard = ({
                               backgroundColor: color,
                               borderColor: hexWithAlpha('#000', 0.2),
                             }}
-                            title={`Generate theme from ${color}`}
-                            aria-label={`Generate theme from ${color}`}
+                            title={`Use ${color} as the new palette seed`}
+                            aria-label={`Use ${color} as the new palette seed; replaces the current palette`}
                           />
                         ))}
                       </div>
@@ -349,7 +383,7 @@ const MoodBoard = ({
                         borderColor: hexWithAlpha(tokens.brand.cta, 0.4),
                       }}
                     >
-                      Apply First Cluster
+                      Apply first colour family to editor
                     </button>
                   </div>
                 ))}
@@ -368,10 +402,15 @@ const MoodBoard = ({
           {clusters.map((cluster) => {
             const clusterLocked = cluster.slots.every((slot) => slot.locked);
             return (
-              <div key={cluster.id} className="panel-surface-strong border rounded-xl p-4 space-y-3">
+              <article
+                key={cluster.id}
+                className="forge-mood-board-cluster panel-surface-strong border rounded-xl p-4 space-y-3"
+                role="group"
+                aria-labelledby={`mood-cluster-${cluster.id}-title`}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.2em] font-semibold panel-muted">{cluster.title}</p>
+                    <p id={`mood-cluster-${cluster.id}-title`} className="text-xs uppercase tracking-[0.2em] font-semibold panel-muted">{cluster.title}</p>
                     <p className="text-sm">{cluster.description}</p>
                   </div>
                   <button
@@ -384,33 +423,43 @@ const MoodBoard = ({
                     {clusterLocked ? 'Unlock Mood Palette' : 'Lock Mood Palette'}
                   </button>
                 </div>
-                <div className="grid grid-cols-6 gap-2">
+                <div className="forge-mood-board-colours">
                   {cluster.slots.map((slot) => (
-                    <div key={slot.id} className="relative">
+                    <div key={slot.id} className="forge-mood-board-colour">
                       <button
                         type="button"
                         onClick={() => handleGenerateThemeFromColor(slot.color)}
-                        className="h-8 rounded-md border shadow-inner block w-full hover:scale-[1.02] active:scale-95 transition relative group"
+                        className="forge-mood-board-swatch"
                         style={{
                           backgroundColor: slot.color,
-                          borderColor: hexWithAlpha('#000', 0.15),
+                          borderColor: hexWithAlpha(tokens.brand.primary, 0.34),
                           boxShadow: slot.locked
-                            ? `0 0 0 2px ${hexWithAlpha(tokens.brand.primary, 0.45)}`
+                            ? `inset 0 0 0 2px ${hexWithAlpha(tokens.brand.primary, 0.72)}`
                             : undefined,
                         }}
-                        title={`Generate theme from ${slot.color}`}
-                        aria-label={`Generate theme from ${slot.color}`}
-                      >
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-opacity rounded-md pointer-events-none" />
-                      </button>
+                        title={`Use ${slot.color} as the new palette seed`}
+                        aria-label={`Use ${slot.color} as the new palette seed; replaces the current palette`}
+                      />
+                      <div className="forge-mood-board-swatch-meta">
+                        <span>{slot.family.replaceAll('-', ' ')}</span>
+                        <button
+                          type="button"
+                          onClick={() => copyHexValue?.(slot.color, `${cluster.title} ${slot.family} colour`)}
+                          aria-label={`Copy ${slot.color.toUpperCase()} from ${cluster.title} ${slot.family} suggestion`}
+                          title="Copy colour value"
+                        >
+                          <code>{slot.color.toUpperCase()}</code>
+                        </button>
+                      </div>
                       <button
                         type="button"
                         onClick={() => toggleSlotLock(cluster.id, slot.id)}
-                        className="absolute top-1 right-1 h-5 w-5 rounded-full flex items-center justify-center text-[10px] border panel-surface-strong hover:opacity-90"
+                        className="forge-mood-board-lock"
                         aria-pressed={slot.locked}
-                        aria-label={slot.locked ? 'Unlock swatch' : 'Lock swatch'}
+                        aria-label={`${slot.locked ? 'Unlock' : 'Lock'} ${cluster.title} ${slot.family} suggestion`}
                       >
-                        {slot.locked ? <Lock size={10} /> : <Unlock size={10} />}
+                        {slot.locked ? <Lock size={13} /> : <Unlock size={13} />}
+                        {slot.locked ? 'Locked' : 'Lock sample'}
                       </button>
                     </div>
                   ))}
@@ -419,14 +468,14 @@ const MoodBoard = ({
                   <button
                     type="button"
                     onClick={() => onApplyPaletteSpec?.(cluster.paletteSpec)}
-                    className="px-3 py-2 rounded-full text-[11px] font-bold border panel-surface-strong hover:-translate-y-[1px] active:scale-95 transition"
+                    className="forge-mood-board-button forge-mood-board-button-primary"
                     style={{
                       backgroundColor: tokens.brand.cta,
                       color: pickReadableText(tokens.brand.cta),
                       borderColor: hexWithAlpha(tokens.brand.cta, 0.4),
                     }}
                   >
-                    Apply to Editor
+                    Apply colour family to editor
                   </button>
                   <button
                     type="button"
@@ -486,11 +535,13 @@ const MoodBoard = ({
                     </button>
                   )}
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
       )}
+        </section>
+      </div>
     </StageSection>
   );
 };
