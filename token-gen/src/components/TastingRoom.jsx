@@ -695,16 +695,18 @@ const TastingRoom = () => {
           {copyToast}
         </div>
       )}
-      <a href="#tasting-main" className="tasting-skip-link">Skip to playground</a>
+      <a href="#tasting-main" className="tasting-skip-link">Skip to palette creator</a>
 
-      <main id="tasting-main" className="tasting-frame py-5 sm:py-6">
-        <div className="playground-creator-layout">
-          <aside className="playground-controls tasting-panel" aria-label="Playground controls">
-            <div className="playground-creator-brand">
-              <h1 className="tasting-wordmark">Apocapalette</h1>
-              <p>Pick a seed color. Get seven roles. See them on a real page, then check they&apos;re readable.</p>
-              <p className="playground-palette-status">{artifactLabel}</p>
-            </div>
+      <main id="tasting-main" className="tasting-frame playground-page-content py-5 sm:py-6">
+        <header className="playground-page-header">
+          <span className="playground-page-brand">Apocapalette · The Tasting Room</span>
+          <h1>Make a palette worth keeping.</h1>
+          <p>Pick a seed color. Get seven roles. See them on a real page, then check they&apos;re readable.</p>
+        </header>
+
+        <div className="playground-console">
+          <aside className="playground-controls" aria-label="Playground controls">
+            <p className="playground-palette-status">{artifactLabel}</p>
 
             <div className="playground-control-block">
               <label className="playground-control-label" htmlFor="playground-seed-input">1. Seed color</label>
@@ -805,7 +807,7 @@ const TastingRoom = () => {
             />
           </aside>
 
-          <div className="playground-creator-workspace">
+          <section className="playground-creator-workspace" aria-label="Live palette and preview">
             <section className="playground-generator-panel tasting-panel" aria-labelledby="playground-generator-title">
               <div className="playground-current-palette">
                 <div className="playground-palette-heading">
@@ -859,20 +861,6 @@ const TastingRoom = () => {
                 </div>
               </div>
             </section>
-
-            {(custom || hasModifiedPalette) && (
-              <div className="playground-handoff-row" key="playground-handoff-row">
-                {custom && (
-                  <PlaygroundHandoff
-                    key="playground-share-panel"
-                    onCopyLink={copyPaletteLink}
-                    accent={handoffAccent.accent}
-                    onAccent={handoffAccent.onAccent}
-                  />
-                )}
-                <SuggestKitInvitation visible={hasModifiedPalette} onSuggest={openSuggestionDialog} />
-              </div>
-            )}
 
             <section
               className="playground-preview"
@@ -928,19 +916,34 @@ const TastingRoom = () => {
               />
             </section>
 
-            <PlaygroundAccessibility roles={previewRoles} />
-
-            <PlaygroundCodeExport roles={codeRoles} onCopy={copyPaletteCode} />
-
-            <KitGallery />
-
-            <SuggestKitDialog
-              open={isSuggestionDialogOpen}
-              capture={suggestionCapture}
-              onRequestClose={() => setIsSuggestionDialogOpen(false)}
-            />
-          </div>
+            {(custom || hasModifiedPalette) && (
+              <div className="playground-handoff-row" key="playground-handoff-row">
+                {custom && (
+                  <PlaygroundHandoff
+                    key="playground-share-panel"
+                    onCopyLink={copyPaletteLink}
+                    accent={handoffAccent.accent}
+                    onAccent={handoffAccent.onAccent}
+                  />
+                )}
+                <SuggestKitInvitation visible={hasModifiedPalette} onSuggest={openSuggestionDialog} />
+              </div>
+            )}
+          </section>
         </div>
+
+        <div className="playground-followup-grid">
+          <PlaygroundAccessibility roles={previewRoles} />
+          <PlaygroundCodeExport roles={codeRoles} onCopy={copyPaletteCode} />
+        </div>
+
+        <KitGallery />
+
+        <SuggestKitDialog
+          open={isSuggestionDialogOpen}
+          capture={suggestionCapture}
+          onRequestClose={() => setIsSuggestionDialogOpen(false)}
+        />
       </main>
 
       <TastingFooter />

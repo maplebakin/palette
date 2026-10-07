@@ -29,7 +29,8 @@ describe('TastingRoom creator-first layout', () => {
   it('starts with a generated seed and names the free seven-role creator', () => {
     render(<TastingRoom />);
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Apocapalette' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Make a palette worth keeping.' })).toBeInTheDocument();
+    expect(screen.getByText('Apocapalette · The Tasting Room')).toBeInTheDocument();
     expect(screen.getByText("Pick a seed color. Get seven roles. See them on a real page, then check they're readable.")).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Your seven roles' })).toBeInTheDocument();
 
@@ -41,7 +42,7 @@ describe('TastingRoom creator-first layout', () => {
     expect(within(controls).getByText('Custom exploration · inspired by Nuclear Winter', { selector: 'p' })).toBeInTheDocument();
   });
 
-  it('keeps controls beside the seven roles, then orders preview, contrast, copy, and the kit system', () => {
+  it('keeps controls, roles, and preview in one console, with contrast and copy side by side below', () => {
     render(<TastingRoom />);
 
     const generatedRoles = within(screen.getByRole('group', { name: 'Generated semantic palette' }))
@@ -57,18 +58,24 @@ describe('TastingRoom creator-first layout', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Analogous' }));
 
-    const workspace = document.querySelector('.playground-creator-workspace');
-    const orderedBlocks = [
-      workspace.querySelector('.playground-generator-panel'),
-      workspace.querySelector('.playground-preview'),
-      workspace.querySelector('.playground-accessibility'),
-      workspace.querySelector('.playground-code-export'),
-      workspace.querySelector('#kit-collection'),
-    ];
-    const positions = orderedBlocks.map((block) => Array.from(workspace.children).indexOf(block));
+    const main = document.querySelector('.playground-page-content');
+    const creatorConsole = main.querySelector('.playground-console');
+    const controls = creatorConsole.querySelector('.playground-controls');
+    const workspace = creatorConsole.querySelector('.playground-creator-workspace');
+    const consoleChildren = Array.from(creatorConsole.children);
+    const followup = main.querySelector('.playground-followup-grid');
+    const followupChildren = Array.from(followup.children);
+    const topLevel = Array.from(main.children);
 
-    expect(positions.every((position) => position >= 0)).toBe(true);
-    expect(positions).toEqual([...positions].sort((left, right) => left - right));
+    expect(main.querySelector('.playground-page-header').nextElementSibling).toBe(creatorConsole);
+    expect(consoleChildren).toEqual([controls, workspace]);
+    expect(workspace.querySelector('.playground-generator-panel').nextElementSibling).toBe(workspace.querySelector('.playground-preview'));
+    expect(followupChildren).toEqual([
+      followup.querySelector('.playground-accessibility'),
+      followup.querySelector('.playground-code-export'),
+    ]);
+    expect(topLevel.indexOf(creatorConsole)).toBeLessThan(topLevel.indexOf(followup));
+    expect(topLevel.indexOf(followup)).toBeLessThan(topLevel.indexOf(main.querySelector('#kit-collection')));
     expect(screen.getByLabelText('Colour-vision simulator')).toBeInTheDocument();
   });
 
