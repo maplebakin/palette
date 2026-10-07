@@ -323,7 +323,14 @@ const PreviewScene = ({
           <span className="text-xs font-semibold opacity-70">Curated with care</span>
         </div>
       </div>
-      <div className="playground-hero-colorfield" style={{ background: `linear-gradient(145deg, ${roles.cta}, ${roles.accent}, ${roles.secondaryAction})` }}>
+      <div className="playground-hero-colorfield" style={{
+        background: `linear-gradient(118deg, ${roles.cta} 0 48%, ${roles.accent} 48% 72%, ${roles.secondaryAction} 72%)`,
+        '--artifact-ink': roles.background,
+        '--artifact-paper': roles.surface,
+        '--artifact-label': pickReadableText(roles.cta),
+        '--artifact-label-surface': roles.cta,
+      }}>
+        <div className="playground-artifact-composition" aria-hidden="true"><span /><span /></div>
         <div className="playground-colorfield-label">
           <span>Now showing</span>
           <strong>{artifactLabel}</strong>
@@ -809,7 +816,7 @@ const TastingRoom = () => {
                 </div>
                 <div className="playground-role-grid" role="group" aria-label="Generated semantic palette">
                   {swatches.map(({ id, name, color, locked }, index) => (
-                    <article className={'playground-role-card' + (selectedMoodRole === id ? ' is-selected' : '')} key={id}>
+                    <article className={'playground-role-card' + (selectedMoodRole === id ? ' is-selected' : '') + (locked ? ' is-locked' : '')} key={id}>
                       <div className="playground-role-card-heading">
                         <button
                           type="button"
@@ -830,14 +837,16 @@ const TastingRoom = () => {
                           {locked ? <Lock size={13} aria-hidden="true" /> : <Unlock size={13} aria-hidden="true" />}
                         </button>
                       </div>
-                      <input
-                        type="color"
-                        value={color}
-                        onChange={(event) => handleSwatchColorChange(index, event.target.value)}
-                        aria-label={'Edit ' + name + ' role color'}
-                        title={'Edit ' + name + ' role color'}
-                        className="playground-role-color-picker"
-                      />
+                      <div className="playground-role-paint" style={{ backgroundColor: color }}>
+                        <input
+                          type="color"
+                          value={color}
+                          onChange={(event) => handleSwatchColorChange(index, event.target.value)}
+                          aria-label={'Edit ' + name + ' role color'}
+                          title={'Edit ' + name + ' role color'}
+                          className="playground-role-color-picker"
+                        />
+                      </div>
                       <button
                         type="button"
                         className="playground-role-copy"
@@ -909,6 +918,7 @@ const TastingRoom = () => {
         </div>
 
         <PlaygroundLibrary
+          swatches={swatches}
           savedPalettes={savedPalettes}
           selectedPaletteId={selectedSavedPaletteId}
           saveStatus={saveStatus}

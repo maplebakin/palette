@@ -1,0 +1,211 @@
+/* Public Tasting Room only: paper, enamel, and quiet instrument surfaces. */
+.tasting-room {
+  --tasting-ink: #171411;
+  --tasting-ink-raised: #231e1a;
+  --tasting-ink-panel: #2c2520;
+  --tasting-line: #55483e;
+  --tasting-muted: #c0b2a5;
+  --tasting-accent: #dfa681;
+  --tasting-focus: #f4d1ae;
+  --tasting-radius: 0.65rem;
+  --tasting-edge: inset 0 1px 0 rgb(255 236 212 / 5%);
+  --tasting-inset: inset 0 2px 5px rgb(0 0 0 / 18%);
+  --tasting-motion: 180ms ease;
+  background-image: url('/tasting-grain.svg'), radial-gradient(ellipse at 80% 0, #3b282033, transparent 55%);
+  background-size: 180px 180px, 100% 80rem;
+  background-repeat: repeat, no-repeat;
+}
+
+.tasting-room .tasting-frame { width: min(1360px, calc(100% - 2.5rem)); }
+.tasting-room .playground-page-content { gap: 1.6rem; padding-block: 1.35rem; }
+.tasting-room .playground-page-header { gap: 0.4rem; padding-bottom: 1rem; }
+.tasting-room .playground-page-header h1 { font-size: clamp(1.65rem, 2.7vw, 2.3rem); letter-spacing: -0.05em; }
+.tasting-room .playground-page-header p { font-size: 0.8rem; line-height: 1.55; }
+.tasting-room .playground-page-brand { font-size: 0.65rem; letter-spacing: 0.15em; }
+.tasting-room :is(.tasting-eyebrow, .playground-kicker) { font-size: 0.68rem; letter-spacing: 0.12em; line-height: 1.5; }
+.tasting-room .tasting-panel-title { font-size: clamp(1.2rem, 1.8vw, 1.6rem); letter-spacing: -0.035em; line-height: 1.2; }
+.tasting-room .playground-section-meta { font-size: 0.72rem; letter-spacing: 0.02em; text-transform: none; line-height: 1.5; }
+.tasting-room :is(.tasting-panel, .playground-console) { border-radius: 0.9rem; box-shadow: var(--tasting-edge), 0 3px 8px rgb(0 0 0 / 9%); }
+.tasting-room :is(.playground-library, .playground-accessibility, .playground-code-export, .kit-gallery) { padding: clamp(1.1rem, 2.4vw, 1.8rem); }
+.tasting-room .playground-console { gap: 1rem; padding: 0.8rem; border-color: #665044; }
+.tasting-room .playground-controls { gap: 0.7rem; padding-right: 1rem; }
+.tasting-room .playground-palette-status { color: var(--tasting-muted); font-size: 0.72rem; line-height: 1.5; }
+.tasting-room .playground-controls .playground-control-block + .playground-control-block { padding-top: 0.6rem; border-top: 1px solid #483b32; }
+.tasting-room .playground-controls .playground-control-label { font-size: 0.8rem; letter-spacing: 0.01em; text-transform: none; }
+.tasting-room :is(.playground-seed-help, .playground-regeneration-note) { font-size: 0.7rem; line-height: 1.5; }
+.tasting-room .playground-hex-input { min-height: 2.75rem; font-size: 0.85rem; }
+.tasting-room :is(input[type='text'], select) { border-color: var(--tasting-line); border-radius: var(--tasting-radius); background-color: #191512; box-shadow: var(--tasting-inset); }
+.tasting-room :is(.playground-library-load select, .playground-vision-select-label select) { min-height: 2.75rem; font-size: 0.76rem; }
+
+/* The same physical button language, with three distinct levels of emphasis. */
+.tasting-room :is(.playground-generate-button, .playground-surprise-button, .playground-library-primary, .playground-library-secondary, .playground-code-copy, .playground-handoff-copy, .playground-handoff-link, .playground-scene-button) {
+  min-height: 2.75rem;
+  border-radius: var(--tasting-radius);
+  gap: 0.5rem;
+  box-shadow: var(--tasting-edge);
+  transition: background-color var(--tasting-motion), border-color var(--tasting-motion), transform 120ms ease;
+}
+.tasting-room :is(.playground-generate-button, .playground-library-primary, .playground-code-copy):hover { background-color: #eeb995; border-color: #eeb995; filter: none; transform: translateY(-1px); }
+.tasting-room :is(.playground-surprise-button, .playground-library-secondary):hover:not(:disabled) { background-color: #372b24; border-color: #a78169; }
+.tasting-room :is(button, summary):active:not(:disabled) { transform: translateY(1px); }
+.tasting-room :is(button, a, input, select, summary):focus-visible { outline: 2px solid var(--tasting-focus); outline-offset: 3px; }
+.tasting-room .playground-controls :is(.playground-chip, .playground-mode-pill) { min-height: 2.15rem; border-radius: 0.45rem; padding: 0.4rem 0.65rem; font-size: 0.72rem; background-color: #1c1815; }
+.tasting-room .playground-controls :is(.playground-chip, .playground-mode-pill).is-active { background-color: #4a3328; border-color: #bd8b6a; color: #ffe2c9; box-shadow: var(--tasting-edge); transform: none; }
+.tasting-room .playground-controls :is(.playground-chip, .playground-mode-pill):hover { border-color: #b18d75; transform: none; }
+.tasting-room .playground-controls .playground-advanced-refinement { padding-top: 0.7rem; }
+.tasting-room .playground-advanced-refinement > summary { min-height: 2.75rem; display: flex; align-items: center; justify-content: space-between; color: var(--tasting-muted); font-size: 0.76rem; }
+.tasting-room .playground-tuning-panel { padding: 0.8rem; background: #191512; border: 1px solid var(--tasting-line); border-radius: var(--tasting-radius); box-shadow: var(--tasting-inset); }
+.tasting-room .playground-tuning-panel label { font-size: 0.75rem; }
+.tasting-room input[type='range'] { appearance: none; height: 2rem; background: transparent; cursor: pointer; }
+.tasting-room input[type='range']::-webkit-slider-runnable-track { height: 5px; background: #705340; border-radius: 2px; box-shadow: inset 0 1px 2px #0008; }
+.tasting-room input[type='range']::-moz-range-track { height: 5px; background: #705340; border-radius: 2px; box-shadow: inset 0 1px 2px #0008; }
+.tasting-room input[type='range']::-webkit-slider-thumb { appearance: none; width: 18px; height: 22px; margin-top: -8px; border: 1px solid #f4ccab; border-radius: 4px; background: var(--tasting-accent); box-shadow: 0 2px 3px #0005; }
+.tasting-room input[type='range']::-moz-range-thumb { width: 18px; height: 22px; border: 1px solid #f4ccab; border-radius: 4px; background: var(--tasting-accent); box-shadow: 0 2px 3px #0005; }
+
+/* Pure-color paint samples stay untextured for accurate evaluation. */
+.tasting-room .playground-generator-panel { background: #1b1714; padding: 0.85rem; }
+.tasting-room .playground-palette-heading > p { font-size: 0.72rem; line-height: 1.5; }
+.tasting-room .playground-role-grid { grid-template-columns: repeat(7, minmax(8rem, 1fr)); gap: 0.5rem; overflow-x: auto; padding: 3px; }
+.tasting-room .playground-role-card { gap: 0.3rem; padding: 0.45rem; border-radius: 0.55rem; border-color: #57463b; background: #2a231e; box-shadow: var(--tasting-edge); }
+.tasting-room .playground-role-card:hover { border-color: #9e7b62; }
+.tasting-room .playground-role-card.is-selected { border-color: var(--tasting-accent); box-shadow: inset 0 2px 0 var(--tasting-accent); }
+.tasting-room .playground-role-card.is-locked { background: #36291f; border-style: double; border-width: 3px; padding: calc(0.45rem - 2px); }
+.tasting-room .playground-role-select { font-weight: 750; font-size: 0.72rem; min-height: 1.9rem; }
+.tasting-room .playground-role-lock { width: 1.9rem; height: 1.9rem; border-radius: 0.4rem; }
+.tasting-room .playground-role-lock.is-locked { background: #dfa681; border-color: #dfa681; color: #171411; }
+.tasting-room .playground-role-paint { position: relative; height: clamp(4.75rem, 6vw, 6rem); border-radius: 0.3rem; box-shadow: inset 0 0 0 1px #ffffff26, 0 2px 3px #0004; transition: background-color 220ms ease; }
+.tasting-room .playground-role-paint:focus-within { outline: 2px solid var(--tasting-focus); outline-offset: 3px; }
+.tasting-room .playground-role-color-picker { position: absolute; inset: 0; height: 100%; padding: 0; opacity: 0; }
+.tasting-room .playground-role-copy { min-height: 2rem; font-size: 0.7rem; letter-spacing: 0.02em; }
+
+/* The live artefact: printed planes, a cut-out aperture, and a faint fibre. */
+.tasting-room .playground-preview { border-radius: 0.8rem; box-shadow: var(--tasting-edge), 0 3px 7px #0003; }
+.tasting-room .playground-preview-heading .tasting-panel-title { font-size: 1.25rem; }
+.tasting-room .playground-preview-heading :is(.tasting-panel-title, .tasting-eyebrow, .playground-preview-mode), .tasting-room .playground-vision-select-label { color: inherit; }
+.tasting-room .playground-preview-mode { font-size: 0.72rem; text-transform: none; }
+.tasting-room .playground-vision-select-label { font-size: 0.7rem; }
+.tasting-room .playground-scene-tabs { gap: 0.35rem; }
+.tasting-room .playground-scene-tabs button { min-height: 2.3rem; border-radius: 0.4rem; font-size: 0.73rem; padding-inline: 0.85rem; }
+.tasting-room .playground-scene-tabs button { border-color: color-mix(in srgb, currentColor 30%, transparent); }
+.tasting-room .playground-scene-tabs button.is-active { background: color-mix(in srgb, currentColor 12%, transparent); }
+.tasting-room .playground-preview .playground-hero-colorfield { position: relative; isolation: isolate; overflow: hidden; border-radius: 0.4rem; box-shadow: inset 0 0 0 1px #ffffff26, inset 0 0 30px #00000015; padding: 1.1rem; }
+.tasting-room .playground-hero-colorfield::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: url('/tasting-grain.svg'); background-size: 90px; opacity: 0.8; box-shadow: inset 0 0 24px #00000012; }
+.tasting-room .playground-artifact-composition { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.tasting-room .playground-artifact-composition span:first-child { position: absolute; width: 70%; aspect-ratio: 1; right: -15%; top: 9%; border: clamp(2.5rem, 5vw, 5rem) solid var(--artifact-paper); border-radius: 50%; box-shadow: 0 1px 0 #fff3; }
+.tasting-room .playground-artifact-composition span:last-child { position: absolute; width: 58%; height: 28%; left: -5%; bottom: 17%; background: var(--artifact-ink); transform: rotate(-12deg); border-top: 1px solid #ffffff35; }
+.tasting-room .playground-colorfield-label { position: relative; z-index: 2; align-self: flex-start; max-width: 90%; padding: 0.55rem 0.65rem; border: 1px solid currentColor; background: var(--artifact-label-surface); color: var(--artifact-label); }
+.tasting-room .playground-colorfield-label span { font-size: 0.64rem; letter-spacing: 0.12em; }
+.tasting-room .playground-colorfield-label strong { font-size: 0.73rem; line-height: 1.4; letter-spacing: 0.02em; text-transform: none; }
+.tasting-room .playground-colorfield-swatches { position: relative; z-index: 2; align-self: flex-start; padding: 0.4rem; border-radius: 0.35rem; background: var(--artifact-paper); box-shadow: 0 2px 5px #0003; }
+.tasting-room .playground-preview .playground-colorfield-swatches button { border-radius: 0.2rem; box-shadow: inset 0 0 0 1px #ffffff25; }
+.tasting-room .playground-scene-copy { line-height: 1.6; }
+
+/* Keeping a palette has the character of a little specimen envelope. */
+.tasting-room .playground-library { position: relative; border-left: 3px solid #ac8266; background: #241e19; gap: 1.1rem; }
+.tasting-room .playground-library-heading { align-items: center; flex-wrap: wrap; }
+.tasting-room .playground-library-heading .tasting-panel-title { font-size: clamp(1.2rem, 1.8vw, 1.6rem); }
+.tasting-room .playground-library-miniature { display: flex; width: 10.5rem; height: 2.4rem; margin-left: auto; padding: 0.25rem; border: 1px solid var(--tasting-line); border-radius: 0.25rem; background: #161310; box-shadow: var(--tasting-inset); }
+.tasting-room .playground-library-miniature:empty { display: none; }
+.tasting-room .playground-library-miniature span { flex: 1; transition: background-color 220ms ease; }
+.tasting-room .playground-library-actions { grid-template-columns: auto auto minmax(0, 1fr); align-items: end; gap: 0.75rem; }
+.tasting-room .playground-library-load { grid-column: auto; grid-template-columns: minmax(0, 1fr); gap: 0.35rem; padding-left: 1rem; border-left: 1px solid var(--tasting-line); }
+.tasting-room .playground-library-primary { padding-inline: 1.15rem; }
+.tasting-room :is(.playground-library-promise, .playground-library-load > label) { font-size: 0.75rem; }
+.tasting-room .playground-library.is-saved { border-left-color: #a5b59a; }
+.tasting-room .playground-library-status { justify-self: start; border: 1px solid #68765a; border-radius: 0.4rem; padding: 0.55rem 0.8rem; background: #293025; color: #c7d8ba; font-size: 0.78rem; animation: tasting-save-confirm 200ms ease-out; }
+.tasting-room .playground-library-status.is-error { border-color: #ac786c; background: #362420; color: #f2c7b8; }
+
+.tasting-room .playground-followup-grid { gap: 1.6rem; }
+.tasting-room .playground-accessibility { background: #1d1916; gap: 1rem; }
+.tasting-room .playground-contrast-summary { background: transparent; border: 0; border-radius: 0; border-bottom: 1px solid var(--tasting-line); padding: 0.3rem 0 0.85rem; }
+.tasting-room .playground-contrast-summary strong { font-size: 0.86rem; }
+.tasting-room .playground-contrast-summary span { font-size: 0.76rem; }
+.tasting-room .playground-contrast-grid { gap: 0.7rem; }
+.tasting-room .playground-contrast-card { padding: 1rem; border-color: #4b493c; background: #24221b; gap: 0.55rem; border-radius: 0.5rem; }
+.tasting-room .playground-contrast-card.is-fail { background: #2b211d; border-color: #8b6051; }
+.tasting-room .playground-contrast-card h3 { font-size: 0.8rem; max-width: 22ch; font-weight: 650; line-height: 1.4; }
+.tasting-room .playground-contrast-card strong { font-size: 1.8rem; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; line-height: 1.2; }
+.tasting-room .playground-contrast-card :is(p, small) { font-size: 0.7rem; line-height: 1.55; }
+.tasting-room .playground-contrast-badge { border-radius: 0.25rem; font-size: 0.65rem; padding: 0.25rem 0.4rem; }
+.tasting-room .playground-contrast-badge.is-pass { background: #343b2e; color: #c6d5b8; }
+.tasting-room .playground-contrast-badge.is-fail { background: #57372d; color: #f1c1ae; }
+
+.tasting-room .playground-code-export { background: #211c18; gap: 1rem; }
+.tasting-room .playground-code-tabs { background: #171410; border-radius: 0.5rem; box-shadow: var(--tasting-inset); }
+.tasting-room .playground-code-tabs button { min-height: 2.6rem; padding-inline: 1rem; border-radius: 0.3rem; font-size: 0.76rem; }
+.tasting-room .playground-code-tabs button[aria-selected='true'] { background: #483329; box-shadow: var(--tasting-edge); color: #ffe1c9; }
+.tasting-room .playground-code-preview { max-height: 20rem; border-color: #554437; border-radius: 0.5rem; padding: 1.4rem 1.7rem; background: #14120f; box-shadow: var(--tasting-inset); font-size: 0.82rem; line-height: 1.8; tab-size: 2; color: #ac9c8d; }
+.tasting-room .code-property { color: #edbb99; }
+.tasting-room .code-value { color: #c5d4bb; }
+
+/* A finished kit reads as a bound edition beside the free working sketch. */
+.tasting-room .kit-gallery { border-color: #9e7056; background: #2b211b; gap: 1.3rem; }
+.tasting-room .kit-gallery-intro { font-size: 0.88rem; line-height: 1.7; color: #d3c1b1; max-width: 75ch; }
+.tasting-room .kit-sketch-card { background: #211b17; border-radius: 0.5rem; padding: 1.3rem; }
+.tasting-room .kit-sketch-card ul { color: var(--tasting-muted); font-size: 0.8rem; gap: 0.85rem; }
+.tasting-room .kit-gallery-feature { grid-template-columns: minmax(9rem, 0.6fr) minmax(0, 1.4fr); border-color: #9b735b; border-radius: 0.5rem; background: #35271f; box-shadow: var(--tasting-edge), 0 4px 8px #0002; }
+.tasting-room .playground-kit-preview { position: relative; isolation: isolate; border-right: 1px solid #c2946b44; }
+.tasting-room .playground-kit-preview::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: url('/tasting-grain.svg'); box-shadow: inset 0 0 30px #0003; }
+.tasting-room .kit-gallery-feature .kit-cover-strip { transform: skewY(-12deg) scaleY(1.4); }
+.tasting-room .kit-edition-mark { position: absolute; z-index: 1; inset: 1rem 1rem auto; color: #f8dcc0; padding-top: 0.7rem; border-top: 1px solid #f8dcc08c; font-size: 0.68rem; letter-spacing: 0.06em; }
+.tasting-room .kit-edition-mark strong { display: block; font-size: clamp(2.3rem, 4vw, 4rem); font-weight: 700; letter-spacing: -0.06em; line-height: 1.1; }
+.tasting-room .kit-edition-mark small { display: block; margin-top: 0.5rem; font-size: 0.62rem; }
+.tasting-room .kit-gallery-content { padding: 1.4rem; gap: 1rem; }
+.tasting-room .kit-gallery-name { font-size: clamp(1.6rem, 2.4vw, 2rem); }
+.tasting-room .kit-gallery-price { padding-left: 0.75rem; border-left: 1px solid #92725b; font-size: 1.6rem; color: #ecc0a1; }
+.tasting-room .kit-gallery-tagline { color: #d8bca8; font-size: 0.8rem; }
+.tasting-room .kit-system-contents { font-size: 0.78rem; line-height: 1.6; gap: 0.5rem; }
+.tasting-room .kit-gallery-status { border-radius: 0.3rem; border-color: #ab8063; background: transparent; font-size: 0.72rem; padding: 0.6rem 0.8rem; }
+.tasting-room .playground-copy-toast { border-radius: 0.5rem; box-shadow: 0 3px 10px #0005; font-size: 0.8rem; }
+
+@keyframes tasting-save-confirm { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 1100px) {
+  .tasting-room .playground-library-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tasting-room .playground-library-load { grid-column: 1 / -1; padding: 0; border: 0; }
+}
+@media (max-width: 960px) {
+  .tasting-room .playground-controls { padding-right: 0; }
+}
+@media (max-width: 720px) {
+  .tasting-room .tasting-frame { width: calc(100% - 2rem); }
+  .tasting-room .playground-page-content, .tasting-room .playground-followup-grid { gap: 1.25rem; }
+  .tasting-room .playground-page-header h1 { font-size: 1.7rem; }
+  .tasting-room .playground-preview .playground-hero-colorfield { min-height: 11rem; }
+  .tasting-room .playground-preview .playground-hero-scene { gap: 1rem; }
+  .tasting-room .playground-preview > .playground-scene { height: auto; overflow: visible; }
+  .tasting-room .playground-preview .playground-artifact-composition span:first-child { width: 60%; top: -20%; }
+  .tasting-room .playground-library-heading { display: flex; }
+  .tasting-room .playground-library-miniature { width: 6.5rem; height: 1.75rem; margin-left: 0; }
+  .tasting-room .playground-library-heading .playground-section-meta { width: 100%; }
+  .tasting-room .kit-gallery-feature { grid-template-columns: minmax(0, 1fr); }
+  .tasting-room .playground-kit-preview { min-height: 10rem; border-right: 0; border-bottom: 1px solid #c2946b44; }
+  .tasting-room .kit-edition-mark { inset: 1rem auto auto 1rem; background: #241b14dd; padding: 0.5rem 0.75rem; border: 1px solid #c2946b88; }
+}
+@media (max-width: 520px) {
+  .tasting-room .playground-console { padding: 0.6rem; gap: 0.75rem; }
+  .tasting-room .playground-controls { gap: 0.55rem; }
+  .tasting-room .playground-controls :is(.playground-chip, .playground-mode-pill) { min-height: 2.75rem; font-size: 0.73rem; }
+  .tasting-room .playground-role-grid { grid-template-columns: none; grid-auto-columns: 9rem; scroll-snap-type: x proximity; }
+  .tasting-room .playground-role-card { scroll-snap-align: start; }
+  .tasting-room .playground-role-select, .tasting-room .playground-role-copy { min-height: 2.75rem; }
+  .tasting-room .playground-role-lock { width: 2.75rem; height: 2.75rem; }
+  .tasting-room .playground-role-paint { height: 5.5rem; }
+  .tasting-room .playground-preview { padding: 0.7rem; }
+  .tasting-room .playground-scene-tabs button { min-height: 2.75rem; }
+  .tasting-room .playground-preview .playground-colorfield-swatches button { min-width: 2rem; min-height: 2.75rem; }
+  .tasting-room .playground-library-actions { grid-template-columns: minmax(0, 1fr); }
+  .tasting-room .playground-library-load { grid-column: auto; }
+  .tasting-room .playground-library-load > div { grid-template-columns: minmax(0, 1fr); }
+  .tasting-room .playground-contrast-card { padding: 0.8rem; }
+  .tasting-room .playground-contrast-card > div { flex-wrap: wrap; gap: 0.4rem; }
+  .tasting-room .playground-contrast-card h3 { max-width: none; font-size: 0.78rem; }
+  .tasting-room .playground-contrast-card strong { font-size: 1.5rem; }
+  .tasting-room .playground-contrast-card :is(p, small) { font-size: 0.68rem; }
+  .tasting-room .playground-code-preview { padding: 1rem; font-size: 0.76rem; }
+  .tasting-room .playground-code-copy { width: 100%; }
+  .tasting-room .kit-gallery-content { padding: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tasting-room *, .tasting-room *::before, .tasting-room *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

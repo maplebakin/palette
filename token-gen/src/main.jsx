@@ -5,6 +5,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
 import { ProjectProvider } from './context/ProjectProvider.jsx';
 import './index.css';
+import './styles/tasting-room.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

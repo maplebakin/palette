@@ -32,7 +32,9 @@ const PlaygroundCodeExport = ({ roles, onCopy }) => {
           ))}
         </div>
       </div>
-      <pre className="playground-code-preview"><code>{code}</code></pre>
+      <pre className="playground-code-preview"><code>{code.split(/(#[0-9a-f]{6}|--color-[\w-]+|"[^"]+"|'[^']+'|:root)/gi).map((part, index) => (
+        <span key={index} className={/^["']?#[0-9a-f]{6}/i.test(part) ? 'code-value' : /^(--|"|'|:root)/.test(part) ? 'code-property' : undefined}>{part}</span>
+      ))}</code></pre>
       <button type="button" className="playground-code-copy" onClick={() => onCopy(code)}>
         Copy code
       </button>

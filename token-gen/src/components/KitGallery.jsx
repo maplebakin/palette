@@ -60,6 +60,7 @@ const KitGallery = () => (
                 <span className="kit-cover-strip" aria-hidden="true">
                   {coverColors.map((color, index) => <span key={`${color}-${index}`} style={{ backgroundColor: color }} />)}
                 </span>
+                <span className="kit-edition-mark" aria-hidden="true">Field edition <strong>{kit.artifactNo}</strong><small>Light / Dark / Pop</small></span>
               </div>
               <div className="kit-gallery-content">
                 <div className="kit-gallery-heading">

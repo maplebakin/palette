@@ -1,6 +1,7 @@
 import React from 'react';
 
 const PlaygroundLibrary = ({
+  swatches = [],
   savedPalettes,
   selectedPaletteId,
   saveStatus,
@@ -9,11 +10,14 @@ const PlaygroundLibrary = ({
   onLoad,
   onCopyLink,
 }) => (
-  <section className="playground-library tasting-panel" aria-labelledby="playground-library-title">
+  <section className={`playground-library tasting-panel${saveStatus === 'success' ? ' is-saved' : ''}`} aria-labelledby="playground-library-title">
     <div className="playground-library-heading">
       <div>
         <p className="tasting-eyebrow">Keep it in this browser or share a link</p>
         <h2 id="playground-library-title" className="tasting-panel-title">Save or share this palette</h2>
+      </div>
+      <div className="playground-library-miniature" aria-hidden="true">
+        {swatches.map(({ id, color }) => <span key={id} style={{ backgroundColor: color }} />)}
       </div>
       {savedPalettes.length > 0 && (
         <span className="playground-section-meta">{savedPalettes.length} saved {savedPalettes.length === 1 ? 'palette' : 'palettes'}</span>
