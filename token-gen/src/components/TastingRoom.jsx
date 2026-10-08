@@ -632,12 +632,17 @@ const TastingRoom = () => {
     return () => window.removeEventListener('keydown', regenerateOnSpace);
   }, []);
 
-  const copySingleHex = (color) => {
+  const copySingleHex = async (color) => {
     if (!color) return;
-    setCopyToast(buildCopyToastMessage(color, copyCount));
-    setCopyCount((current) => current + 1);
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(color).catch(() => {});
+    try {
+      if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+        throw new Error('Clipboard unavailable');
+      }
+      await navigator.clipboard.writeText(color);
+      setCopyToast(buildCopyToastMessage(color, copyCount));
+      setCopyCount((current) => current + 1);
+    } catch {
+      setCopyToast('Could not copy. Please try again.');
     }
   };
 
