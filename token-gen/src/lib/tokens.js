@@ -496,6 +496,13 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     surfaceL = 92;
     borderL = 88;
   }
+  // Light and Dark get a clearer surface ladder without changing Pop or
+  // Apocalypse's bespoke tonal treatment. Keep the palette airy or deep,
+  // but make cards distinguishable from the page by more than a few points.
+  if (!isPop && !isApocalypse) {
+    bgL = isDark ? 9 : 97;
+    surfaceL = isDark ? 19 : 91;
+  }
   if (isPop && popSignalProfile) {
     bgL = popSignalProfile.popBackground.l;
     surfaceL = popSignalProfile.popSurface.l;
