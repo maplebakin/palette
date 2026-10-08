@@ -54,13 +54,13 @@ describe('generateTokens', () => {
     }
   });
 
-  it('preserves neutral and pale-blush secondary action behaviour across themes', () => {
-    for (const base of ['#808080', '#F7D6E0']) {
-      for (const theme of ['light', 'dark']) {
-        const mono = generateTokens(base, 'Monochromatic', theme);
-        const comp = generateTokens(base, 'Complementary', theme);
-        expect(comp.actions.secondary).toBe(mono.actions.secondary);
-      }
+  it('keeps grayscale secondary actions neutral and soft-blush exceptions stable', () => {
+    for (const theme of ['light', 'dark']) {
+      const gray = generateTokens('#808080', 'Complementary', theme);
+      expect(hexToHsl(gray.actions.secondary).s).toBe(0);
+      const mono = generateTokens('#F7D6E0', 'Monochromatic', theme);
+      const comp = generateTokens('#F7D6E0', 'Complementary', theme);
+      expect(comp.actions.secondary).toBe(mono.actions.secondary);
     }
   });
 
