@@ -4158,3 +4158,8 @@ body {
   outline: 3px solid var(--tasting-accent);
   outline-offset: 2px;
 }
+
+/* Scene copy must retain its resolved contrast inside the neutral preview frame. */
+.tasting-room .playground-preview .playground-scene-copy {
+  opacity: 1;
+}
