@@ -1,4 +1,4 @@
-import { normalizeHex } from './colorUtils.js';
+import { getContrastRatio, normalizeHex, pickReadableText } from './colorUtils.js';
 
 const readToken = (tokens, path) => path.split('.').reduce((next, key) => next?.[key], tokens);
 
@@ -105,3 +105,18 @@ export const buildPreviewPaletteRow = (previewRoles = {}) => ({
     { name: 'entity-border', color: previewRoles.entityHighlightBorder },
   ].filter(({ color }) => Boolean(color)),
 });
+
+// Preview scenes sit inside a stable neutral frame. Resolve foreground colours
+// against their own generated surface rather than inheriting the frame ink.
+export const getPreviewSceneInk = (roles = {}) => {
+  const surface = normalizeHex(roles.surface, '#ffffff');
+  const body = normalizeHex(roles.text, '#111827');
+  const muted = normalizeHex(roles.mutedText, body);
+  const readableBody = getContrastRatio(body, surface) >= 4.5
+    ? body
+    : pickReadableText(surface);
+  return {
+    body: readableBody,
+    muted: getContrastRatio(muted, surface) >= 4.5 ? muted : readableBody,
+  };
+};
