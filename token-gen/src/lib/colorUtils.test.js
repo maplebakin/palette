@@ -3,6 +3,7 @@ import {
   blendHue,
   blendColorsPerceptual,
   hexToOklch,
+  oklchToHex,
   getContrastRatio,
   getWCAGBadge,
   hexToHsl,
@@ -76,6 +77,24 @@ describe('colorUtils', () => {
     expect(blendColorsPerceptual(a, b, Number.NaN)).toBe(a);
     expect(blendColorsPerceptual(a, b, Infinity)).toBe(a);
     expect(blendColorsPerceptual('#ABC', b, 0)).toBe('#aabbcc');
+  });
+
+  it('maps out-of-gamut OKLCH colours by chroma instead of shifting hue', () => {
+    for (const hue of [35, 140, 250, 320]) {
+      const hex = oklchToHex({ l: 0.65, c: 0.45, h: hue });
+      expect(hex).toMatch(/^#[0-9a-f]{6}$/);
+      const actual = hexToOklch(hex);
+      const hueGap = Math.abs(((actual.h - hue + 540) % 360) - 180);
+      expect(hueGap).toBeLessThan(3);
+      expect(Math.abs(actual.l - 0.65)).toBeLessThan(0.015);
+      expect(actual.c).toBeLessThan(0.45);
+    }
+  });
+
+  it('keeps neutral OKLCH values grayscale', () => {
+    const color = oklchToHex({ l: 0.5, c: 0, h: 250 });
+    const channels = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
+    expect(Math.max(...channels) - Math.min(...channels)).toBeLessThanOrEqual(1);
   });
 
   it('hexWithAlpha wraps RGB channels', () => {
