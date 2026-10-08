@@ -100,6 +100,23 @@ describe('TastingRoom creator-first layout', () => {
     expect(document.querySelector('.playground-contrast-summary')).toHaveTextContent(/need(s)? adjustment/);
   });
 
+  it('preserves the last real seed while a user types an incomplete #hex', () => {
+    render(<TastingRoom />);
+    const hexInput = screen.getByLabelText('Seed color hex or phrase');
+    const colorInput = screen.getByLabelText('Seed color swatch');
+    const initial = colorInput.value;
+
+    for (const fragment of ['#', '#8', '#89', '#8901', '#89012']) {
+      fireEvent.change(hexInput, { target: { value: fragment } });
+      expect(colorInput).toHaveValue(initial);
+      expect(screen.getByText(/Finish #RGB or #RRGGBB/)).toBeInTheDocument();
+    }
+
+    fireEvent.change(hexInput, { target: { value: '#890123' } });
+    expect(colorInput).toHaveValue('#890123');
+    expect(screen.queryByText(/Finish #RGB or #RRGGBB/)).not.toBeInTheDocument();
+  });
+
   it('uses a deterministic phrase seed and restores its generated palette on a fresh render', () => {
     const { unmount } = render(<TastingRoom />);
     const seedInput = screen.getByLabelText('Seed color hex or phrase');
