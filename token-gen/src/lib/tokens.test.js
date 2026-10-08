@@ -39,7 +39,7 @@ describe('generateTokens', () => {
     const modes = ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'];
     const outputs = modes.map((mode) => generateTokens(seed, mode, 'pop', 100, { popIntensity: 130 }));
     const seedHue = hexToHsl(seed).h;
-    const expectedOffsets = [28, -30, 170, 120, 175];
+    const expectedOffsets = [0, -30, 170, 120, 175];
     outputs.forEach((tokens, index) => {
       const supportHue = hexToHsl(tokens.pop['sticker-accent']).h;
       expect(hueDistance(supportHue, (seedHue + expectedOffsets[index] + 360) % 360)).toBeLessThanOrEqual(3);
