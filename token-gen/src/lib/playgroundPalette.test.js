@@ -63,6 +63,19 @@ describe('playground semantic palette', () => {
     expect(suggestions).toHaveLength(4);
   });
 
+  it('avoids repeats of existing swatches while preserving readable text suggestions', () => {
+    const input = {
+      seedColor: '#bb5577', roleColor: '#bb5577', harmony: 'Analogous',
+      roleId: 'text', backgroundColor: '#111827',
+    };
+    const baseline = getContextualMoodSuggestions(input);
+    const occupied = baseline.map(({ color }, index) => ({ id: `other-${index}`, color }));
+    const diverse = getContextualMoodSuggestions({ ...input, existingSwatches: occupied });
+    expect(diverse).toHaveLength(4);
+    expect(diverse.map(({ color }) => color)).not.toEqual(baseline.map(({ color }) => color));
+    expect(diverse.every(({ color }) => getContrastRatio(color, input.backgroundColor) >= 4.5)).toBe(true);
+  });
+
   it('offers harmony-aware colors around the seed and current role color', () => {
     const analogous = getContextualMoodSuggestions({
       seedColor: '#7f1d1d',
