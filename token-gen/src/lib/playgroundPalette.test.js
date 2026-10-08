@@ -21,6 +21,28 @@ describe('playground semantic palette', () => {
     ]);
   });
 
+  it('wraps suggestions across both ends of the hue wheel', () => {
+    const nearRedEnd = getContextualMoodSuggestions({
+      seedColor: '#ff0033',
+      roleColor: '#ff0033',
+      harmony: 'Analogous',
+    });
+    const firstNeighborHue = hexToHsl(nearRedEnd[0].color).h;
+    // A +24-degree neighbor beyond 360 must land near 12, not clamp at 360.
+    expect(firstNeighborHue).toBeGreaterThan(0);
+    expect(firstNeighborHue).toBeLessThan(40);
+
+    const nearZero = getContextualMoodSuggestions({
+      seedColor: '#ff3300',
+      roleColor: '#ff3300',
+      harmony: 'Analogous',
+    });
+    const secondNeighborHue = hexToHsl(nearZero[1].color).h;
+    // A negative hue must wrap to the violet-red end of the wheel.
+    expect(secondNeighborHue).toBeGreaterThan(300);
+    expect(secondNeighborHue).toBeLessThan(360);
+  });
+
   it('offers harmony-aware colors around the seed and current role color', () => {
     const analogous = getContextualMoodSuggestions({
       seedColor: '#7f1d1d',
