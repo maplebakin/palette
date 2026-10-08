@@ -221,6 +221,28 @@ describe('TastingRoom creator-first layout', () => {
     expect(document.querySelector('.playground-hero-colorfield').style.background).toContain('rgb(101, 67, 33)');
   });
 
+  it('confirms individual hex copies only after a successful clipboard write', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    render(<TastingRoom />);
+
+    const hex = screen.getByLabelText('Edit Accent role color').value;
+    fireEvent.click(screen.getByRole('button', { name: `Copy Accent role color ${hex.toUpperCase()}` }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(hex));
+    expect(await screen.findByRole('status')).toHaveTextContent(`Copied ${hex.toUpperCase()}`);
+  });
+
+  it('does not claim a hex was copied when the browser rejects clipboard access', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('Permission denied'));
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    render(<TastingRoom />);
+
+    const hex = screen.getByLabelText('Edit Accent role color').value;
+    fireEvent.click(screen.getByRole('button', { name: `Copy Accent role color ${hex.toUpperCase()}` }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Could not copy. Please try again.');
+    expect(screen.queryByText(`Copied ${hex.toUpperCase()}.`)).not.toBeInTheDocument();
+  });
+
   it.each(['Copy code', 'Copy share link'])('does not show success when %s is rejected by the clipboard', async (action) => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
