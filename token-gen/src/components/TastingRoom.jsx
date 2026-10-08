@@ -863,11 +863,6 @@ const TastingRoom = () => {
             <section
               className="playground-preview"
               aria-labelledby="playground-preview-title"
-              style={{
-                backgroundColor: visionRoles.background,
-                borderColor: visionRoles.border,
-                color: visionRoles.text,
-              }}
             >
               <div className="playground-preview-topline">
                 <div className="playground-preview-heading">
