@@ -541,8 +541,27 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const frostedPopRole = popSignalProfile?.frostedPop ?? { h: popSignalHue, s: clamp(popFieldS * 0.9, 45, 75), l: isDark ? 30 : 86 };
   const highlightTintRole = popSignalProfile?.highlightTint ?? { h: popSignalHue, s: 16, l: isDark ? 24 : 92 };
   const skeletonBlushRole = popSignalProfile?.skeletonBlush ?? { h: popSignalHue, s: isDark ? 24 : 24, l: isDark ? 24 : 88 };
-  const stickerRole = popSignalProfile?.sticker ?? { h: wrapHue(popSignalHue + 28), s: clamp(popFieldS + 12, 55, 82), l: isDark ? 68 : 54 };
-  const stickerBorderRole = popSignalProfile?.stickerBorder ?? { h: stickerRole.h, s: stickerRole.s, l: isDark ? 76 : 98 };
+  // Pop remains seed-led: harmony appears in supporting highlights, not the
+  // background, primary CTA, or original accent. Monochromatic stays unchanged.
+  const popSupportOffsets = {
+    Analogous: -30,
+    Complementary: 170,
+    Tertiary: 120,
+    Apocalypse: 175,
+  };
+  const popSupportOffset = isPop && !seedProfile.isNeutral
+    ? (popSupportOffsets[mode] ?? 0) * harmonyScale
+    : 0;
+  const stickerRoleBase = popSignalProfile?.sticker ?? { h: wrapHue(popSignalHue + 28), s: clamp(popFieldS + 12, 55, 82), l: isDark ? 68 : 54 };
+  const stickerBorderRoleBase = popSignalProfile?.stickerBorder ?? { h: stickerRoleBase.h, s: stickerRoleBase.s, l: isDark ? 76 : 98 };
+  const stickerRole = popSupportOffset === 0 ? stickerRoleBase : {
+    ...stickerRoleBase,
+    h: wrapHue(popSignalHue + popSupportOffset),
+  };
+  const stickerBorderRole = popSupportOffset === 0 ? stickerBorderRoleBase : {
+    ...stickerBorderRoleBase,
+    h: stickerRole.h,
+  };
   const signalTextRole = popSignalProfile?.signalText ?? { h: popSignalHue, s: clamp(popFieldS * 0.8, 38, 70), l: isDark ? 94 : 18 };
   const popBackgroundRole = popSignalProfile?.popBackground ?? { h: popSignalHue, s: popFieldS, l: popFieldL };
   const popSurfaceRole = popSignalProfile?.popSurface ?? { h: popSignalHue, s: clamp(popFieldS - 10, 68, 90), l: clamp(popFieldL + 7, 26, 43) };
@@ -965,7 +984,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       },
       accents: {
         "accent-1": softFamilyActionSeed ? softFamilySupport.accent1 : accentColor(accentHueMain, satNormalizer * accSat * 0.9, accentLightSteps[0]),
-        "accent-2": softFamilyActionSeed ? softFamilySupport.accent2 : accentColor(accentHueSecondary, satNormalizer * secSat * 0.98, accentLightSteps[1]),
+        "accent-2": softFamilyActionSeed ? softFamilySupport.accent2 : accentColor(isPop && popSupportOffset !== 0 ? stickerRole.h : accentHueSecondary, satNormalizer * secSat * 0.98, accentLightSteps[1]),
         "accent-3": softFamilyActionSeed ? softFamilySupport.accent3 : accentColor(accentHueRoot, satNormalizer * accSat * 1.05, accentLightSteps[2]),
         "accent-ink": softFamilyActionSeed ? softFamilySupport.accentInk : accentColor(accentHueMain, satNormalizer * accSat * 1.2, accentLightSteps[3]),
       },

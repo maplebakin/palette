@@ -34,6 +34,31 @@ const SEED_GAUNTLET = [
 ];
 
 describe('generateTokens', () => {
+  it('gives Pop presets distinct supporting hues without replacing seed-led surfaces or CTAs', () => {
+    const seed = '#7755bb';
+    const modes = ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'];
+    const outputs = modes.map((mode) => generateTokens(seed, mode, 'pop', 100, { popIntensity: 130 }));
+    const seedHue = hexToHsl(seed).h;
+    const expectedOffsets = [0, -30, 170, 120, 175];
+    outputs.forEach((tokens, index) => {
+      const supportHue = hexToHsl(tokens.pop['sticker-accent']).h;
+      expect(hueDistance(supportHue, (seedHue + expectedOffsets[index] + 360) % 360)).toBeLessThanOrEqual(3);
+      expect(tokens.brand.accent).toBe(seed);
+      expect(tokens.pop['pop-accent']).toBe(seed);
+      expect(tokens.actions.secondary).toBe(tokens.pop['sticker-border']);
+      expect(tokens.entity['entity-highlight-border']).toBe(tokens.pop['sticker-border']);
+      expect(getContrastRatio(tokens.pop['pop-foreground'], tokens.pop['pop-background'])).toBeGreaterThanOrEqual(4.5);
+      expect(getContrastRatio(tokens.actions['primary-foreground'], tokens.actions.primary)).toBeGreaterThanOrEqual(4.5);
+    });
+    expect(new Set(outputs.map((tokens) => tokens.pop['sticker-accent'])).size).toBe(5);
+  });
+
+  it('keeps neutral Pop support hue-neutral across harmony modes', () => {
+    const mono = generateTokens('#808080', 'Monochromatic', 'pop');
+    const complement = generateTokens('#808080', 'Complementary', 'pop');
+    expect(complement.pop['sticker-accent']).toBe(mono.pop['sticker-accent']);
+  });
+
   it('produces distinct brand colors per harmony mode', () => {
     const base = '#3366ff';
     const lightMono = generateTokens(base, 'Monochromatic', 'light', 100);
