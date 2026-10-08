@@ -34,6 +34,39 @@ const SEED_GAUNTLET = [
 ];
 
 describe('generateTokens', () => {
+  it.each(['light', 'dark'])('uses a coherent panel, overlay and hover elevation ladder in %s', (themeMode) => {
+    for (const seed of SEED_GAUNTLET) {
+      for (const mode of ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary']) {
+        const tokens = generateTokens(seed, mode, themeMode);
+        const value = (path) => hexToHsl(path.split('.').reduce((obj, key) => obj[key], tokens)).l;
+        const panel = value('cards.card-panel-surface');
+        const secondary = value('aliases.surface-panel-secondary');
+        const elevated = value('cards.card-panel-surface-strong');
+        const overlay = value('aliases.overlay-panel');
+        const overlayStrong = value('aliases.overlay-panel-strong');
+        const hover = value('aliases.surface-card-hover');
+        expect(secondary).toBeGreaterThan(panel);
+        expect(elevated).toBeGreaterThan(secondary);
+        expect(overlay).toBeGreaterThan(secondary);
+        expect(overlayStrong).toBeGreaterThan(overlay);
+        expect(hover).toBeGreaterThan(elevated);
+        expect(getContrastRatio(tokens.typography['text-body'], tokens.surfaces.background)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it('does not change the existing Pop and Apocalypse elevation choreography', () => {
+    for (const mode of ['pop', 'dark', 'light']) {
+      const harmony = mode === 'pop' ? 'Analogous' : 'Apocalypse';
+      const tokens = generateTokens('#7755bb', harmony, mode);
+      const surface = hexToHsl(tokens.cards['card-panel-surface']).l;
+      const secondary = hexToHsl(tokens.aliases['surface-panel-secondary']).l;
+      const overlay = hexToHsl(tokens.aliases['overlay-panel']).l;
+      expect(secondary).toBeCloseTo(surface + (mode === 'dark' ? 4 : -2), 0);
+      expect(overlay).toBeCloseTo(surface + (mode === 'dark' ? 2 : 0), 0);
+    }
+  });
+
   it.each(['light', 'dark'])('maintains a distinct page-to-card tonal ladder in %s', (themeMode) => {
     for (const seed of SEED_GAUNTLET) {
       for (const harmony of ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary']) {
