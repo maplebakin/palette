@@ -66,6 +66,18 @@ describe('colorUtils', () => {
     expect(blendColorsPerceptual('#808080', '#7651cc', 1)).toBe('#7651cc');
   });
 
+  it('preserves exact blend endpoints and clamps out-of-range weights', () => {
+    const a = '#123456';
+    const b = '#f7d6e0';
+    expect(blendColorsPerceptual(a, b, 0)).toBe(a);
+    expect(blendColorsPerceptual(a, b, 1)).toBe(b);
+    expect(blendColorsPerceptual(a, b, -50)).toBe(a);
+    expect(blendColorsPerceptual(a, b, 50)).toBe(b);
+    expect(blendColorsPerceptual(a, b, Number.NaN)).toBe(a);
+    expect(blendColorsPerceptual(a, b, Infinity)).toBe(a);
+    expect(blendColorsPerceptual('#ABC', b, 0)).toBe('#aabbcc');
+  });
+
   it('hexWithAlpha wraps RGB channels', () => {
     expect(hexWithAlpha('#112233', 0.5)).toBe('rgba(17,34,51,0.5)');
   });
