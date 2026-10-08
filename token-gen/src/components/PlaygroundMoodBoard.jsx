@@ -29,6 +29,7 @@ const PlaygroundMoodBoard = ({
     harmony,
     roleId: activeRole.id,
     backgroundColor: sourceSwatches.find(({ id }) => id === 'background')?.color || roles.background,
+    existingSwatches: sourceSwatches,
   });
 
   return (
