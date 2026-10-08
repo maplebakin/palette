@@ -28,7 +28,7 @@ import { decodePlaygroundHash, encodePlaygroundHash } from '../lib/playgroundLin
 import { loadPlaygroundSession, savePlaygroundSession } from '../lib/sessionPersistence.js';
 import { buildTheme } from '../lib/theme/engine.js';
 import { captureKitSuggestion } from '../lib/kitSuggestion.js';
-import { phraseToSeedColor } from '../lib/seedColor.js';
+import { seedColorFromInput, toSeedHex } from '../lib/seedColor.js';
 import {
   loadSavedPlaygroundPalettes,
   savePlaygroundPalette,
@@ -51,15 +51,6 @@ const GENERATION_HUE_OFFSETS = [0, 15, -15, 28, -28, 42, -42, 8];
 
 const isHexColor = (value) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
-
-const toSeedHex = (value) => {
-  const trimmed = String(value ?? '').trim();
-  const candidate = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
-  if (/^#[0-9a-f]{3}$/i.test(candidate)) {
-    return `#${candidate.slice(1).split('').map((digit) => `${digit}${digit}`).join('')}`.toLowerCase();
-  }
-  return /^#[0-9a-f]{6}$/i.test(candidate) ? candidate.toLowerCase() : null;
-};
 
 const createPresetState = (kit) => {
   const seed = KIT_SEEDS[kit.id];
@@ -374,6 +365,7 @@ const TastingRoom = () => {
   const [savedPalettes, setSavedPalettes] = useState(() => loadSavedPlaygroundPalettes());
   const [selectedSavedPaletteId, setSelectedSavedPaletteId] = useState('');
   const [saveStatus, setSaveStatus] = useState('idle');
+  const incompleteHex = playground.baseInput.trim().startsWith('#') && !toSeedHex(playground.baseInput);
   const seedInfo = playground.kitId
     ? INSPIRATION_SEEDS.find((candidate) => candidate.id === playground.kitId)
     : null;
@@ -479,7 +471,7 @@ const TastingRoom = () => {
   };
 
   const handleSeedInput = (value) => {
-    const candidate = toSeedHex(value) || phraseToSeedColor(value);
+    const candidate = seedColorFromInput(value);
     if (!candidate) {
       setPlayground((current) => ({ ...current, baseInput: value }));
       return;
@@ -737,7 +729,11 @@ const TastingRoom = () => {
                   spellCheck="false"
                 />
               </div>
-              <p className="playground-seed-help">A phrase always hashes to the same seed and palette.</p>
+              <p className="playground-seed-help" role={incompleteHex ? 'status' : undefined}>
+                {incompleteHex
+                  ? 'Finish #RGB or #RRGGBB to update your palette. The current seed is preserved while you type.'
+                  : 'A phrase always hashes to the same seed and palette.'}
+              </p>
             </div>
 
             <div className="playground-control-block">
