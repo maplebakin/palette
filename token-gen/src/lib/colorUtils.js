@@ -279,7 +279,11 @@ export const oklchToHex = ({ l, c, h }) => {
 };
 
 export const blendColorsPerceptual = (hex1, hex2, weight = 0) => {
-  const t = Math.max(0, Math.min(1, weight ?? 0));
+  const t = Number.isFinite(weight) ? clamp01(weight) : 0;
+  // Preserve exact input colours at the ends of the blend; round-tripping
+  // through OKLCH can subtly change an authored seed by a channel value.
+  if (t === 0) return normalizeHex(hex1);
+  if (t === 1) return normalizeHex(hex2);
   const colorA = hexToOklch(normalizeHex(hex1));
   const colorB = hexToOklch(normalizeHex(hex2));
   // Near-neutral colors have no stable hue: borrow the chromatic partner's hue
