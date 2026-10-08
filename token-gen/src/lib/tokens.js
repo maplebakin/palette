@@ -653,6 +653,11 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       ? softFamilyAccentStrong
       : getColor(hsl, brandSignalHueShift, (accentSat * 0.9) + 0.04, harmonyAccentLightness + 5);
   const actionHue = softFamilyActionSeed ? hsl.h : wrapHue(hsl.h + brandSignalHueShift);
+  // Primary actions carry the signal; secondary actions carry harmony support.
+  // Keep monochromatic and soft-blush exceptions unchanged.
+  const secondaryActionHue = !isPop && !softFamilyActionSeed && !seedProfile.isNeutral
+    ? wrapHue(hsl.h + brandSecondaryHueShift)
+    : actionHue;
   const actionSeedIsNeutral = seedProfile.isNeutral;
   const lightPastelActionSeed = isLight && !isPop && !softFamilyActionSeed && seedProfile.isLightPastelFamily;
   const darkPastelActionSeed = isDark && !isPop && seedProfile.isDarkPastelFamily;
@@ -680,7 +685,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     targetContrast: softFamilyActionSeed ? 3.2 : lightPastelActionSeed ? 4 : 4.2,
   });
   const lightSecondaryAction = pickActionColor({
-    hue: actionHue,
+    hue: secondaryActionHue,
     saturation: actionSeedIsNeutral ? 0 : clamp(lightActionSaturation * 0.86, 36, 78),
     preferredLightness: actionSeedIsNeutral ? 34 : 32,
     minLightness: 20,
@@ -698,7 +703,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     targetContrast: 3.4,
   });
   const darkSecondaryAction = pickActionColor({
-    hue: actionHue,
+    hue: secondaryActionHue,
     saturation: actionSeedIsNeutral ? 0 : clamp(darkActionSaturation * 0.82, 34, darkPastelActionSeed ? 80 : 76),
     preferredLightness: actionSeedIsNeutral ? 72 : darkPastelActionSeed ? 66 : 70,
     minLightness: darkPastelActionSeed ? 52 : 48,
