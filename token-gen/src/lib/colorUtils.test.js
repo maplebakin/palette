@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   blendHue,
+  blendColorsPerceptual,
+  hexToOklch,
   getContrastRatio,
   getWCAGBadge,
   hexToHsl,
@@ -45,6 +47,23 @@ describe('colorUtils', () => {
     expect(blendHue(0, 120, 0.5)).toBe(60);
     expect(blendHue(350, 20, 0.5)).toBeCloseTo(0);
     expect(blendHue(240, -210, 0.5)).toBeCloseTo(315);
+  });
+
+  it('keeps chromatic hue when blending from neutral gray', () => {
+    const violet = '#7651cc';
+    const midFromGray = blendColorsPerceptual('#808080', violet, 0.5);
+    const midToGray = blendColorsPerceptual(violet, '#808080', 0.5);
+    const targetHue = hexToOklch(violet).h;
+    for (const color of [midFromGray, midToGray]) {
+      const delta = Math.abs(((hexToOklch(color).h - targetHue + 540) % 360) - 180);
+      expect(delta).toBeLessThan(12);
+    }
+    expect(midFromGray).toBe(midToGray);
+  });
+
+  it('keeps blend endpoints unchanged', () => {
+    expect(blendColorsPerceptual('#808080', '#7651cc', 0)).toBe('#808080');
+    expect(blendColorsPerceptual('#808080', '#7651cc', 1)).toBe('#7651cc');
   });
 
   it('hexWithAlpha wraps RGB channels', () => {
