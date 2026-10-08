@@ -34,6 +34,18 @@ const SEED_GAUNTLET = [
 ];
 
 describe('generateTokens', () => {
+  it('retains muted violet character in all three variants', () => {
+    const seed = '#685779';
+    for (const variant of ['light', 'dark']) {
+      const tokens = generateTokens(seed, 'Monochromatic', variant);
+      expect(hexToHsl(tokens.brand.accent).s).toBeLessThanOrEqual(hexToHsl(seed).s + 8);
+      expect(getContrastRatio(tokens.actions['primary-foreground'], tokens.actions.primary)).toBeGreaterThanOrEqual(4.5);
+    }
+    const pop = generateTokens(seed, 'Monochromatic', 'pop', 100, { popIntensity: 130 });
+    expect(hexToHsl(pop.pop['pop-background']).s).toBeLessThan(65);
+    expect(pop.pop['original-accent']).toBe(seed);
+  });
+
   it.each(['light', 'dark'])('uses a coherent panel, overlay and hover elevation ladder in %s', (themeMode) => {
     for (const seed of SEED_GAUNTLET) {
       for (const mode of ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary']) {
