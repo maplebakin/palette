@@ -100,6 +100,23 @@ describe('TastingRoom creator-first layout', () => {
     expect(document.querySelector('.playground-contrast-summary')).toHaveTextContent(/need(s)? adjustment/);
   });
 
+  it('preserves the last real seed while a user types an incomplete #hex', () => {
+    render(<TastingRoom />);
+    const hexInput = screen.getByLabelText('Seed color hex or phrase');
+    const colorInput = screen.getByLabelText('Seed color swatch');
+    const initial = colorInput.value;
+
+    for (const fragment of ['#', '#8', '#89', '#8901', '#89012']) {
+      fireEvent.change(hexInput, { target: { value: fragment } });
+      expect(colorInput).toHaveValue(initial);
+      expect(screen.getByText(/Finish #RGB or #RRGGBB/)).toBeInTheDocument();
+    }
+
+    fireEvent.change(hexInput, { target: { value: '#890123' } });
+    expect(colorInput).toHaveValue('#890123');
+    expect(screen.queryByText(/Finish #RGB or #RRGGBB/)).not.toBeInTheDocument();
+  });
+
   it('uses a deterministic phrase seed and restores its generated palette on a fresh render', () => {
     const { unmount } = render(<TastingRoom />);
     const seedInput = screen.getByLabelText('Seed color hex or phrase');
@@ -221,6 +238,28 @@ describe('TastingRoom creator-first layout', () => {
     expect(document.querySelector('.playground-hero-colorfield').style.background).toContain('rgb(101, 67, 33)');
   });
 
+  it('confirms individual hex copies only after a successful clipboard write', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    render(<TastingRoom />);
+
+    const hex = screen.getByLabelText('Edit Accent role color').value;
+    fireEvent.click(screen.getByRole('button', { name: `Copy Accent role color ${hex.toUpperCase()}` }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(hex));
+    expect(await screen.findByRole('status')).toHaveTextContent(`Copied ${hex.toUpperCase()}`);
+  });
+
+  it('does not claim a hex was copied when the browser rejects clipboard access', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('Permission denied'));
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    render(<TastingRoom />);
+
+    const hex = screen.getByLabelText('Edit Accent role color').value;
+    fireEvent.click(screen.getByRole('button', { name: `Copy Accent role color ${hex.toUpperCase()}` }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Could not copy. Please try again.');
+    expect(screen.queryByText(`Copied ${hex.toUpperCase()}.`)).not.toBeInTheDocument();
+  });
+
   it.each(['Copy code', 'Copy share link'])('does not show success when %s is rejected by the clipboard', async (action) => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -333,6 +372,38 @@ describe('TastingRoom creator-first layout', () => {
     expect(screen.getByRole('button', { name: 'Unlock Background role' })).toBeInTheDocument();
     fireEvent.click(within(screen.getByRole('group', { name: 'Theme' })).getByRole('button', { name: /Light/ }));
     expect(screen.getByLabelText('Edit Accent role color')).toHaveValue('#abcdef');
+  });
+
+  it('does not resurrect inactive mode overrides after a seed change', () => {
+    render(<TastingRoom />);
+    fireEvent.change(screen.getByLabelText('Edit Accent role color'), { target: { value: '#123abc' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Light' }));
+    fireEvent.change(screen.getByLabelText('Edit Accent role color'), { target: { value: '#abcdef' } });
+    fireEvent.change(screen.getByLabelText('Seed color hex or phrase'), { target: { value: '#46ac55' } });
+    fireEvent.click(screen.getByRole('button', { name: /Dark/ }));
+    expect(screen.getByLabelText('Edit Accent role color').value).not.toBe('#123abc');
+  });
+
+  it('gives Surprise me new unlocked swatches rather than the last palettes', () => {
+    const randomBytes = vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation((bytes) => {
+      bytes.set([0x12, 0x34, 0x56]);
+      return bytes;
+    });
+    try {
+      render(<TastingRoom />);
+      fireEvent.click(screen.getByRole('button', { name: 'Lock Accent role' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Light' }));
+      fireEvent.change(screen.getByLabelText('Edit Accent role color'), { target: { value: '#abcdef' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Surprise me' }));
+      expect(screen.getByLabelText('Seed color swatch')).toHaveValue('#123456');
+      expect(screen.getByRole('button', { name: 'Lock Accent role' })).toBeInTheDocument();
+
+      const savedSession = JSON.parse(localStore.get('apocapalette:playground-session:v1'));
+      expect(savedSession.playground.lockedSwatches).toEqual({});
+      expect(savedSession.playground.modeStates).toEqual({});
+    } finally {
+      randomBytes.mockRestore();
+    }
   });
 
   it('saves only after browser storage succeeds and can load the saved sketch', async () => {

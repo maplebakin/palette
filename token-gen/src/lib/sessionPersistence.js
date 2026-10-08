@@ -1,7 +1,7 @@
 export const PLAYGROUND_SESSION_KEY = 'apocapalette:playground-session:v1';
 
 export const savePlaygroundSession = ({ playground, isCustom, copyCount } = {}) => {
-  if (typeof window === 'undefined' || !window.localStorage || !playground) return;
+  if (typeof window === 'undefined' || !playground) return;
 
   const payload = {
     version: 1,
@@ -11,6 +11,7 @@ export const savePlaygroundSession = ({ playground, isCustom, copyCount } = {}) 
   };
 
   try {
+    // Even reading the localStorage property can throw in restricted browsers.
     window.localStorage.setItem(PLAYGROUND_SESSION_KEY, JSON.stringify(payload));
   } catch {
     // A blocked or full browser store should never interrupt the playground.
@@ -18,7 +19,7 @@ export const savePlaygroundSession = ({ playground, isCustom, copyCount } = {}) 
 };
 
 export const loadPlaygroundSession = () => {
-  if (typeof window === 'undefined' || !window.localStorage) return null;
+  if (typeof window === 'undefined') return null;
 
   try {
     const raw = window.localStorage.getItem(PLAYGROUND_SESSION_KEY);

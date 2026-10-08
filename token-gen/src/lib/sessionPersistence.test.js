@@ -36,6 +36,15 @@ describe('playground session persistence', () => {
     });
   });
 
+  it('runs without persistence when accessing localStorage itself throws', () => {
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get: () => { throw new DOMException('Storage blocked', 'SecurityError'); },
+    });
+    expect(loadPlaygroundSession()).toBeNull();
+    expect(() => savePlaygroundSession({ playground: { baseColor: '#987f9d' } })).not.toThrow();
+  });
+
   it('round-trips playground state, custom honesty, and copy count quietly', () => {
     const playground = {
       kitId: 'ashfall-bloom',

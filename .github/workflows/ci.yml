@@ -1,0 +1,33 @@
+name: Apocapalette CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: token-gen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: token-gen/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_BASE: /palette/
+      - run: node scripts/verify-pages-build.mjs
+        env:
+          VITE_BASE: /palette/
+      - run: npm run build
+        env:
+          VITE_PRIVATE_FORGE: 'true'
