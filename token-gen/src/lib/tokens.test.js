@@ -34,6 +34,36 @@ const SEED_GAUNTLET = [
 ];
 
 describe('generateTokens', () => {
+  it.each(['light', 'dark'])('gives %s harmony presets a distinct secondary action hue', (themeMode) => {
+    const seed = '#7755bb';
+    const baseHue = hexToHsl(seed).h;
+    const cases = [
+      ['Monochromatic', 8],
+      ['Analogous', -30],
+      ['Complementary', 180],
+      ['Tertiary', 120],
+      ['Apocalypse', 180],
+    ];
+    for (const [mode, offset] of cases) {
+      const tokens = generateTokens(seed, mode, themeMode);
+      const secondary = hexToHsl(tokens.actions.secondary);
+      const expectedHue = mode === 'Monochromatic' ? (baseHue - 8 + 360) % 360 : (baseHue + offset + 360) % 360;
+      expect(hueDistance(secondary.h, expectedHue)).toBeLessThanOrEqual(3);
+      expect(tokens.actions['secondary-border']).toBe(tokens.actions.secondary);
+      expect(getContrastRatio(tokens.actions['secondary-foreground'], tokens.actions.secondary)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('preserves neutral and pale-blush secondary action behaviour across themes', () => {
+    for (const base of ['#808080', '#F7D6E0']) {
+      for (const theme of ['light', 'dark']) {
+        const mono = generateTokens(base, 'Monochromatic', theme);
+        const comp = generateTokens(base, 'Complementary', theme);
+        expect(comp.actions.secondary).toBe(mono.actions.secondary);
+      }
+    }
+  });
+
   it('gives Pop presets distinct supporting hues without replacing seed-led surfaces or CTAs', () => {
     const seed = '#7755bb';
     const modes = ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'];
