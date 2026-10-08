@@ -180,11 +180,21 @@ const getRenderedSwatches = (state, theme) => getPaletteSwatches(theme).map((swa
   };
 });
 
+// Global edits invalidate unlocked adjustments in every variant. Preserve
+// intentionally locked colors, but never revive stale overrides after a seed change.
 const markMutation = (state, patch) => ({
   ...state,
   ...patch,
   userHasMutated: state.kitId ? true : state.userHasMutated,
   swatchOverrides: {},
+  modeStates: Object.fromEntries(
+    Object.entries(state.modeStates || {}).map(([mode, saved]) => [mode, {
+      ...saved,
+      swatchOverrides: {},
+      regenerateCount: 0,
+    }]),
+  ),
+  confirmedModes: { [state.themeMode]: true },
 });
 
 const setTokenValue = (tokens, path, value) => {
@@ -470,7 +480,12 @@ const TastingRoom = () => {
         baseColor: seed,
         baseInput: seed,
         regenerateCount: 0,
+        hueNudge: 0,
+        satNudge: 0,
+        lockedSwatches: {},
         swatchOverrides: {},
+        modeStates: {},
+        confirmedModes: { [current.themeMode]: true },
         userHasMutated: true,
         isChaosMinted: true,
         chaosIndex: current.chaosIndex + 1,
