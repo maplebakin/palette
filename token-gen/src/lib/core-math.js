@@ -258,9 +258,12 @@ export const blendColorsPerceptual = (hex1, hex2, weight = 0) => {
   const t = Math.max(0, Math.min(1, weight ?? 0));
   const colorA = hexToOklch(normalizeHex(hex1));
   const colorB = hexToOklch(normalizeHex(hex2));
+  // Near-neutral colors have no stable hue: borrow the chromatic partner's hue
+  // instead of rotating the blend toward an arbitrary zero-degree red.
+  const achromaticThreshold = 0.005;
   const preferredHue = colorA.c >= colorB.c ? colorA.h : colorB.h;
-  const h1 = Number.isFinite(colorA.h) ? colorA.h : preferredHue;
-  const h2 = Number.isFinite(colorB.h) ? colorB.h : preferredHue;
+  const h1 = colorA.c < achromaticThreshold ? preferredHue : colorA.h;
+  const h2 = colorB.c < achromaticThreshold ? preferredHue : colorB.h;
 
   const l = colorA.l + ((colorB.l - colorA.l) * t);
   const c = Math.max(0, colorA.c + ((colorB.c - colorA.c) * t));
