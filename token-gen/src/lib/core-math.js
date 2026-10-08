@@ -241,13 +241,17 @@ const oklchToLinearRgb = ({ l, c, h }) => {
 };
 
 export const oklchToHex = ({ l, c, h }) => {
-  const colour = { l: clamp01(l), c: Math.max(0, c), h: wrapHue(h) };
+  const colour = {
+    l: clamp01(Number.isFinite(l) ? l : 0),
+    c: Math.max(0, Number.isFinite(c) ? c : 0),
+    h: wrapHue(Number.isFinite(h) ? h : 0),
+  };
   const inGamut = (chroma) => oklchToLinearRgb({ ...colour, c: chroma })
     .every(channel => channel >= -1e-7 && channel <= 1 + 1e-7);
   if (!inGamut(colour.c)) {
     let low = 0;
     let high = colour.c;
-    for (let i = 0; i < 16; i += 1) {
+    for (let i = 0; i < 22; i += 1) {
       const mid = (low + high) / 2;
       if (inGamut(mid)) low = mid; else high = mid;
     }
@@ -271,7 +275,7 @@ export const solveContrast = (colour, backgrounds, target, preferLight = false) 
       let bad = candidate.l;
       let result = oklchToHex({ ...candidate, l: good });
       if (!passes(result)) continue;
-      for (let i = 0; i < 16; i += 1) {
+      for (let i = 0; i < 22; i += 1) {
         const mid = (good + bad) / 2;
         const hex = oklchToHex({ ...candidate, l: mid });
         if (passes(hex)) { good = mid; result = hex; } else bad = mid;
@@ -336,12 +340,19 @@ export const generateRolePalette = (seedHex, harmony = 'Monochromatic', theme = 
  * @returns {string} Blended hex color
  */
 export const blendColorsPerceptual = (hex1, hex2, weight = 0) => {
-  const t = Math.max(0, Math.min(1, weight ?? 0));
+  const t = Number.isFinite(weight) ? clamp01(weight) : 0;
+  // Preserve exact input colours at the ends of the blend; round-tripping
+  // through OKLCH can subtly change an authored seed by a channel value.
+  if (t === 0) return normalizeHex(hex1);
+  if (t === 1) return normalizeHex(hex2);
   const colorA = hexToOklch(normalizeHex(hex1));
   const colorB = hexToOklch(normalizeHex(hex2));
+  // Near-neutral colors have no stable hue: borrow the chromatic partner's hue
+  // instead of rotating the blend toward an arbitrary zero-degree red.
+  const achromaticThreshold = 0.005;
   const preferredHue = colorA.c >= colorB.c ? colorA.h : colorB.h;
-  const h1 = Number.isFinite(colorA.h) ? colorA.h : preferredHue;
-  const h2 = Number.isFinite(colorB.h) ? colorB.h : preferredHue;
+  const h1 = colorA.c < achromaticThreshold ? preferredHue : colorA.h;
+  const h2 = colorB.c < achromaticThreshold ? preferredHue : colorB.h;
 
   const l = colorA.l + ((colorB.l - colorA.l) * t);
   const c = Math.max(0, colorA.c + ((colorB.c - colorA.c) * t));

@@ -32,6 +32,7 @@ const MoodBoard = ({
   const [generatedAt, setGeneratedAt] = useState('');
   const [requiredHex, setRequiredHex] = useState(() => normalizeHex(baseColor || '#6366f1', '#6366f1'));
   const [requiredDirty, setRequiredDirty] = useState(false);
+  const [requiredHexDraft, setRequiredHexDraft] = useState(requiredHex);
   const [showSavedMoodBoards, setShowSavedMoodBoards] = useState(false);
 
   useEffect(() => {
@@ -40,6 +41,10 @@ const MoodBoard = ({
       setRequiredHex(normalizeHex(baseColor || '#6366f1', '#6366f1'));
     }
   }, [baseColor, requiredDirty]);
+
+  useEffect(() => {
+    setRequiredHexDraft(requiredHex);
+  }, [requiredHex]);
 
   useEffect(() => {
     if (!requiredHex || clusters.length === 0) return;
@@ -57,11 +62,15 @@ const MoodBoard = ({
     }));
   }, [requiredHex, baseColor, clusters.length]);
 
-  const handleRequiredChange = (value) => {
-    const next = sanitizeHexInput(value, null);
-    if (!next) return;
-    setRequiredDirty(true);
-    setRequiredHex(next);
+  const commitRequiredHex = () => {
+    const next = sanitizeHexInput(requiredHexDraft, null);
+    if (next) {
+      setRequiredDirty(true);
+      setRequiredHex(next);
+      setRequiredHexDraft(next);
+    } else {
+      setRequiredHexDraft(requiredHex);
+    }
   };
 
   const handleRegenerate = () => {
@@ -195,8 +204,16 @@ const MoodBoard = ({
             Required hex
             <input
               type="text"
-              value={requiredHex}
-              onChange={(e) => handleRequiredChange(e.target.value)}
+              value={requiredHexDraft}
+              onChange={(e) => setRequiredHexDraft(e.target.value)}
+              onBlur={commitRequiredHex}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur();
+                if (e.key === 'Escape') {
+                  setRequiredHexDraft(requiredHex);
+                  e.currentTarget.blur();
+                }
+              }}
               className="px-2 py-1 rounded-md panel-surface-strong text-xs border focus-visible:ring-2 focus-visible:ring-[var(--panel-accent)] focus-visible:ring-offset-2"
               aria-label="Required hex color"
               maxLength={7}

@@ -1,4 +1,4 @@
-import { hexToHsl, hslToHex } from './colorUtils.js';
+import { hexToHsl, hslToHex, getContrastRatio } from './colorUtils.js';
 
 export const SEMANTIC_PALETTE_ROLES = [
   { id: 'background', name: 'Background', path: 'surfaces.background' },
@@ -68,22 +68,71 @@ const suggestionsForHarmony = (harmony, counterpoint) => {
   }
 };
 
-export const getContextualMoodSuggestions = ({ seedColor, roleColor, harmony }) => {
+const READABLE_ROLES = new Set(['text', 'heading', 'muted', 'accent']);
+
+// Keep the suggested hue, but choose the nearest readable lightness for text-facing roles.
+const readableColor = (hue, saturation, preferredLightness, background, minRatio = 4.5) => {
+  const candidate = hslToHex(hue, saturation, preferredLightness);
+  if (getContrastRatio(candidate, background) >= minRatio) return candidate;
+  let closest = null;
+  let distance = Infinity;
+  for (let lightness = 0; lightness <= 100; lightness += 1) {
+    const color = hslToHex(hue, saturation, lightness);
+    if (getContrastRatio(color, background) < minRatio) continue;
+    const delta = Math.abs(lightness - preferredLightness);
+    if (delta < distance) {
+      closest = color;
+      distance = delta;
+    }
+  }
+  return closest || candidate;
+};
+
+// Approximate visual proximity using circular hue and perceptually important tone differences.
+const colorDistance = (a, b) => {
+  const hueGap = Math.abs(((a.h - b.h + 540) % 360) - 180);
+  const hueWeight = Math.min(a.s, b.s) < 15 ? 0.1 : 0.65;
+  return Math.hypot(hueGap * hueWeight, (a.s - b.s) * 0.45, (a.l - b.l) * 1.2);
+};
+
+const wrapHue = (hue) => ((hue % 360) + 360) % 360;
+
+export const getContextualMoodSuggestions = ({ seedColor, roleColor, harmony, roleId, backgroundColor, existingSwatches = [] }) => {
   const seed = hexToHsl(seedColor);
   const role = hexToHsl(roleColor || seedColor);
   const anchor = role.s < 18 ? seed : role;
   const counterpoint = counterpointFor(anchor.h);
 
+  const occupied = existingSwatches
+    .filter(({ id, color }) => id !== roleId && /^#[0-9a-f]{6}$/i.test(color || ''))
+    .map(({ color }) => hexToHsl(color));
+
   return suggestionsForHarmony(harmony, counterpoint).map((suggestion, index) => {
     const source = suggestion.source === 'seed' ? seed : anchor;
+    const hue = ((source.h + (suggestion.offset || 0)) % 360 + 360) % 360;
+    const saturation = clamp(source.s + (suggestion.saturationShift || 0), 22, 92);
+    const lightness = clamp(source.l + (suggestion.lightnessShift || 0), 30, 78);
+    const mustBeReadable = READABLE_ROLES.has(roleId) && /^#[0-9a-f]{6}$/i.test(backgroundColor || '');
+    const resolveColor = (nextHue) => mustBeReadable
+      ? readableColor(nextHue, saturation, lightness, backgroundColor)
+      : hslToHex(nextHue, saturation, lightness);
+    // Try nearby variations only when a candidate looks too much like an existing swatch.
+    // Keep changes small so the selected harmony remains recognizable.
+    const options = [0, -12, 12, -24, 24].map((offset) => {
+      const color = resolveColor(wrapHue(hue + offset));
+      const hsl = hexToHsl(color);
+      const nearest = occupied.length
+        ? Math.min(...occupied.map((existing) => colorDistance(hsl, existing)))
+        : Infinity;
+      return { color, nearest };
+    });
+    const best = options[0].nearest >= 18 ? options[0]
+      : options.reduce((winner, option) => option.nearest > winner.nearest ? option : winner);
+    occupied.push(hexToHsl(best.color));
     return {
       id: `${suggestion.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${index}`,
       label: suggestion.label,
-      color: hslToHex(
-        source.h + (suggestion.offset || 0),
-        clamp(source.s + (suggestion.saturationShift || 0), 22, 92),
-        clamp(source.l + (suggestion.lightnessShift || 0), 30, 78),
-      ),
+      color: best.color,
     };
   });
 };

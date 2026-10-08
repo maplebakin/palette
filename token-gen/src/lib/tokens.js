@@ -203,6 +203,7 @@ const getPopSignalProfile = (hue, saturation, lightness, mode, isDark = false, p
   const paleBlush = seedProfile.isPaleBlushFamily;
   const darkChromatic = seedProfile.isDarkSeed && !trueNeutral;
   const darkBotanical = darkChromatic && seedProfile.isBotanicalFamily;
+  const mutedMidtone = seedProfile.isMuted && !darkChromatic && !mutedBotanical && !paleBlush;
   const signalHue = hue;
   const botanicalAccentHue = mutedBotanical ? wrapHue(signalHue + 8) : signalHue;
   const supportHue = signalHue;
@@ -216,6 +217,8 @@ const getPopSignalProfile = (hue, saturation, lightness, mode, isDark = false, p
       ? clamp(saturation * 2.1 + 16 + (popDelta * 14), 52, 64)
       : paleBlush
         ? clamp((saturation * 0.72) + 24 + (popDelta * 36), 58, 80)
+      : mutedMidtone
+        ? clamp(saturation * 1.25 + 14 + (popDelta * 12), 34, 58)
     : clamp(Math.max(saturation * 1.65, saturation + 18, 82) + (popDelta * 12), 74, 98);
   const fieldL = trueNeutral
     ? clamp(12 - (popDelta * 8), 10, 18)
@@ -497,6 +500,13 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     surfaceL = 92;
     borderL = 88;
   }
+  // Light and Dark get a clearer surface ladder without changing Pop or
+  // Apocalypse's bespoke tonal treatment. Keep the palette airy or deep,
+  // but make cards distinguishable from the page by more than a few points.
+  if (!isPop && !isApocalypse) {
+    bgL = isDark ? 9 : 97;
+    surfaceL = isDark ? 19 : 91;
+  }
   if (isPop && popSignalProfile) {
     bgL = popSignalProfile.popBackground.l;
     surfaceL = popSignalProfile.popSurface.l;
@@ -523,6 +533,11 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   let satNormalizer = isApocalypse ? (isDark ? 1.35 : 1.5) : (isDark ? 0.92 : 0.86);
   let secondarySat = secSat * satNormalizer * harmonyScale * accentChromaScale;
   let accentSat = accSat * satNormalizer * harmonyScale * accentChromaScale;
+  const mutedThemeSeed = !isPop && seedProfile.isMuted && !seedProfile.isSoftBlushFamily;
+  if (mutedThemeSeed) {
+    secondarySat = Math.min(secondarySat, 1.12);
+    accentSat = Math.min(accentSat, 1.12);
+  }
   const paletteMaxS = clamp(Math.max(
     hsl.s,
     hsl.s * secondarySat * 0.96,
@@ -542,8 +557,27 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const frostedPopRole = popSignalProfile?.frostedPop ?? { h: popSignalHue, s: clamp(popFieldS * 0.9, 45, 75), l: isDark ? 30 : 86 };
   const highlightTintRole = popSignalProfile?.highlightTint ?? { h: popSignalHue, s: 16, l: isDark ? 24 : 92 };
   const skeletonBlushRole = popSignalProfile?.skeletonBlush ?? { h: popSignalHue, s: isDark ? 24 : 24, l: isDark ? 24 : 88 };
-  const stickerRole = popSignalProfile?.sticker ?? { h: wrapHue(popSignalHue + 28), s: clamp(popFieldS + 12, 55, 82), l: isDark ? 68 : 54 };
-  const stickerBorderRole = popSignalProfile?.stickerBorder ?? { h: stickerRole.h, s: stickerRole.s, l: isDark ? 76 : 98 };
+  // Pop remains seed-led: harmony appears in supporting highlights, not the
+  // background, primary CTA, or original accent. Monochromatic stays unchanged.
+  const popSupportOffsets = {
+    Analogous: -30,
+    Complementary: 170,
+    Tertiary: 120,
+    Apocalypse: 175,
+  };
+  const popSupportOffset = isPop && !seedProfile.isNeutral
+    ? (popSupportOffsets[mode] ?? 0) * harmonyScale
+    : 0;
+  const stickerRoleBase = popSignalProfile?.sticker ?? { h: wrapHue(popSignalHue + 28), s: clamp(popFieldS + 12, 55, 82), l: isDark ? 68 : 54 };
+  const stickerBorderRoleBase = popSignalProfile?.stickerBorder ?? { h: stickerRoleBase.h, s: stickerRoleBase.s, l: isDark ? 76 : 98 };
+  const stickerRole = popSupportOffset === 0 ? stickerRoleBase : {
+    ...stickerRoleBase,
+    h: wrapHue(popSignalHue + popSupportOffset),
+  };
+  const stickerBorderRole = popSupportOffset === 0 ? stickerBorderRoleBase : {
+    ...stickerBorderRoleBase,
+    h: stickerRole.h,
+  };
   const signalTextRole = popSignalProfile?.signalText ?? { h: popSignalHue, s: clamp(popFieldS * 0.8, 38, 70), l: isDark ? 94 : 18 };
   const popBackgroundRole = popSignalProfile?.popBackground ?? { h: popSignalHue, s: popFieldS, l: popFieldL };
   const popSurfaceRole = popSignalProfile?.popSurface ?? { h: popSignalHue, s: clamp(popFieldS - 10, 68, 90), l: clamp(popFieldL + 7, 26, 43) };
@@ -635,6 +669,11 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       ? softFamilyAccentStrong
       : getColor(hsl, brandSignalHueShift, (accentSat * 0.9) + 0.04, harmonyAccentLightness + 5);
   const actionHue = softFamilyActionSeed ? hsl.h : wrapHue(hsl.h + brandSignalHueShift);
+  // Primary actions carry the signal; secondary actions carry harmony support.
+  // Keep monochromatic and soft-blush exceptions unchanged.
+  const secondaryActionHue = !isPop && !softFamilyActionSeed && !seedProfile.isNeutral
+    ? wrapHue(hsl.h + brandSecondaryHueShift)
+    : actionHue;
   const actionSeedIsNeutral = seedProfile.isNeutral;
   const lightPastelActionSeed = isLight && !isPop && !softFamilyActionSeed && seedProfile.isLightPastelFamily;
   const darkPastelActionSeed = isDark && !isPop && seedProfile.isDarkPastelFamily;
@@ -662,7 +701,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     targetContrast: softFamilyActionSeed ? 3.2 : lightPastelActionSeed ? 4 : 4.2,
   });
   const lightSecondaryAction = pickActionColor({
-    hue: actionHue,
+    hue: secondaryActionHue,
     saturation: actionSeedIsNeutral ? 0 : clamp(lightActionSaturation * 0.86, 36, 78),
     preferredLightness: actionSeedIsNeutral ? 34 : 32,
     minLightness: 20,
@@ -680,7 +719,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     targetContrast: 3.4,
   });
   const darkSecondaryAction = pickActionColor({
-    hue: actionHue,
+    hue: secondaryActionHue,
     saturation: actionSeedIsNeutral ? 0 : clamp(darkActionSaturation * 0.82, 34, darkPastelActionSeed ? 80 : 76),
     preferredLightness: actionSeedIsNeutral ? 72 : darkPastelActionSeed ? 66 : 70,
     minLightness: darkPastelActionSeed ? 52 : 48,
@@ -851,7 +890,9 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const accentHueSecondary = isPop && popSignalProfile ? accentHueMain : (hsl.h + interfaceSupportHue + 360) % 360;
   const accentHueRoot = isPop && popSignalProfile ? accentHueMain : hsl.h;
   const accentLightSteps = isDark ? [68, 60, 52, 36] : [58, 52, 46, 32];
-  const accentBaseSat = seedProfile.isNeutral ? 0 : clamp(Math.max(20, hsl.s) * accentChromaScale, 10, 100);
+  const accentBaseSat = seedProfile.isNeutral ? 0 : mutedThemeSeed
+    ? clamp(hsl.s * accentChromaScale, 10, 52)
+    : clamp(Math.max(20, hsl.s) * accentChromaScale, 10, 100);
   const accentColor = (h, satMult, l) => getColor({ h, s: accentBaseSat, l }, 0, satMult, l);
   const linkBrandSat = isDark ? 0.9 : 0.9 + (popBoost * 0.6);
   const linkTextSat = isDark ? 1 : 1 + (popBoost * 0.6);
@@ -938,6 +979,14 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     : isPop
       ? clamp(bgL + 6, 48, 74)
       : clamp(bgL + 2, 94, 98);
+  // One elevation ladder for standard Light/Dark surfaces. Pop and Apocalypse
+  // retain their purpose-built choreography and established token values.
+  const standardElevation = !isPop && !isApocalypse;
+  const elevatedPanelL = isDark ? surfaceL + 5 : Math.min(97, surfaceL + 4);
+  const overlayL = isDark ? surfaceL + 5 : Math.min(97, surfaceL + 4);
+  const overlayStrongL = isDark ? surfaceL + 10 : Math.min(99, surfaceL + 6);
+  const hoverPanelL = isDark ? surfaceL + 7 : Math.min(98, surfaceL + 5);
+  const supportingPanelL = isDark ? surfaceL + 3 : Math.min(96, surfaceL + 2);
   const tokens = {
     foundation: {
       hue: hsl.h,
@@ -966,7 +1015,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
       },
       accents: {
         "accent-1": softFamilyActionSeed ? softFamilySupport.accent1 : accentColor(accentHueMain, satNormalizer * accSat * 0.9, accentLightSteps[0]),
-        "accent-2": softFamilyActionSeed ? softFamilySupport.accent2 : accentColor(accentHueSecondary, satNormalizer * secSat * 0.98, accentLightSteps[1]),
+        "accent-2": softFamilyActionSeed ? softFamilySupport.accent2 : accentColor(isPop && popSupportOffset !== 0 ? stickerRole.h : accentHueSecondary, satNormalizer * secSat * 0.98, accentLightSteps[1]),
         "accent-3": softFamilyActionSeed ? softFamilySupport.accent3 : accentColor(accentHueRoot, satNormalizer * accSat * 1.05, accentLightSteps[2]),
         "accent-ink": softFamilyActionSeed ? softFamilySupport.accentInk : accentColor(accentHueMain, satNormalizer * accSat * 1.2, accentLightSteps[3]),
       },
@@ -1074,7 +1123,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
 
     cards: {
       "card-panel-surface": getColor(mediumSurfaceBase, 0, 1, surfaceL),
-      "card-panel-surface-strong": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 5 : Math.min(97, surfaceL + (isPop ? 2 : 4))),
+      "card-panel-surface-strong": getColor(mediumSurfaceBase, 0, 1, standardElevation ? elevatedPanelL : (isDark ? surfaceL + 5 : Math.min(97, surfaceL + (isPop ? 2 : 4)))),
       "card-panel-border": getColor(mediumSurfaceBase, 0, 1, borderL),
       "card-panel-border-soft": getColor(mediumSurfaceBase, 0, 1, isDark ? borderL - 5 : Math.min(96, borderL + 6)),
       "card-panel-border-strong": getColor(surfaceBase, 0, 1, isDark ? borderL + 15 : (isPop ? clamp(borderL + 14, 40, 70) : 85)),
@@ -1177,8 +1226,8 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
 
     aliases: {
       "surface-panel-primary": getColor(mediumSurfaceBase, 0, 1, surfaceL),
-      "surface-panel-secondary": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 4 : surfaceL - 2),
-      "surface-card-hover": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 6 : surfaceL - 4),
+      "surface-panel-secondary": getColor(mediumSurfaceBase, 0, 1, standardElevation ? supportingPanelL : (isDark ? surfaceL + 4 : surfaceL - 2)),
+      "surface-card-hover": getColor(mediumSurfaceBase, 0, 1, standardElevation ? hoverPanelL : (isDark ? surfaceL + 6 : surfaceL - 4)),
       "surface-muted": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL - 2 : surfaceL + 2),
       "border-purple-subtle": getColor(hsl, interfaceAccentHue, purpleBorderSubtleSat, borderL),
       "border-purple-medium": getColor(hsl, interfaceAccentHue, purpleBorderMediumSat, isDark ? borderL + 8 : borderL - 8),
@@ -1192,8 +1241,8 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
         : getColor(hsl, interfaceAccentHue, accentTextStrongSat, isDark ? 88 : 34),
       "accent-purple-strong": accentStrong,
       "accent-purple-soft": getColor(hsl, interfaceAccentHue, 0.7, isDark ? 75 : 70),
-      "overlay-panel": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 2 : surfaceL),
-      "overlay-panel-strong": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 6 : surfaceL - 2),
+      "overlay-panel": getColor(mediumSurfaceBase, 0, 1, standardElevation ? overlayL : (isDark ? surfaceL + 2 : surfaceL)),
+      "overlay-panel-strong": getColor(mediumSurfaceBase, 0, 1, standardElevation ? overlayStrongL : (isDark ? surfaceL + 6 : surfaceL - 2)),
       "focus-ring": isPop
         ? hslToHex(stickerRole.h, stickerRole.s, isDark ? clamp(stickerRole.l + 2, 66, 76) : clamp(stickerRole.l - 8, 38, 52))
         : getColor(hsl, interfaceAccentHue, focusRingSat, isDark ? 40 : 68 + (popBoost * 4)),

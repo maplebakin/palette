@@ -42,6 +42,133 @@ const assertSemanticReadability = tokens => {
 };
 
 describe('generateTokens', () => {
+  it('retains muted violet character in all three variants', () => {
+    const seed = '#685779';
+    for (const variant of ['light', 'dark']) {
+      const tokens = generateTokens(seed, 'Monochromatic', variant);
+      expect(hexToHsl(tokens.brand.accent).s).toBeLessThanOrEqual(hexToHsl(seed).s + 8);
+      expect(getContrastRatio(tokens.actions['primary-foreground'], tokens.actions.primary)).toBeGreaterThanOrEqual(4.5);
+    }
+    const pop = generateTokens(seed, 'Monochromatic', 'pop', 100, { popIntensity: 130 });
+    expect(hexToHsl(pop.pop['pop-background']).s).toBeLessThan(65);
+    expect(pop.pop['original-accent']).toBe(seed);
+  });
+
+  it.each(['light', 'dark'])('uses a coherent panel, overlay and hover elevation ladder in %s', (themeMode) => {
+    for (const seed of SEED_GAUNTLET) {
+      for (const mode of ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary']) {
+        const tokens = generateTokens(seed, mode, themeMode);
+        const value = (path) => hexToHsl(path.split('.').reduce((obj, key) => obj[key], tokens)).l;
+        const panel = value('cards.card-panel-surface');
+        const secondary = value('aliases.surface-panel-secondary');
+        const elevated = value('cards.card-panel-surface-strong');
+        const overlay = value('aliases.overlay-panel');
+        const overlayStrong = value('aliases.overlay-panel-strong');
+        const hover = value('aliases.surface-card-hover');
+        expect(secondary).toBeGreaterThan(panel);
+        expect(elevated).toBeGreaterThan(secondary);
+        expect(overlay).toBeGreaterThan(secondary);
+        expect(overlayStrong).toBeGreaterThan(overlay);
+        expect(hover).toBeGreaterThan(elevated);
+        expect(getContrastRatio(tokens.typography['text-body'], tokens.surfaces.background)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it('does not change the existing Pop and Apocalypse elevation choreography', () => {
+    for (const mode of ['pop', 'dark', 'light']) {
+      const harmony = mode === 'pop' ? 'Analogous' : 'Apocalypse';
+      const tokens = generateTokens('#7755bb', harmony, mode);
+      const surface = hexToHsl(tokens.cards['card-panel-surface']).l;
+      const secondary = hexToHsl(tokens.aliases['surface-panel-secondary']).l;
+      const overlay = hexToHsl(tokens.aliases['overlay-panel']).l;
+      expect(secondary).toBeCloseTo(surface + (mode === 'dark' ? 4 : -2), 0);
+      expect(overlay).toBeCloseTo(surface + (mode === 'dark' ? 2 : 0), 0);
+    }
+  });
+
+  it.each(['light', 'dark'])('maintains a distinct page-to-card tonal ladder in %s', (themeMode) => {
+    for (const seed of SEED_GAUNTLET) {
+      for (const harmony of ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary']) {
+        const tokens = generateTokens(seed, harmony, themeMode);
+        const backgroundL = hexToHsl(tokens.surfaces.background).l;
+        const panelL = hexToHsl(tokens.cards['card-panel-surface']).l;
+        const elevatedL = hexToHsl(tokens.cards['card-panel-surface-strong']).l;
+        if (themeMode === 'dark') {
+          expect(panelL).toBeGreaterThanOrEqual(backgroundL + 8);
+          expect(elevatedL).toBeGreaterThan(panelL);
+        } else {
+          expect(panelL).toBeLessThanOrEqual(backgroundL - 5);
+          expect(elevatedL).toBeGreaterThan(panelL);
+        }
+        expect(getContrastRatio(tokens.typography['text-body'], tokens.surfaces.background)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it('keeps Apocalypse and Pop custom tonal settings intact', () => {
+    const seed = '#7755bb';
+    const pop = generateTokens(seed, 'Analogous', 'pop');
+    const apocalypse = generateTokens(seed, 'Apocalypse', 'dark');
+    expect(hexToHsl(pop.surfaces.background).l).toBeGreaterThan(12);
+    expect(hexToHsl(apocalypse.surfaces.background).l).toBeLessThan(6);
+  });
+
+  it.each(['light', 'dark'])('gives %s harmony presets a distinct secondary action hue', (themeMode) => {
+    const seed = '#7755bb';
+    const baseHue = hexToHsl(seed).h;
+    const cases = [
+      ['Monochromatic', 8],
+      ['Analogous', -30],
+      ['Complementary', 180],
+      ['Tertiary', 120],
+      ['Apocalypse', 180],
+    ];
+    for (const [mode, offset] of cases) {
+      const tokens = generateTokens(seed, mode, themeMode);
+      const secondary = hexToHsl(tokens.actions.secondary);
+      const expectedHue = mode === 'Monochromatic' ? (baseHue - 8 + 360) % 360 : (baseHue + offset + 360) % 360;
+      expect(hueDistance(secondary.h, expectedHue)).toBeLessThanOrEqual(3);
+      expect(tokens.actions['secondary-border']).toBe(tokens.actions.secondary);
+      expect(getContrastRatio(tokens.actions['secondary-foreground'], tokens.actions.secondary)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('keeps grayscale secondary actions neutral and soft-blush exceptions stable', () => {
+    for (const theme of ['light', 'dark']) {
+      const gray = generateTokens('#808080', 'Complementary', theme);
+      expect(hexToHsl(gray.actions.secondary).s).toBe(0);
+      const mono = generateTokens('#F7D6E0', 'Monochromatic', theme);
+      const comp = generateTokens('#F7D6E0', 'Complementary', theme);
+      expect(comp.actions.secondary).toBe(mono.actions.secondary);
+    }
+  });
+
+  it('gives Pop presets distinct supporting hues without replacing seed-led surfaces or CTAs', () => {
+    const seed = '#7755bb';
+    const modes = ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse'];
+    const outputs = modes.map((mode) => generateTokens(seed, mode, 'pop', 100, { popIntensity: 130 }));
+    const seedHue = hexToHsl(seed).h;
+    const expectedOffsets = [0, -30, 170, 120, 175];
+    outputs.forEach((tokens, index) => {
+      const supportHue = hexToHsl(tokens.pop['sticker-accent']).h;
+      expect(hueDistance(supportHue, (seedHue + expectedOffsets[index] + 360) % 360)).toBeLessThanOrEqual(3);
+      expect(tokens.brand.accent).toBe(seed);
+      expect(tokens.pop['pop-accent']).toBe(seed);
+      expect(tokens.actions.secondary).toBe(tokens.pop['sticker-border']);
+      expect(tokens.entity['entity-highlight-border']).toBe(tokens.pop['sticker-border']);
+      expect(getContrastRatio(tokens.pop['pop-foreground'], tokens.pop['pop-background'])).toBeGreaterThanOrEqual(4.5);
+      expect(getContrastRatio(tokens.actions['primary-foreground'], tokens.actions.primary)).toBeGreaterThanOrEqual(4.5);
+    });
+    expect(new Set(outputs.map((tokens) => tokens.pop['sticker-accent'])).size).toBe(5);
+  });
+
+  it('keeps neutral Pop support hue-neutral across harmony modes', () => {
+    const mono = generateTokens('#808080', 'Monochromatic', 'pop');
+    const complement = generateTokens('#808080', 'Complementary', 'pop');
+    expect(complement.pop['sticker-accent']).toBe(mono.pop['sticker-accent']);
+  });
+
   it('produces distinct brand colors per harmony mode', () => {
     const base = '#3366ff';
     const lightMono = generateTokens(base, 'Monochromatic', 'light', 100);

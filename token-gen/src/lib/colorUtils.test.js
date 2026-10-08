@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   blendHue,
+  blendColorsPerceptual,
+  hexToOklch,
+  oklchToHex,
   getContrastRatio,
   getWCAGBadge,
   hexToHsl,
@@ -45,6 +48,53 @@ describe('colorUtils', () => {
     expect(blendHue(0, 120, 0.5)).toBe(60);
     expect(blendHue(350, 20, 0.5)).toBeCloseTo(0);
     expect(blendHue(240, -210, 0.5)).toBeCloseTo(315);
+  });
+
+  it('keeps chromatic hue when blending from neutral gray', () => {
+    const violet = '#7651cc';
+    const midFromGray = blendColorsPerceptual('#808080', violet, 0.5);
+    const midToGray = blendColorsPerceptual(violet, '#808080', 0.5);
+    const targetHue = hexToOklch(violet).h;
+    for (const color of [midFromGray, midToGray]) {
+      const delta = Math.abs(((hexToOklch(color).h - targetHue + 540) % 360) - 180);
+      expect(delta).toBeLessThan(12);
+    }
+    expect(midFromGray).toBe(midToGray);
+  });
+
+  it('keeps blend endpoints unchanged', () => {
+    expect(blendColorsPerceptual('#808080', '#7651cc', 0)).toBe('#808080');
+    expect(blendColorsPerceptual('#808080', '#7651cc', 1)).toBe('#7651cc');
+  });
+
+  it('preserves exact blend endpoints and clamps out-of-range weights', () => {
+    const a = '#123456';
+    const b = '#f7d6e0';
+    expect(blendColorsPerceptual(a, b, 0)).toBe(a);
+    expect(blendColorsPerceptual(a, b, 1)).toBe(b);
+    expect(blendColorsPerceptual(a, b, -50)).toBe(a);
+    expect(blendColorsPerceptual(a, b, 50)).toBe(b);
+    expect(blendColorsPerceptual(a, b, Number.NaN)).toBe(a);
+    expect(blendColorsPerceptual(a, b, Infinity)).toBe(a);
+    expect(blendColorsPerceptual('#ABC', b, 0)).toBe('#aabbcc');
+  });
+
+  it('maps out-of-gamut OKLCH colours by chroma instead of shifting hue', () => {
+    for (const hue of [35, 140, 250, 320]) {
+      const hex = oklchToHex({ l: 0.65, c: 0.45, h: hue });
+      expect(hex).toMatch(/^#[0-9a-f]{6}$/);
+      const actual = hexToOklch(hex);
+      const hueGap = Math.abs(((actual.h - hue + 540) % 360) - 180);
+      expect(hueGap).toBeLessThan(3);
+      expect(Math.abs(actual.l - 0.65)).toBeLessThan(0.015);
+      expect(actual.c).toBeLessThan(0.45);
+    }
+  });
+
+  it('keeps neutral OKLCH values grayscale', () => {
+    const color = oklchToHex({ l: 0.5, c: 0, h: 250 });
+    const channels = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
+    expect(Math.max(...channels) - Math.min(...channels)).toBeLessThanOrEqual(1);
   });
 
   it('hexWithAlpha wraps RGB channels', () => {

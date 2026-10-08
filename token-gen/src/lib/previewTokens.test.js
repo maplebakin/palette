@@ -5,6 +5,7 @@ import {
   buildPreviewPaletteRow,
   buildPreviewQuickEssentials,
   buildPreviewRoleTokens,
+  getPreviewSceneInk,
 } from './previewTokens.js';
 
 const QA_SEEDS = [
@@ -22,6 +23,23 @@ const QA_SEEDS = [
 ];
 
 describe('preview token display mapping', () => {
+  it.each(['light', 'dark', 'pop'])('keeps scene ink readable in %s across harmonies and seeds', (themeMode) => {
+    for (const seed of QA_SEEDS) {
+      for (const harmony of ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary', 'Apocalypse']) {
+        const roles = buildPreviewRoleTokens(generateTokens(seed, harmony, themeMode), themeMode);
+        const ink = getPreviewSceneInk(roles);
+        expect(getContrastRatio(ink.body, roles.surface)).toBeGreaterThanOrEqual(4.5);
+        expect(getContrastRatio(ink.muted, roles.surface)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it('falls back to legible ink when a light scene has inherited pale frame text', () => {
+    const ink = getPreviewSceneInk({ surface: '#e9e6ea', text: '#fff9f3', mutedText: '#f8f7f8' });
+    expect(getContrastRatio(ink.body, '#e9e6ea')).toBeGreaterThanOrEqual(4.5);
+    expect(getContrastRatio(ink.muted, '#e9e6ea')).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('uses the visual preview roles as displayed hex source of truth for StrawberryMilk Light', () => {
     const tokens = generateTokens('#FF9DB8', 'Monochromatic', 'light', 100);
     const preview = buildPreviewRoleTokens(tokens, 'light');

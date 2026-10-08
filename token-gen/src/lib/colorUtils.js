@@ -258,33 +258,57 @@ export const hexToOklch = (hex) => {
 };
 
 export const oklchToHex = ({ l, c, h }) => {
-  const hr = (wrapHue(h) * Math.PI) / 180;
-  const a = Math.cos(hr) * Math.max(0, c);
-  const b = Math.sin(hr) * Math.max(0, c);
+  const lightness = clamp01(Number.isFinite(l) ? l : 0);
+  const chroma = Math.max(0, Number.isFinite(c) ? c : 0);
+  const radians = (wrapHue(Number.isFinite(h) ? h : 0) * Math.PI) / 180;
 
-  const l_ = l + (0.3963377774 * a) + (0.2158037573 * b);
-  const m_ = l - (0.1055613458 * a) - (0.0638541728 * b);
-  const s_ = l - (0.0894841775 * a) - (1.291485548 * b);
-
-  const lr = l_ * l_ * l_;
-  const lg = m_ * m_ * m_;
-  const lb = s_ * s_ * s_;
-
-  const r = toSrgb((4.0767416621 * lr) - (3.3077115913 * lg) + (0.2309699292 * lb));
-  const g = toSrgb((-1.2684380046 * lr) + (2.6097574011 * lg) - (0.3413193965 * lb));
-  const bChannel = toSrgb((-0.0041960863 * lr) - (0.7034186147 * lg) + (1.707614701 * lb));
-
-  const toHex = (value) => toByte(value).toString(16).padStart(2, '0');
-  return `#${toHex(r)}${toHex(g)}${toHex(bChannel)}`;
+  // Map out-of-gamut colours by reducing chroma, not independently clipping
+  // RGB channels, which can unintentionally shift hue.
+  const linearRgb = (value) => {
+    const a = Math.cos(radians) * value;
+    const b = Math.sin(radians) * value;
+    const l_ = lightness + (0.3963377774 * a) + (0.2158037573 * b);
+    const m_ = lightness - (0.1055613458 * a) - (0.0638541728 * b);
+    const s_ = lightness - (0.0894841775 * a) - (1.291485548 * b);
+    const lr = l_ * l_ * l_;
+    const lg = m_ * m_ * m_;
+    const lb = s_ * s_ * s_;
+    return [
+      (4.0767416621 * lr) - (3.3077115913 * lg) + (0.2309699292 * lb),
+      (-1.2684380046 * lr) + (2.6097574011 * lg) - (0.3413193965 * lb),
+      (-0.0041960863 * lr) - (0.7034186147 * lg) + (1.707614701 * lb),
+    ];
+  };
+  const fitsSrgb = (rgb) => rgb.every((channel) => channel >= -1e-7 && channel <= 1 + 1e-7);
+  let rgb = linearRgb(chroma);
+  if (!fitsSrgb(rgb)) {
+    let low = 0;
+    let high = chroma;
+    for (let i = 0; i < 22; i += 1) {
+      const mid = (low + high) / 2;
+      if (fitsSrgb(linearRgb(mid))) low = mid;
+      else high = mid;
+    }
+    rgb = linearRgb(low);
+  }
+  const toHex = (channel) => toByte(toSrgb(channel)).toString(16).padStart(2, '0');
+  return `#${rgb.map(toHex).join('')}`;
 };
 
 export const blendColorsPerceptual = (hex1, hex2, weight = 0) => {
-  const t = Math.max(0, Math.min(1, weight ?? 0));
+  const t = Number.isFinite(weight) ? clamp01(weight) : 0;
+  // Preserve exact input colours at the ends of the blend; round-tripping
+  // through OKLCH can subtly change an authored seed by a channel value.
+  if (t === 0) return normalizeHex(hex1);
+  if (t === 1) return normalizeHex(hex2);
   const colorA = hexToOklch(normalizeHex(hex1));
   const colorB = hexToOklch(normalizeHex(hex2));
+  // Near-neutral colors have no stable hue: borrow the chromatic partner's hue
+  // instead of rotating the blend toward an arbitrary zero-degree red.
+  const achromaticThreshold = 0.005;
   const preferredHue = colorA.c >= colorB.c ? colorA.h : colorB.h;
-  const h1 = Number.isFinite(colorA.h) ? colorA.h : preferredHue;
-  const h2 = Number.isFinite(colorB.h) ? colorB.h : preferredHue;
+  const h1 = colorA.c < achromaticThreshold ? preferredHue : colorA.h;
+  const h2 = colorB.c < achromaticThreshold ? preferredHue : colorB.h;
 
   const l = colorA.l + ((colorB.l - colorA.l) * t);
   const c = Math.max(0, colorA.c + ((colorB.c - colorA.c) * t));
