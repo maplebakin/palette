@@ -33,15 +33,20 @@ const hmrConfig = hmrHost || hmrPort || hmrClientPort || hmrProtocol
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
-  const appShellPath = env.VITE_PRIVATE_FORGE === 'true'
+  const privateForge = env.VITE_PRIVATE_FORGE === 'true';
+  const appShellPath = privateForge
     ? path.resolve(process.cwd(), 'src/components/AppShell.jsx')
     : path.resolve(process.cwd(), 'src/components/PublicAppShell.jsx');
+  const projectProviderPath = privateForge
+    ? path.resolve(process.cwd(), 'src/context/ProjectProvider.jsx')
+    : path.resolve(process.cwd(), 'src/context/PublicProjectProvider.jsx');
 
   return {
     plugins: [react()],
     resolve: {
       alias: {
         '@app-shell': appShellPath,
+        '@project-provider': projectProviderPath,
       },
     },
     base: normalizeBasePath(process.env.VITE_BASE),
