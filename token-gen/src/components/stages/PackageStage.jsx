@@ -26,7 +26,8 @@ const PackageStage = ({
   canvaPrintHexes,
   onDownloadThemePack,
   onDownloadMarketplaceKit,
-  canExport = Boolean(onDownloadThemePack || onDownloadMarketplaceKit),
+  onDownloadWitchClickKit,
+  canExport = Boolean(onDownloadThemePack || onDownloadMarketplaceKit || onDownloadWitchClickKit),
   showPrintTools = false,
   variantStatus,
 }) => {
@@ -41,6 +42,10 @@ const PackageStage = ({
   const [selectedModes, setSelectedModes] = useState(() => [...availableModes]);
   const [exportSuccessMessage, setExportSuccessMessage] = useState('');
   const [kitSuccessMessage, setKitSuccessMessage] = useState('');
+  const [witchClickVersion, setWitchClickVersion] = useState('1.0.0');
+  const [witchClickMessage, setWitchClickMessage] = useState('');
+  const [witchClickPending, setWitchClickPending] = useState(false);
+  const witchClickReady = availableModes.includes('dark') && availableModes.includes('light');
   const previousAvailableModes = useRef(availableModes);
   const exportCopy = buildThemePackSelectionCopy({ availableModes, missingModes }, selectedModes);
   const coverageKey = `${availableModes.join('|')}|${missingModes.join('|')}`;
@@ -208,6 +213,30 @@ const PackageStage = ({
                   {kitSuccessMessage}
                 </p>
               )}
+            </div>
+          )}
+          {onDownloadWitchClickKit && (
+            <div className="flex min-w-[240px] flex-1 flex-col gap-2">
+              <label className="text-xs panel-text">
+                WitchClick kit version
+                <input aria-label="WitchClick kit version" value={witchClickVersion}
+                  onChange={event => { setWitchClickVersion(event.target.value); setWitchClickMessage(''); }}
+                  className="ml-2 rounded border panel-surface-soft px-2 py-1" />
+              </label>
+              <button type="button" disabled={!witchClickReady || witchClickPending}
+                className="w-fit rounded-lg border panel-surface-strong px-4 py-2 text-xs font-bold disabled:opacity-50"
+                onClick={async () => {
+                  setWitchClickPending(true); setWitchClickMessage('');
+                  try {
+                    const success = await onDownloadWitchClickKit(witchClickVersion);
+                    setWitchClickMessage(success ? 'WitchClick kit downloaded. Ingestion shelves it; it does not activate it.' : 'WitchClick export failed. Check the version and confirmed variants.');
+                  } catch (error) { setWitchClickMessage(error.message || 'WitchClick export failed.'); }
+                  finally { setWitchClickPending(false); }
+                }}>Download WitchClick kit</button>
+              <p className="text-xs panel-muted">
+                {witchClickReady ? 'Confirmed Dark → midnight and Light → dawn. Pop is excluded. Use a new version for each ingestion.' : 'Confirm both Dark and Light in Refine first. Pop cannot replace Light.'}
+              </p>
+              {witchClickMessage && <p role="status" className="text-xs panel-text">{witchClickMessage}</p>}
             </div>
           )}
         </div>

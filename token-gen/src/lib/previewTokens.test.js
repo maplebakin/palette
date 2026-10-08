@@ -29,16 +29,16 @@ describe('preview token display mapping', () => {
     const previewRow = buildPreviewPaletteRow(preview);
 
     expect(quickEssentials).toEqual([
-      { key: 'Preview shell', color: '#f7f2f3' },
+      { key: 'Preview shell', color: tokens.surfaces.background },
       { key: 'Preview card', color: '#fbf9f9' },
-      { key: 'Primary action', color: '#db4d75' },
-      { key: 'Primary text', color: '#0b0b10' },
+      { key: 'Primary action', color: tokens.actions.primary },
+      { key: 'Primary text', color: tokens.actions['primary-foreground'] },
       { key: 'Secondary', color: '#80233e' },
       { key: 'Entity fill', color: '#f5eff1' },
       { key: 'Entity accent', color: '#972b49' },
       { key: 'Entity text', color: '#612e3c' },
       { key: 'Entity border', color: '#ddb6c1' },
-      { key: 'Body text', color: '#46393d' },
+      { key: 'Body text', color: tokens.typography['text-body'] },
     ]);
     expect(previewRow).toEqual({
       title: 'Preview UI Roles',
@@ -62,9 +62,9 @@ describe('preview token display mapping', () => {
     const quickEssentials = buildPreviewQuickEssentials(preview);
 
     expect(quickEssentials).toEqual(expect.arrayContaining([
-      { key: 'Preview shell', color: '#231016' },
-      { key: 'Preview card', color: '#3a1821' },
-      { key: 'Primary action', color: '#de547b' },
+      { key: 'Preview shell', color: tokens.surfaces.background },
+      { key: 'Preview card', color: tokens.cards['card-panel-surface'] },
+      { key: 'Primary action', color: tokens.actions.primary },
       { key: 'Secondary', color: '#d97893' },
       { key: 'Entity fill', color: '#5c233b' },
       { key: 'Entity accent', color: '#e6b3c8' },
@@ -106,9 +106,9 @@ describe('preview token display mapping', () => {
     const preview = buildPreviewRoleTokens(tokens, 'light');
     const quickEssentials = buildPreviewQuickEssentials(preview);
 
-    expect(preview.cta).toBe('#6150e2');
     expect(preview.cta).toBe(tokens.actions.primary);
-    expect(quickEssentials.find(({ key }) => key === 'Primary action')?.color).toBe('#6150e2');
+    expect(preview.cta).toBe(tokens.actions.primary);
+    expect(quickEssentials.find(({ key }) => key === 'Primary action')?.color).toBe(tokens.actions.primary);
     expect(quickEssentials.find(({ key }) => key === 'Secondary')?.color).toBe(preview.secondaryActionBorder);
   });
 

@@ -122,10 +122,7 @@ describe('ValidateStage', () => {
     [
       '#FF9DB8',
       {
-        shellBg: '#f7f2f3',
         cardBg: '#fbf9f9',
-        cta: '#db4d75',
-        ctaForeground: '#0b0b10',
         secondaryActionBorder: '#80233e',
         secondaryActionForeground: '#80233e',
         entityHighlightBg: '#f5eff1',
@@ -137,10 +134,7 @@ describe('ValidateStage', () => {
     [
       '#F7D6E0',
       {
-        shellBg: '#f7f3f4',
         cardBg: '#faf9fa',
-        cta: '#d2567b',
-        ctaForeground: '#0b0b10',
         secondaryActionBorder: '#7a2941',
         secondaryActionForeground: '#7a2941',
         entityHighlightBg: '#f4f0f1',
@@ -149,12 +143,13 @@ describe('ValidateStage', () => {
         entityHighlightBorder: '#d6bcc4',
       },
     ],
-  ])('locks approved Light preview token mapping for %s', (base, expected) => {
+  ])('maps generated Light roles and retained entity tokens for %s', (base, expected) => {
     const tokens = generateTokens(base, 'Monochromatic', 'light', 100);
     const preview = buildPreviewRoleTokens(tokens, 'light');
 
     expect(preview).toEqual(expect.objectContaining(expected));
     expect(preview.cta).toBe(tokens.actions.primary);
+    expect(preview.ctaForeground).toBe(tokens.actions['primary-foreground']);
     expect(preview.cardBg).toBe(tokens.entity['entity-card-surface']);
     expect(preview.shellBg).toBe(tokens.surfaces.background);
     expect(preview.entityHighlightBg).toBe(tokens.entity['entity-highlight-bg']);
@@ -201,41 +196,41 @@ describe('ValidateStage', () => {
     });
   });
 
-  it('keeps Pop #F7D6E0 on the approved strawberry cream conversion mapping', () => {
+  it('keeps Pop #F7D6E0 on its generated semantic mapping', () => {
     const pop = generateTokens('#F7D6E0', 'Monochromatic', 'pop', 100, { popIntensity: 130 });
     const preview = buildPreviewRoleTokens(pop, 'pop');
 
     expect(preview).toEqual(expect.objectContaining({
-      shellBg: '#9e1941',
-      cardBg: '#c72e5c',
-      cta: '#f39bb5',
-      ctaForeground: '#0b0b10',
+      shellBg: pop.surfaces.background,
+      cardBg: pop.cards['card-panel-surface'],
+      cta: pop.actions.primary,
+      ctaForeground: pop.actions['primary-foreground'],
       secondaryActionBorder: '#ee6d93',
       secondaryActionForeground: '#f5f5f5',
       entityHighlightBg: '#f7d6e0',
       entityHighlightAccent: '#ffffff',
       entityHighlightBorder: '#ee6d93',
     }));
-    expect(pop.pop['pop-background']).toBe('#9e1941');
-    expect(pop.pop['pop-cta']).toBe('#f39bb5');
+    expect(pop.pop['pop-background']).toBe(pop.surfaces.background);
+    expect(pop.pop['pop-cta']).toBe(pop.actions.primary);
   });
 
-  it('keeps Dark #FF9DB8 on the approved rose/plum dashboard mapping', () => {
+  it('keeps Dark #FF9DB8 on its generated semantic mapping', () => {
     const dark = generateTokens('#FF9DB8', 'Monochromatic', 'dark', 100);
     const preview = buildPreviewRoleTokens(dark, 'dark');
 
     expect(preview).toEqual(expect.objectContaining({
-      shellBg: '#231016',
-      cardBg: '#3a1821',
-      cta: '#de547b',
-      ctaForeground: '#0b0b10',
+      shellBg: dark.surfaces.background,
+      cardBg: dark.cards['card-panel-surface'],
+      cta: dark.actions.primary,
+      ctaForeground: dark.actions['primary-foreground'],
       secondaryActionBorder: '#d97893',
       secondaryActionForeground: '#0b0b10',
       entityHighlightBg: '#5c233b',
       entityHighlightAccent: '#e6b3c8',
       entityHighlightBorder: '#6d4656',
     }));
-    expect(dark.actions.primary).toBe('#de547b');
+    expect(dark.actions.primary).toBe(dark.brand.cta);
     expect(dark.entity['entity-highlight-bg']).toBe('#962c58');
     expect(preview.entityHighlightBg).toBe(dark.entity['entity-card-glow']);
     expect(preview.entityHighlightBg).not.toBe(dark.entity['entity-highlight-bg']);

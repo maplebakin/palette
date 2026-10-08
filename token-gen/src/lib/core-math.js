@@ -226,25 +226,106 @@ export const hexToOklch = (hex) => {
  * @param {{l: number, c: number, h: number}} param0 - OKLCH values
  * @returns {string} Hex color string
  */
+const oklchToLinearRgb = ({ l, c, h }) => {
+  const radians = wrapHue(h) * Math.PI / 180;
+  const a = Math.cos(radians) * c;
+  const b = Math.sin(radians) * c;
+  const L = (l + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const M = (l - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const S = (l - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  return [
+    4.0767416621 * L - 3.3077115913 * M + 0.2309699292 * S,
+    -1.2684380046 * L + 2.6097574011 * M - 0.3413193965 * S,
+    -0.0041960863 * L - 0.7034186147 * M + 1.707614701 * S,
+  ];
+};
+
 export const oklchToHex = ({ l, c, h }) => {
-  const hr = (wrapHue(h) * Math.PI) / 180;
-  const a = Math.cos(hr) * Math.max(0, c);
-  const b = Math.sin(hr) * Math.max(0, c);
+  const colour = { l: clamp01(l), c: Math.max(0, c), h: wrapHue(h) };
+  const inGamut = (chroma) => oklchToLinearRgb({ ...colour, c: chroma })
+    .every(channel => channel >= -1e-7 && channel <= 1 + 1e-7);
+  if (!inGamut(colour.c)) {
+    let low = 0;
+    let high = colour.c;
+    for (let i = 0; i < 16; i += 1) {
+      const mid = (low + high) / 2;
+      if (inGamut(mid)) low = mid; else high = mid;
+    }
+    colour.c = low;
+  }
+  return '#' + oklchToLinearRgb(colour).map(channel => toByte(toSrgb(channel)).toString(16).padStart(2, '0')).join('');
+};
 
-  const l_ = l + (0.3963377774 * a) + (0.2158037573 * b);
-  const m_ = l - (0.1055613458 * a) - (0.0638541728 * b);
-  const s_ = l - (0.0894841775 * a) - (1.291485548 * b);
+/** Solve against the final quantized hex, including every surface the role occupies.
+ * Search lightness first, reducing chroma if its endpoint cannot meet the floor.
+ * Throw rather than return a failing primary pair for incompatible backgrounds.
+ */
+export const solveContrast = (colour, backgrounds, target, preferLight = false) => {
+  const passes = hex => backgrounds.every(background => getContrastRatio(hex, background) >= target);
+  for (let chroma = colour.c, attempt = 0; attempt < 10; attempt += 1, chroma *= 0.5) {
+    const candidate = { ...colour, c: attempt === 9 ? 0 : chroma };
+    const initial = oklchToHex(candidate);
+    if (passes(initial)) return initial;
+    for (const endpoint of (preferLight ? [1, 0] : [0, 1])) {
+      let good = endpoint;
+      let bad = candidate.l;
+      let result = oklchToHex({ ...candidate, l: good });
+      if (!passes(result)) continue;
+      for (let i = 0; i < 16; i += 1) {
+        const mid = (good + bad) / 2;
+        const hex = oklchToHex({ ...candidate, l: mid });
+        if (passes(hex)) { good = mid; result = hex; } else bad = mid;
+      }
+      return result;
+    }
+  }
+  throw new Error(`Cannot meet ${target}:1 contrast on the supplied surfaces`);
+};
 
-  const lr = l_ * l_ * l_;
-  const lg = m_ * m_ * m_;
-  const lb = s_ * s_ * s_;
-
-  const r = toSrgb((4.0767416621 * lr) - (3.3077115913 * lg) + (0.2309699292 * lb));
-  const g = toSrgb((-1.2684380046 * lr) + (2.6097574011 * lg) - (0.3413193965 * lb));
-  const bChannel = toSrgb((-0.0041960863 * lr) - (0.7034186147 * lg) + (1.707614701 * lb));
-
-  const toHex = (value) => toByte(value).toString(16).padStart(2, '0');
-  return `#${toHex(r)}${toHex(g)}${toHex(bChannel)}`;
+/** Seven seed-relative roles. Sliders are bounded deterministic OKLCH multipliers.
+ * Auxiliary legacy token groups are composed by tokens.js; saved overrides apply later.
+ */
+export const generateRolePalette = (seedHex, harmony = 'Monochromatic', theme = 'dark', apocalypseIntensity = 100, options = {}) => {
+  const seed = hexToOklch(seedHex);
+  const dark = theme.toLowerCase() !== 'light';
+  const pop = theme.toLowerCase() === 'pop';
+  const extreme = harmony === 'Apocalypse';
+  const scale = (value, min, max) => clamp(Number.isFinite(value) ? value : 100, min, max) / 100;
+  const spread = scale(options.harmonyIntensity, 40, 160);
+  const curve = scale(options.neutralCurve, 50, 150);
+  const strength = scale(options.accentStrength, 50, 150);
+  const popScale = scale(options.popIntensity, 60, 140);
+  const intensity = extreme ? scale(apocalypseIntensity, 20, 150) : 1;
+  const shifts = { Monochromatic: 0, Analogous: 28, Complementary: 180, Tertiary: 120, Apocalypse: 180 };
+  const chroma = seed.c < 1e-6 ? 0 : seed.c;
+  const position = clamp01(0.5 + (seed.l - 0.5) * curve);
+  // Even compressed monochromatic ladders move as a whole with the seed.
+  const bgL = dark
+    ? (extreme ? 0.08 : pop ? 0.19 : 0.14) + position * (extreme ? 0.13 : pop ? 0.17 : 0.16)
+    : (extreme ? 0.86 : 0.87) + position * (extreme ? 0.12 : 0.11);
+  const step = (harmony === 'Monochromatic' ? 0.022 : 0.034) * (0.85 + chroma * 0.6);
+  const surfaceHue = seed.h + (harmony === 'Analogous' ? (4 + 8 * position) * spread : harmony === 'Tertiary' ? 16 * spread : extreme ? 36 * intensity : 0);
+  const fieldChroma = chroma * (pop ? 0.55 * popScale : extreme ? 0.32 * intensity : 0.11 + (1 - position) * 0.12);
+  const background = oklchToHex({ l: bgL, c: fieldChroma, h: seed.h });
+  const surface = oklchToHex({ l: bgL + (dark ? step : -step), c: fieldChroma * (1 + chroma * 0.35), h: surfaceHue });
+  const surfaces = [background, surface];
+  const textChroma = chroma * 0.12;
+  const text = solveContrast({ l: dark ? 0.86 + seed.l * 0.08 : 0.22 + seed.l * 0.12, c: textChroma, h: seed.h }, surfaces, 7, dark);
+  const heading = solveContrast({ l: dark ? 0.9 + seed.l * 0.07 : 0.16 + seed.l * 0.1, c: textChroma * 1.3, h: seed.h }, surfaces, 7, dark);
+  const muted = solveContrast({ l: dark ? 0.52 + seed.l * 0.14 : 0.44 + seed.l * 0.1, c: chroma * 0.16, h: seed.h }, surfaces, 4.5, dark);
+  const hueNudge = clamp(Number(options.accentHueShift) || 0, -60, 60);
+  const chromaNudge = 1 + clamp(Number(options.accentSaturationShift) || 0, -40, 40) / 100;
+  const actionHue = seed.h + (shifts[harmony] || 0) * spread + hueNudge;
+  const actionL = dark ? 0.65 + seed.l * 0.15 : 0.4 + seed.l * 0.12;
+  const availableChroma = hexToOklch(oklchToHex({ l: actionL, c: chroma, h: actionHue })).c;
+  const actionChroma = availableChroma * strength * chromaNudge * (extreme ? 1.6 * intensity : pop ? 1.25 * popScale : 1);
+  const accent = solveContrast({ l: actionL, c: actionChroma, h: actionHue }, [background], 4.5, dark);
+  const cta = oklchToHex({ l: actionL + (dark ? -0.08 : 0.04), c: actionChroma, h: actionHue + (harmony === 'Tertiary' ? 120 * spread : extreme ? 24 * intensity : 0) });
+  const ctaRole = hexToOklch(cta);
+  const ctaText = solveContrast({ l: dark ? 0.15 : 0.98, c: textChroma, h: seed.h }, [cta], 4.5, !dark);
+  const ctaHover = solveContrast({ ...ctaRole, l: ctaRole.l + (dark ? 0.025 : -0.025) }, [ctaText], 4.5, dark);
+  const border = oklchToHex({ l: bgL + (dark ? 0.13 : -0.13), c: fieldChroma * 1.2, h: surfaceHue });
+  return { background, surface, text, heading, muted, accent, cta, border, ctaText, ctaHover };
 };
 
 /**

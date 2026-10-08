@@ -1925,6 +1925,23 @@ export default function useAppController() {
     themeMaster,
   ]);
 
+  const handleDownloadWitchClickKit = useCallback(async (version) => {
+    if (!canDownloadThemePack) return false;
+    try {
+      const { downloadWitchClickKitArchive } = await import('../lib/exports/witchClickKit.js');
+      await downloadWitchClickKitArchive({
+        displayThemeName,
+        variants: paletteState.confirmedVariants,
+        themeMode: paletteState.themeMode,
+      }, { version });
+      setStatusMessage('WitchClick kit downloaded; ingest it in WitchClick to shelve it.', 'success');
+      return true;
+    } catch (error) {
+      notify(error.message || 'WitchClick kit export failed.', 'error');
+      return false;
+    }
+  }, [canDownloadThemePack, displayThemeName, paletteState.confirmedVariants, paletteState.themeMode, setStatusMessage, notify]);
+
   const handleExportProductPackage = useCallback(async ({ offering, product, selectedThemeIds }) => {
     if (!canExport) return;
     if (typeof Blob === 'undefined') {
@@ -2298,6 +2315,7 @@ export default function useAppController() {
     handleGenerateListingAssets,
     handleDownloadThemePack,
     handleDownloadMarketplaceKit,
+    handleDownloadWitchClickKit,
     handleExportProductPackage,
     copyShareLink,
     exportAllAssets,

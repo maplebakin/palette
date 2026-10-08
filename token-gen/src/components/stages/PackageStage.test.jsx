@@ -368,3 +368,20 @@ describe('PackageStage', () => {
     expect(screen.queryByRole('button', { name: /download marketplace kit/i })).not.toBeInTheDocument();
   });
 });
+
+describe('WitchClick packaging', () => {
+  it('exports both confirmed variants independently of marketplace selection with the supplied version', async () => {
+    const download = vi.fn(async () => true);
+    renderPackageStage({ onDownloadWitchClickKit: download });
+    fireEvent.change(screen.getByLabelText('WitchClick kit version'), { target: { value: '2.0.0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Download WitchClick kit' }));
+    await waitFor(() => expect(download).toHaveBeenCalledWith('2.0.0'));
+    expect(screen.getByText(/does not activate it/)).toBeInTheDocument();
+  });
+
+  it('disables the download when Light is not confirmed even if Pop is available', () => {
+    renderPackageStage({ onDownloadWitchClickKit: vi.fn(), variantStatus: { availableModes: ['dark', 'pop'], missingModes: ['light'] } });
+    expect(screen.getByRole('button', { name: 'Download WitchClick kit' })).toBeDisabled();
+    expect(screen.getByText(/Pop cannot replace Light/)).toBeInTheDocument();
+  });
+});

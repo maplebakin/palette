@@ -1,3 +1,4 @@
+import { generateRolePalette } from './core-math.js';
 import { blendColorsPerceptual, blendHue, getColor, getContrastRatio, hexToHsl, hslToHex } from './colorUtils.js';
 import { readPath } from './theme/paths.js';
 
@@ -1260,6 +1261,19 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     hueShift: accentHueShift,
     saturationShift: accentSaturationShift,
   });
+
+  // The live seven-role palette is built in OKLCH. Existing secondary token
+  // groups keep their contracts; explicit imported/saved values are applied by engine.js.
+  const palette = generateRolePalette(normalizedBase, mode, themeMode, apocalypseIntensity, options);
+  Object.assign(tokens.surfaces, { background: palette.background, 'page-background': palette.background, 'surface-plain': palette.surface });
+  Object.assign(tokens.cards, { 'card-panel-surface': palette.surface, 'card-panel-border': palette.border, 'card-focus-outline': palette.accent });
+  Object.assign(tokens.typography, { heading: palette.heading, 'text-strong': palette.heading, 'text-body': palette.text, 'text-muted': palette.muted });
+  Object.assign(tokens.textPalette, { 'text-primary': palette.heading, 'text-secondary': palette.text, 'text-tertiary': palette.muted, 'link-color': palette.accent });
+  Object.assign(tokens.brand, { accent: palette.accent, cta: palette.cta, 'cta-hover': palette.ctaHover, 'link-color': palette.accent });
+  Object.assign(tokens.actions, { primary: palette.cta, 'primary-hover': palette.ctaHover, 'primary-foreground': palette.ctaText, 'brand-accent': palette.accent });
+  Object.assign(tokens.entity, { 'entity-card-cta': palette.cta, 'entity-card-cta-hover': palette.ctaHover, 'entity-card-icon': palette.accent });
+  Object.assign(tokens.aliases, { 'surface-panel-primary': palette.surface });
+  if (isPop) Object.assign(tokens.pop, { 'pop-background': palette.background, 'pop-surface': palette.surface, 'pop-foreground': palette.text, 'pop-muted-text': palette.muted, 'pop-cta': palette.cta, 'pop-cta-foreground': palette.ctaText, 'pop-border': palette.border });
 
   const bg = tokens.surfaces.background;
   const card = tokens.cards['card-panel-surface'];
