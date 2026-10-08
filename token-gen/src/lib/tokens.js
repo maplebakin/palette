@@ -968,6 +968,14 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
     : isPop
       ? clamp(bgL + 6, 48, 74)
       : clamp(bgL + 2, 94, 98);
+  // One elevation ladder for standard Light/Dark surfaces. Pop and Apocalypse
+  // retain their purpose-built choreography and established token values.
+  const standardElevation = !isPop && !isApocalypse;
+  const elevatedPanelL = isDark ? surfaceL + 5 : Math.min(97, surfaceL + 4);
+  const overlayL = isDark ? surfaceL + 5 : Math.min(97, surfaceL + 4);
+  const overlayStrongL = isDark ? surfaceL + 10 : Math.min(99, surfaceL + 6);
+  const hoverPanelL = isDark ? surfaceL + 7 : Math.min(98, surfaceL + 5);
+  const supportingPanelL = isDark ? surfaceL + 3 : Math.min(96, surfaceL + 2);
   const tokens = {
     foundation: {
       hue: hsl.h,
@@ -1104,7 +1112,7 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
 
     cards: {
       "card-panel-surface": getColor(mediumSurfaceBase, 0, 1, surfaceL),
-      "card-panel-surface-strong": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 5 : Math.min(97, surfaceL + (isPop ? 2 : 4))),
+      "card-panel-surface-strong": getColor(mediumSurfaceBase, 0, 1, standardElevation ? elevatedPanelL : (isDark ? surfaceL + 5 : Math.min(97, surfaceL + (isPop ? 2 : 4)))),
       "card-panel-border": getColor(mediumSurfaceBase, 0, 1, borderL),
       "card-panel-border-soft": getColor(mediumSurfaceBase, 0, 1, isDark ? borderL - 5 : Math.min(96, borderL + 6)),
       "card-panel-border-strong": getColor(surfaceBase, 0, 1, isDark ? borderL + 15 : (isPop ? clamp(borderL + 14, 40, 70) : 85)),
@@ -1207,8 +1215,8 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
 
     aliases: {
       "surface-panel-primary": getColor(mediumSurfaceBase, 0, 1, surfaceL),
-      "surface-panel-secondary": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 4 : surfaceL - 2),
-      "surface-card-hover": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 6 : surfaceL - 4),
+      "surface-panel-secondary": getColor(mediumSurfaceBase, 0, 1, standardElevation ? supportingPanelL : (isDark ? surfaceL + 4 : surfaceL - 2)),
+      "surface-card-hover": getColor(mediumSurfaceBase, 0, 1, standardElevation ? hoverPanelL : (isDark ? surfaceL + 6 : surfaceL - 4)),
       "surface-muted": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL - 2 : surfaceL + 2),
       "border-purple-subtle": getColor(hsl, interfaceAccentHue, purpleBorderSubtleSat, borderL),
       "border-purple-medium": getColor(hsl, interfaceAccentHue, purpleBorderMediumSat, isDark ? borderL + 8 : borderL - 8),
@@ -1222,8 +1230,8 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
         : getColor(hsl, interfaceAccentHue, accentTextStrongSat, isDark ? 88 : 34),
       "accent-purple-strong": accentStrong,
       "accent-purple-soft": getColor(hsl, interfaceAccentHue, 0.7, isDark ? 75 : 70),
-      "overlay-panel": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 2 : surfaceL),
-      "overlay-panel-strong": getColor(mediumSurfaceBase, 0, 1, isDark ? surfaceL + 6 : surfaceL - 2),
+      "overlay-panel": getColor(mediumSurfaceBase, 0, 1, standardElevation ? overlayL : (isDark ? surfaceL + 2 : surfaceL)),
+      "overlay-panel-strong": getColor(mediumSurfaceBase, 0, 1, standardElevation ? overlayStrongL : (isDark ? surfaceL + 6 : surfaceL - 2)),
       "focus-ring": isPop
         ? hslToHex(stickerRole.h, stickerRole.s, isDark ? clamp(stickerRole.l + 2, 66, 76) : clamp(stickerRole.l - 8, 38, 52))
         : getColor(hsl, interfaceAccentHue, focusRingSat, isDark ? 40 : 68 + (popBoost * 4)),
