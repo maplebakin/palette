@@ -1,4 +1,4 @@
-import { hexToHsl, hslToHex } from './colorUtils.js';
+import { hexToHsl, hslToHex, getContrastRatio } from './colorUtils.js';
 
 export const SEMANTIC_PALETTE_ROLES = [
   { id: 'background', name: 'Background', path: 'surfaces.background' },
@@ -68,7 +68,27 @@ const suggestionsForHarmony = (harmony, counterpoint) => {
   }
 };
 
-export const getContextualMoodSuggestions = ({ seedColor, roleColor, harmony }) => {
+const READABLE_ROLES = new Set(['text', 'heading', 'muted', 'accent']);
+
+// Keep the suggested hue, but choose the nearest readable lightness for text-facing roles.
+const readableColor = (hue, saturation, preferredLightness, background, minRatio = 4.5) => {
+  const candidate = hslToHex(hue, saturation, preferredLightness);
+  if (getContrastRatio(candidate, background) >= minRatio) return candidate;
+  let closest = null;
+  let distance = Infinity;
+  for (let lightness = 0; lightness <= 100; lightness += 1) {
+    const color = hslToHex(hue, saturation, lightness);
+    if (getContrastRatio(color, background) < minRatio) continue;
+    const delta = Math.abs(lightness - preferredLightness);
+    if (delta < distance) {
+      closest = color;
+      distance = delta;
+    }
+  }
+  return closest || candidate;
+};
+
+export const getContextualMoodSuggestions = ({ seedColor, roleColor, harmony, roleId, backgroundColor }) => {
   const seed = hexToHsl(seedColor);
   const role = hexToHsl(roleColor || seedColor);
   const anchor = role.s < 18 ? seed : role;
@@ -76,14 +96,16 @@ export const getContextualMoodSuggestions = ({ seedColor, roleColor, harmony }) 
 
   return suggestionsForHarmony(harmony, counterpoint).map((suggestion, index) => {
     const source = suggestion.source === 'seed' ? seed : anchor;
+    const hue = ((source.h + (suggestion.offset || 0)) % 360 + 360) % 360;
+    const saturation = clamp(source.s + (suggestion.saturationShift || 0), 22, 92);
+    const lightness = clamp(source.l + (suggestion.lightnessShift || 0), 30, 78);
+    const mustBeReadable = READABLE_ROLES.has(roleId) && /^#[0-9a-f]{6}$/i.test(backgroundColor || '');
     return {
       id: `${suggestion.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${index}`,
       label: suggestion.label,
-      color: hslToHex(
-        ((source.h + (suggestion.offset || 0)) % 360 + 360) % 360,
-        clamp(source.s + (suggestion.saturationShift || 0), 22, 92),
-        clamp(source.l + (suggestion.lightnessShift || 0), 30, 78),
-      ),
+      color: mustBeReadable
+        ? readableColor(hue, saturation, lightness, backgroundColor)
+        : hslToHex(hue, saturation, lightness),
     };
   });
 };
