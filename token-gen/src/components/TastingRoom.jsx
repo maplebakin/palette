@@ -17,7 +17,7 @@ import { INSPIRATION_SEEDS, KIT_SEEDS } from '../data/kits.js';
 import { formatArtifactName } from '../lib/artifactNaming.js';
 import { isCustom } from '../lib/honestyPredicate.js';
 import { buildPreviewRoleTokens, getPreviewSceneInk } from '../lib/previewTokens.js';
-import { hexToHsl, hslToHex, pickReadableText } from '../lib/colorUtils.js';
+import { pickReadableText } from '../lib/colorUtils.js';
 import { colorVisionOptions, simulateColorVision } from '../lib/accessibility.js';
 import {
   buildSemanticPaletteSwatches,
@@ -29,6 +29,7 @@ import { loadPlaygroundSession, savePlaygroundSession } from '../lib/sessionPers
 import { buildTheme } from '../lib/theme/engine.js';
 import { captureKitSuggestion } from '../lib/kitSuggestion.js';
 import { phraseToSeedColor } from '../lib/seedColor.js';
+import { getSeedRegeneration } from '../lib/tastingGeneration.js';
 import {
   loadSavedPlaygroundPalettes,
   savePlaygroundPalette,
@@ -46,8 +47,6 @@ const SCENES = [
   { id: 'shop', label: 'Shop' },
   { id: 'mood', label: 'Mood' },
 ];
-const GENERATION_HARMONY_INTENSITIES = [100, 114, 86, 126, 94, 108, 78, 120];
-const GENERATION_HUE_OFFSETS = [0, 15, -15, 28, -28, 42, -42, 8];
 
 const isHexColor = (value) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
@@ -85,18 +84,14 @@ const createPresetState = (kit) => {
 };
 
 const buildThemeForState = (state, name) => {
-  const generationIndex = (state.regenerateCount || 0) % GENERATION_HARMONY_INTENSITIES.length;
-  const baseHsl = hexToHsl(state.baseColor);
-  const generatedBase = GENERATION_HUE_OFFSETS[generationIndex] === 0
-    ? state.baseColor
-    : hslToHex(baseHsl.h + GENERATION_HUE_OFFSETS[generationIndex], baseHsl.s, baseHsl.l);
+  const generation = getSeedRegeneration(state);
   return buildTheme({
     name,
-    baseColor: generatedBase,
+    baseColor: generation.baseColor,
     mode: state.harmony,
     themeMode: state.themeMode,
     isDark: state.themeMode === 'dark',
-    harmonyIntensity: GENERATION_HARMONY_INTENSITIES[generationIndex],
+    harmonyIntensity: generation.harmonyIntensity,
     accentHueShift: state.hueNudge,
     accentSaturationShift: state.satNudge,
   });
