@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
-import { ProjectProvider } from './context/ProjectProvider.jsx';
+import { ProjectProvider } from '@project-provider';
 import './index.css';
 import './styles/tasting-room.css';
 
