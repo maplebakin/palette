@@ -16,7 +16,7 @@ import TastingFooter from './TastingFooter.jsx';
 import { INSPIRATION_SEEDS, KIT_SEEDS } from '../data/kits.js';
 import { formatArtifactName } from '../lib/artifactNaming.js';
 import { isCustom } from '../lib/honestyPredicate.js';
-import { buildPreviewRoleTokens } from '../lib/previewTokens.js';
+import { buildPreviewRoleTokens, getPreviewSceneInk } from '../lib/previewTokens.js';
 import { hexToHsl, hslToHex, pickReadableText } from '../lib/colorUtils.js';
 import { colorVisionOptions, simulateColorVision } from '../lib/accessibility.js';
 import {
@@ -217,6 +217,8 @@ const PreviewScene = ({
   onRoleSelect,
   onApplySuggestion,
 }) => {
+  const sceneInk = getPreviewSceneInk(roles);
+
   if (scene === 'mood') {
     return (
       <PlaygroundMoodBoard
@@ -235,12 +237,12 @@ const PreviewScene = ({
 
   if (scene === 'dashboard') {
     return (
-      <div className="playground-scene playground-dashboard-scene" style={{ backgroundColor: roles.surface }}>
+      <div className="playground-scene playground-dashboard-scene" style={{ backgroundColor: roles.surface, color: sceneInk.body }}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="playground-kicker">Studio overview</p>
+            <p className="playground-kicker" style={{ color: sceneInk.body }}>Studio overview</p>
             <h2 className="playground-scene-title" style={{ color: roles.heading }}>Good morning, Mira.</h2>
-            <p className="playground-scene-copy">A calm place to see what is moving through the collection.</p>
+            <p className="playground-scene-copy" style={{ color: sceneInk.muted }}>A calm place to see what is moving through the collection.</p>
           </div>
           <span className="playground-scene-date">Tuesday · 09:41</span>
         </div>
@@ -275,7 +277,7 @@ const PreviewScene = ({
 
   if (scene === 'shop') {
     return (
-      <div className="playground-scene playground-shop-scene" style={{ backgroundColor: roles.surface }}>
+      <div className="playground-scene playground-shop-scene" style={{ backgroundColor: roles.surface, color: sceneInk.body }}>
         <div className="flex items-center justify-between gap-3">
           <span className="playground-kicker">Field notes / 04</span>
           <span className="text-xs font-semibold opacity-70">Limited run</span>
@@ -289,9 +291,9 @@ const PreviewScene = ({
             </div>
           </div>
           <div className="flex flex-col justify-center">
-            <p className="playground-kicker">The current edit</p>
+            <p className="playground-kicker" style={{ color: sceneInk.body }}>The current edit</p>
             <h2 className="playground-scene-title" style={{ color: roles.heading }}>Objects for slow mornings.</h2>
-            <p className="playground-scene-copy">A considered set of small things, chosen for the way they sit together.</p>
+            <p className="playground-scene-copy" style={{ color: sceneInk.muted }}>A considered set of small things, chosen for the way they sit together.</p>
             <div className="mt-5 flex items-center gap-3">
               <button type="button" className="playground-scene-button" style={{ backgroundColor: roles.cta, color: roles.ctaForeground }}>
                 View the edit
@@ -306,11 +308,11 @@ const PreviewScene = ({
   }
 
   return (
-    <div className="playground-scene playground-hero-scene" style={{ backgroundColor: roles.surface }}>
+    <div className="playground-scene playground-hero-scene" style={{ backgroundColor: roles.surface, color: sceneInk.body }}>
       <div className="playground-hero-copy">
-        <p className="playground-kicker">A living collection</p>
+        <p className="playground-kicker" style={{ color: sceneInk.body }}>A living collection</p>
         <h2 className="playground-scene-title playground-hero-title" style={{ color: roles.heading }}>Explore the collection.</h2>
-        <p className="playground-scene-copy">
+        <p className="playground-scene-copy" style={{ color: sceneInk.muted }}>
           Useful pieces, chosen for rooms and rituals.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
