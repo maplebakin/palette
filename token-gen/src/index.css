@@ -4149,7 +4149,7 @@ body {
 }
 
 .tasting-room .playground-preview .playground-scene-tabs button.is-active {
-  background: var(--tasting-accent-soft);
+  background: rgba(203, 144, 113, 0.18);
   border-color: var(--tasting-accent);
   color: var(--tasting-warm-white);
 }
