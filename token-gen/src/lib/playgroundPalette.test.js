@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hexToHsl } from './colorUtils.js';
+import { hexToHsl, getContrastRatio } from './colorUtils.js';
 import {
   buildSemanticPaletteSwatches,
   getContextualMoodSuggestions,
@@ -41,6 +41,26 @@ describe('playground semantic palette', () => {
     // A negative hue must wrap to the violet-red end of the wheel.
     expect(secondNeighborHue).toBeGreaterThan(300);
     expect(secondNeighborHue).toBeLessThan(360);
+  });
+
+  it('keeps text-facing suggestions readable against the current background', () => {
+    for (const backgroundColor of ['#111827', '#f8fafc']) {
+      for (const roleId of ['text', 'heading', 'muted', 'accent']) {
+        const suggestions = getContextualMoodSuggestions({
+          seedColor: '#a74d7e',
+          roleColor: '#a74d7e',
+          harmony: 'Analogous',
+          roleId,
+          backgroundColor,
+        });
+        expect(suggestions.every(({ color }) => getContrastRatio(color, backgroundColor) >= 4.5)).toBe(true);
+      }
+    }
+  });
+
+  it('does not constrain decorative accent suggestions when no background is supplied', () => {
+    const suggestions = getContextualMoodSuggestions({ seedColor: '#a74d7e', roleColor: '#a74d7e', harmony: 'Analogous', roleId: 'accent' });
+    expect(suggestions).toHaveLength(4);
   });
 
   it('offers harmony-aware colors around the seed and current role color', () => {

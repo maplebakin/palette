@@ -27,6 +27,8 @@ const PlaygroundMoodBoard = ({
     seedColor: resolvedSeedColor,
     roleColor: activeRoleColor,
     harmony,
+    roleId: activeRole.id,
+    backgroundColor: sourceSwatches.find(({ id }) => id === 'background')?.color || roles.background,
   });
 
   return (
