@@ -202,6 +202,7 @@ const getPopSignalProfile = (hue, saturation, lightness, mode, isDark = false, p
   const paleBlush = seedProfile.isPaleBlushFamily;
   const darkChromatic = seedProfile.isDarkSeed && !trueNeutral;
   const darkBotanical = darkChromatic && seedProfile.isBotanicalFamily;
+  const mutedMidtone = seedProfile.isMuted && !darkChromatic && !mutedBotanical && !paleBlush;
   const signalHue = hue;
   const botanicalAccentHue = mutedBotanical ? wrapHue(signalHue + 8) : signalHue;
   const supportHue = signalHue;
@@ -215,6 +216,8 @@ const getPopSignalProfile = (hue, saturation, lightness, mode, isDark = false, p
       ? clamp(saturation * 2.1 + 16 + (popDelta * 14), 52, 64)
       : paleBlush
         ? clamp((saturation * 0.72) + 24 + (popDelta * 36), 58, 80)
+      : mutedMidtone
+        ? clamp(saturation * 1.25 + 14 + (popDelta * 12), 34, 58)
     : clamp(Math.max(saturation * 1.65, saturation + 18, 82) + (popDelta * 12), 74, 98);
   const fieldL = trueNeutral
     ? clamp(12 - (popDelta * 8), 10, 18)
