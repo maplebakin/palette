@@ -255,7 +255,7 @@ describe('TastingRoom creator-first layout', () => {
     fireEvent.change(screen.getByLabelText('Edit Heading role color'), { target: { value: '#654321' } });
     fireEvent.change(screen.getByLabelText('Edit CTA role color'), { target: { value: '#abcdef' } });
 
-    expect(document.querySelector('.playground-preview').style.backgroundColor).toBe('rgb(18, 52, 86)');
+    expect(document.querySelector('.playground-hero-colorfield').style.getPropertyValue('--artifact-ink')).toBe('#123456');
     expect(screen.getByRole('heading', { name: 'Explore the collection.' })).toHaveStyle({ color: '#654321' });
     expect(screen.getByRole('button', { name: 'Browse the edit' })).toHaveStyle({ backgroundColor: '#abcdef' });
     expect(screen.getByRole('button', { name: 'Copy CTA role color #ABCDEF' })).toBeInTheDocument();

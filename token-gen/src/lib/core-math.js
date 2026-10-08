@@ -305,9 +305,9 @@ export const generateRolePalette = (seedHex, harmony = 'Monochromatic', theme = 
   const position = clamp01(0.5 + (seed.l - 0.5) * curve);
   // Even compressed monochromatic ladders move as a whole with the seed.
   const bgL = dark
-    ? (extreme ? 0.08 : pop ? 0.19 : 0.14) + position * (extreme ? 0.13 : pop ? 0.17 : 0.16)
+    ? (extreme ? 0.04 : pop ? 0.19 : 0.14) + position * (extreme ? 0.13 : pop ? 0.17 : 0.16)
     : (extreme ? 0.86 : 0.87) + position * (extreme ? 0.12 : 0.11);
-  const step = (harmony === 'Monochromatic' ? 0.022 : 0.034) * (0.85 + chroma * 0.6);
+  const step = (pop ? 0.05 : 0.12) * (0.85 + chroma * 0.6);
   const surfaceHue = seed.h + (harmony === 'Analogous' ? (4 + 8 * position) * spread : harmony === 'Tertiary' ? 16 * spread : extreme ? 36 * intensity : 0);
   const fieldChroma = chroma * (pop ? 0.55 * popScale : extreme ? 0.32 * intensity : 0.11 + (1 - position) * 0.12);
   const background = oklchToHex({ l: bgL, c: fieldChroma, h: seed.h });
@@ -324,7 +324,11 @@ export const generateRolePalette = (seedHex, harmony = 'Monochromatic', theme = 
   const availableChroma = hexToOklch(oklchToHex({ l: actionL, c: chroma, h: actionHue })).c;
   const actionChroma = availableChroma * strength * chromaNudge * (extreme ? 1.6 * intensity : pop ? 1.25 * popScale : 1);
   const accent = solveContrast({ l: actionL, c: actionChroma, h: actionHue }, [background], 4.5, dark);
-  const cta = oklchToHex({ l: actionL + (dark ? -0.08 : 0.04), c: actionChroma, h: actionHue + (harmony === 'Tertiary' ? 120 * spread : extreme ? 24 * intensity : 0) });
+  const cta = solveContrast({
+    l: actionL + (dark ? -0.08 : 0.04),
+    c: actionChroma,
+    h: actionHue + (harmony === 'Tertiary' ? 120 * spread : extreme ? 24 * intensity : 0),
+  }, surfaces, 3.5, dark);
   const ctaRole = hexToOklch(cta);
   const ctaText = solveContrast({ l: dark ? 0.15 : 0.98, c: textChroma, h: seed.h }, [cta], 4.5, !dark);
   const ctaHover = solveContrast({ ...ctaRole, l: ctaRole.l + (dark ? 0.025 : -0.025) }, [ctaText], 4.5, dark);

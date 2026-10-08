@@ -1314,14 +1314,29 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   // The live seven-role palette is built in OKLCH. Existing secondary token
   // groups keep their contracts; explicit imported/saved values are applied by engine.js.
   const palette = generateRolePalette(normalizedBase, mode, themeMode, apocalypseIntensity, options);
+  const surfaceHsl = hexToHsl(palette.surface);
+  const surfaceAt = (lightness) => hslToHex(surfaceHsl.h, surfaceHsl.s, clamp(lightness, 0, 100));
+  const paletteIsDark = String(themeMode).toLowerCase() === 'dark';
+  const paletteUsesStandardElevation = mode !== 'Apocalypse' && String(themeMode).toLowerCase() !== 'pop';
   Object.assign(tokens.surfaces, { background: palette.background, 'page-background': palette.background, 'surface-plain': palette.surface });
-  Object.assign(tokens.cards, { 'card-panel-surface': palette.surface, 'card-panel-border': palette.border, 'card-focus-outline': palette.accent });
+  Object.assign(tokens.cards, {
+    'card-panel-surface': palette.surface,
+    'card-panel-surface-strong': surfaceAt(surfaceHsl.l + (paletteUsesStandardElevation ? (paletteIsDark ? 12 : 8) : (paletteIsDark ? 5 : 4))),
+    'card-panel-border': palette.border,
+    'card-focus-outline': palette.accent,
+  });
   Object.assign(tokens.typography, { heading: palette.heading, 'text-strong': palette.heading, 'text-body': palette.text, 'text-muted': palette.muted });
   Object.assign(tokens.textPalette, { 'text-primary': palette.heading, 'text-secondary': palette.text, 'text-tertiary': palette.muted, 'link-color': palette.accent });
   Object.assign(tokens.brand, { accent: palette.accent, cta: palette.cta, 'cta-hover': palette.ctaHover, 'link-color': palette.accent });
   Object.assign(tokens.actions, { primary: palette.cta, 'primary-hover': palette.ctaHover, 'primary-foreground': palette.ctaText, 'brand-accent': palette.accent });
   Object.assign(tokens.entity, { 'entity-card-cta': palette.cta, 'entity-card-cta-hover': palette.ctaHover, 'entity-card-icon': palette.accent });
-  Object.assign(tokens.aliases, { 'surface-panel-primary': palette.surface });
+  Object.assign(tokens.aliases, {
+    'surface-panel-primary': palette.surface,
+    'surface-panel-secondary': surfaceAt(surfaceHsl.l + (paletteUsesStandardElevation ? (paletteIsDark ? 8 : 4) : (paletteIsDark ? 4 : -2))),
+    'surface-card-hover': surfaceAt(surfaceHsl.l + (paletteUsesStandardElevation ? (paletteIsDark ? 16 : 12) : (paletteIsDark ? 6 : -4))),
+    'overlay-panel': surfaceAt(surfaceHsl.l + (paletteUsesStandardElevation ? (paletteIsDark ? 10 : 6) : (paletteIsDark ? 2 : 0))),
+    'overlay-panel-strong': surfaceAt(surfaceHsl.l + (paletteUsesStandardElevation ? (paletteIsDark ? 14 : 10) : (paletteIsDark ? 6 : -2))),
+  });
   if (isPop) Object.assign(tokens.pop, { 'pop-background': palette.background, 'pop-surface': palette.surface, 'pop-foreground': palette.text, 'pop-muted-text': palette.muted, 'pop-cta': palette.cta, 'pop-cta-foreground': palette.ctaText, 'pop-border': palette.border });
 
   const bg = tokens.surfaces.background;

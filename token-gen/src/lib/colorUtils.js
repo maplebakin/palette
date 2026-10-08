@@ -183,7 +183,7 @@ export const normalizeHex = (hex, fallback = '#111827') => {
   if (hexMatch) {
     const raw = hexMatch[1];
     if (raw.length === 3) {
-      return '#' + raw.split('').map((c) => c + c).join('');
+      return '#' + raw.split('').map((c) => c + c).join('').toLowerCase();
     }
     return '#' + raw.toLowerCase();
   }

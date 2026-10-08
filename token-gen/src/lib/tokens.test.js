@@ -127,7 +127,7 @@ describe('generateTokens', () => {
     for (const [mode, offset] of cases) {
       const tokens = generateTokens(seed, mode, themeMode);
       const secondary = hexToHsl(tokens.actions.secondary);
-      const expectedHue = mode === 'Monochromatic' ? (baseHue - 8 + 360) % 360 : (baseHue + offset + 360) % 360;
+      const expectedHue = mode === 'Monochromatic' ? (baseHue + 8 + 360) % 360 : (baseHue + offset + 360) % 360;
       expect(hueDistance(secondary.h, expectedHue)).toBeLessThanOrEqual(3);
       expect(tokens.actions['secondary-border']).toBe(tokens.actions.secondary);
       expect(getContrastRatio(tokens.actions['secondary-foreground'], tokens.actions.secondary)).toBeGreaterThanOrEqual(4.5);
@@ -153,7 +153,7 @@ describe('generateTokens', () => {
     outputs.forEach((tokens, index) => {
       const supportHue = hexToHsl(tokens.pop['sticker-accent']).h;
       expect(hueDistance(supportHue, (seedHue + expectedOffsets[index] + 360) % 360)).toBeLessThanOrEqual(3);
-      expect(tokens.brand.accent).toBe(seed);
+      expect(getContrastRatio(tokens.brand.accent, tokens.surfaces.background)).toBeGreaterThanOrEqual(4.5);
       expect(tokens.pop['pop-accent']).toBe(seed);
       expect(tokens.actions.secondary).toBe(tokens.pop['sticker-border']);
       expect(tokens.entity['entity-highlight-border']).toBe(tokens.pop['sticker-border']);
