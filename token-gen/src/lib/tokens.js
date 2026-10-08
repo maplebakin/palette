@@ -532,6 +532,11 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   let satNormalizer = isApocalypse ? (isDark ? 1.35 : 1.5) : (isDark ? 0.92 : 0.86);
   let secondarySat = secSat * satNormalizer * harmonyScale * accentChromaScale;
   let accentSat = accSat * satNormalizer * harmonyScale * accentChromaScale;
+  const mutedThemeSeed = !isPop && seedProfile.isMuted && !seedProfile.isSoftBlushFamily;
+  if (mutedThemeSeed) {
+    secondarySat = Math.min(secondarySat, 1.12);
+    accentSat = Math.min(accentSat, 1.12);
+  }
   const paletteMaxS = clamp(Math.max(
     hsl.s,
     hsl.s * secondarySat * 0.96,
@@ -884,7 +889,9 @@ export const generateTokens = (baseColor, mode, themeMode, apocalypseIntensity =
   const accentHueSecondary = isPop && popSignalProfile ? accentHueMain : (hsl.h + interfaceSupportHue + 360) % 360;
   const accentHueRoot = isPop && popSignalProfile ? accentHueMain : hsl.h;
   const accentLightSteps = isDark ? [68, 60, 52, 36] : [58, 52, 46, 32];
-  const accentBaseSat = seedProfile.isNeutral ? 0 : clamp(Math.max(20, hsl.s) * accentChromaScale, 10, 100);
+  const accentBaseSat = seedProfile.isNeutral ? 0 : mutedThemeSeed
+    ? clamp(hsl.s * accentChromaScale, 10, 52)
+    : clamp(Math.max(20, hsl.s) * accentChromaScale, 10, 100);
   const accentColor = (h, satMult, l) => getColor({ h, s: accentBaseSat, l }, 0, satMult, l);
   const linkBrandSat = isDark ? 0.9 : 0.9 + (popBoost * 0.6);
   const linkTextSat = isDark ? 1 : 1 + (popBoost * 0.6);
