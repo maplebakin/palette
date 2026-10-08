@@ -80,7 +80,7 @@ export const getContextualMoodSuggestions = ({ seedColor, roleColor, harmony }) 
       id: `${suggestion.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${index}`,
       label: suggestion.label,
       color: hslToHex(
-        source.h + (suggestion.offset || 0),
+        ((source.h + (suggestion.offset || 0)) % 360 + 360) % 360,
         clamp(source.s + (suggestion.saturationShift || 0), 22, 92),
         clamp(source.l + (suggestion.lightnessShift || 0), 30, 78),
       ),
