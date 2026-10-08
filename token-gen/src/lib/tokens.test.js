@@ -34,6 +34,33 @@ const SEED_GAUNTLET = [
 ];
 
 describe('generateTokens', () => {
+  it.each(['light', 'dark'])('maintains a distinct page-to-card tonal ladder in %s', (themeMode) => {
+    for (const seed of SEED_GAUNTLET) {
+      for (const harmony of ['Monochromatic', 'Analogous', 'Complementary', 'Tertiary']) {
+        const tokens = generateTokens(seed, harmony, themeMode);
+        const backgroundL = hexToHsl(tokens.surfaces.background).l;
+        const panelL = hexToHsl(tokens.cards['card-panel-surface']).l;
+        const elevatedL = hexToHsl(tokens.cards['card-panel-surface-strong']).l;
+        if (themeMode === 'dark') {
+          expect(panelL).toBeGreaterThanOrEqual(backgroundL + 8);
+          expect(elevatedL).toBeGreaterThan(panelL);
+        } else {
+          expect(panelL).toBeLessThanOrEqual(backgroundL - 5);
+          expect(elevatedL).toBeGreaterThan(panelL);
+        }
+        expect(getContrastRatio(tokens.typography['text-body'], tokens.surfaces.background)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it('keeps Apocalypse and Pop custom tonal settings intact', () => {
+    const seed = '#7755bb';
+    const pop = generateTokens(seed, 'Analogous', 'pop');
+    const apocalypse = generateTokens(seed, 'Apocalypse', 'dark');
+    expect(hexToHsl(pop.surfaces.background).l).toBeGreaterThan(12);
+    expect(hexToHsl(apocalypse.surfaces.background).l).toBeLessThan(6);
+  });
+
   it.each(['light', 'dark'])('gives %s harmony presets a distinct secondary action hue', (themeMode) => {
     const seed = '#7755bb';
     const baseHue = hexToHsl(seed).h;
