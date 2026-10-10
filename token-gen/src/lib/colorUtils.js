@@ -66,8 +66,8 @@ export const hexToHsl = (hex, fallback = { h: 0, s: 0, l: 50 }) => {
   else if (cmax === g) h = (b - r) / delta + 2;
   else h = (r - g) / delta + 4;
 
-  h = Math.round(h * 60);
-  if (h < 0) h += 360;
+  // Red-adjacent hues can round to 360; return canonical [0, 360).
+  h = wrapHue(Math.round(h * 60));
   l = (cmax + cmin) / 2;
   s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
   s = +(s * 100).toFixed(1);
@@ -86,13 +86,13 @@ export const hexToHsl = (hex, fallback = { h: 0, s: 0, l: 50 }) => {
  */
 export const hslToHex = (h, s, l, fallback = '#808080') => {
   // Defensive checks: ensure inputs are valid numbers
-  if (typeof h !== 'number' || typeof s !== 'number' || typeof l !== 'number') {
+  if (!Number.isFinite(h) || !Number.isFinite(s) || !Number.isFinite(l)) {
     console.warn(`Invalid HSL values: h=${h}, s=${s}, l=${l}, using fallback`, fallback);
     return fallback;
   }
 
   // Clamp values to valid ranges
-  h = Math.min(360, Math.max(0, h));
+  h = wrapHue(h);
   s = Math.min(100, Math.max(0, s));
   l = Math.min(100, Math.max(0, l));
 

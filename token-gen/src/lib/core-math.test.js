@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { generateRolePalette, hexToOklch, oklchToHex, solveContrast } from './core-math.js';
+import { generateRolePalette, hexToHsl, hslToHex, hexToOklch, oklchToHex, solveContrast } from './core-math.js';
 import { generateTokens } from './tokens.js';
 import { buildTheme } from './theme/engine.js';
 
@@ -35,6 +35,15 @@ const assertReadable = palette => {
 };
 
 describe('seed-relative OKLCH generation', () => {
+  it('wraps hue at the red seam in the legacy HSL helpers', () => {
+    expect(hexToHsl('#ff0001').h).toBe(0);
+    for (const degrees of [-720, -360, 0, 360, 720]) {
+      expect(hslToHex(degrees, 100, 50)).toBe('#ff0000');
+    }
+    expect(hslToHex(-120, 100, 50)).toBe('#0000ff');
+    expect(hslToHex(480, 100, 50)).toBe('#00ff00');
+  });
+
   it.each(HARMONIES.flatMap(harmony => THEMES.flatMap(theme => SEEDS.map(seed => [seed, harmony, theme]))))(
     '%s × %s × %s meets every floor and is deterministic through the live generator', (seed, harmony, theme) => {
       const options = { harmonyIntensity: 110, neutralCurve: 100, accentStrength: 100 };

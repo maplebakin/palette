@@ -47,8 +47,8 @@ export const hexToHsl = (hex) => {
   else if (cmax === g) h = (b - r) / delta + 2;
   else h = (r - g) / delta + 4;
 
-  h = Math.round(h * 60);
-  if (h < 0) h += 360;
+  // Rounded red-adjacent hues can become 360; normalize back to 0.
+  h = wrapHue(Math.round(h * 60));
   l = (cmax + cmin) / 2;
   s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
   s = +(s * 100).toFixed(1);
@@ -65,6 +65,8 @@ export const hexToHsl = (hex) => {
  * @returns {string} Hex color string (#RRGGBB)
  */
 export const hslToHex = (h, s, l) => {
+  // The hue wheel is periodic; 360 and 0 must produce the same colour.
+  h = wrapHue(h);
   s /= 100;
   l /= 100;
   const c = (1 - Math.abs(2 * l - 1)) * s;

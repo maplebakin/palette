@@ -24,6 +24,17 @@ describe('colorUtils', () => {
     expect(hslToHex(240, 100, 50)).toBe('#0000ff');
   });
 
+  it('wraps HSL hue across the red seam instead of producing black', () => {
+    expect(hexToHsl('#ff0001').h).toBe(0);
+    for (const degrees of [-720, -360, 0, 360, 720]) {
+      expect(hslToHex(degrees, 100, 50)).toBe('#ff0000');
+    }
+    expect(hslToHex(-120, 100, 50)).toBe('#0000ff');
+    expect(hslToHex(480, 100, 50)).toBe('#00ff00');
+    expect(hslToHex(Number.NaN, 100, 50)).toBe('#808080');
+    expect(hslToHex(Infinity, 100, 50)).toBe('#808080');
+  });
+
   it('normalizeHex expands shorthand and guards invalid input', () => {
     expect(normalizeHex('#abc')).toBe('#aabbcc');
     expect(normalizeHex('#aabbcc')).toBe('#aabbcc');
