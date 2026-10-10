@@ -89,7 +89,7 @@ export const verifyCandidateArchive = async (blob, kitSlug) => {
   const zip = await JSZip.loadAsync(bytes);
   const root = kitSlug + '/';
   const manifest = JSON.parse(await zip.file(root + 'manifest.json').async('string'));
-  assert(JSON.stringify(manifest.variants) === JSON.stringify(MODES), 'Missing required three variants');
+  assert(JSON.stringify([...manifest.variants].sort()) === JSON.stringify([...MODES].sort()), 'Missing required three variants');
   for (const mode of MODES) {
     const base = root + mode + '/' + kitSlug + '-' + mode;
     const json = JSON.parse(await zip.file(base + '.json').async('string'));
