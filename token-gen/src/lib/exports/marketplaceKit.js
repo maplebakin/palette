@@ -11,7 +11,7 @@ import {
   buildThemePackPreviewTheme,
 } from './workflowExports.js';
 import { exportAssets, slugifyFilename, buildExportFilename } from './exportUtils.js';
-import { renderPaletteCardPng } from './previewAssets.js';
+import { buildPaletteCardSvg, renderPaletteCardPng } from './previewAssets.js';
 
 // Marketplace kit export: the sell-ready bundle format (per-mode folders with
 // designer + developer formats, previews, contrast matrix, manifest, license).
@@ -214,15 +214,24 @@ export const buildMarketplaceKitArchive = async (theme, options = {}) => {
       `${mode}/tailwind.${kitSlug}-${mode}.js`,
     ].forEach((file) => files.push(file));
 
-    try {
-      const previewTheme = buildThemePackPreviewTheme(currentTheme, { name: kitName }, mode);
-      const png = await renderPaletteCardPng(previewTheme);
-      if (png) {
-        previewFolder.file(`${kitSlug}-${mode}.png`, png);
-        files.push(`previews/${kitSlug}-${mode}.png`);
+    const previewTheme = buildThemePackPreviewTheme(currentTheme, { name: kitName }, mode);
+    // SVG is portable and generated without a browser canvas; it is mandatory.
+    const svg = buildPaletteCardSvg(previewTheme);
+    previewFolder.file(`${kitSlug}-${mode}.svg`, svg);
+    files.push(`previews/${kitSlug}-${mode}.svg`);
+
+    // Browsers can include a convenient PNG as well, but headless release
+    // tooling must still have a complete preview rather than logging an error.
+    if (typeof document !== 'undefined') {
+      try {
+        const png = await renderPaletteCardPng(previewTheme);
+        if (png) {
+          previewFolder.file(`${kitSlug}-${mode}.png`, png);
+          files.push(`previews/${kitSlug}-${mode}.png`);
+        }
+      } catch (error) {
+        console.warn(`Marketplace kit PNG preview failed for ${mode}`, error);
       }
-    } catch (error) {
-      console.warn(`Marketplace kit preview failed for ${mode}`, error);
     }
   }
 
