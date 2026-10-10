@@ -1,5 +1,5 @@
 import { buildFigmaTokensPayload } from '../payloads.js';
-import { buildCssVariables } from '../theme/styles.js';
+import { auditMarketplaceKitMode } from './marketplaceKitReleaseAudit.js';
 import { flattenTokens } from '../theme/paths.js';
 import { getContrastRatio, normalizeHex } from '../colorUtils.js';
 import { generateAse } from './exportAse.js';
@@ -27,6 +27,15 @@ const CONTRAST_PAIR_DEFS = [
 ];
 
 const flatKey = (name) => String(name).replace(/\//g, '-');
+
+// A buyer's CSS must contain every exported colour, not merely the UI preview's
+// ordered swatch subset. The same keys and values appear in canonical JSON.
+export const buildMarketplaceKitCss = (flatTokens, prefix) => [
+  ':root {',
+  ...flatTokens.map(({ key, hex }) => '  --' + prefix + '-' + key + ': ' + hex + ';'),
+  '}',
+  '',
+].join('\n');
 
 export const flattenKitTokens = (finalTokens) => flattenTokens(finalTokens || {})
   .map(({ name, value }) => {
@@ -117,7 +126,7 @@ export const buildKitLicense = (name) => [
 ].join('\n');
 
 const buildModeFiles = async ({ root, kitSlug, kitName, mode, variant, cssPrefix }) => {
-  const { finalTokens, themeMaster, currentTheme } = variant;
+  const { finalTokens, currentTheme } = variant;
   const flatTokens = flattenKitTokens(finalTokens);
   const modeFolder = root.folder(mode);
   if (!modeFolder) throw new Error(`Failed to create ${mode} kit folder`);
@@ -131,9 +140,13 @@ const buildModeFiles = async ({ root, kitSlug, kitName, mode, variant, cssPrefix
     tokenCount: flatTokens.length,
     tokens: Object.fromEntries(flatTokens.map(({ key, hex }) => [key, hex])),
   }, null, 2));
-  modeFolder.file(`${base}.css`, buildCssVariables(themeMaster, cssPrefix));
-  modeFolder.file(`${base}.gpl`, generateGpl(`${kitName} ${mode}`, designerColors));
-  modeFolder.file(`${base}.ase`, generateAse(designerColors));
+  const css = buildMarketplaceKitCss(flatTokens, cssPrefix);
+  const gpl = generateGpl(kitName + ' ' + mode, designerColors);
+  const ase = generateAse(designerColors);
+  auditMarketplaceKitMode({ flatTokens, css, gpl, ase, prefix: cssPrefix });
+  modeFolder.file(`${base}.css`, css);
+  modeFolder.file(`${base}.gpl`, gpl);
+  modeFolder.file(`${base}.ase`, ase);
   modeFolder.file(`${base}.swatches`, await generateProcreateSwatchesFile(`${kitName} ${mode}`, designerColors));
 
   const figmaPayload = buildFigmaTokensPayload(finalTokens, { namingPrefix: cssPrefix || undefined });
@@ -152,7 +165,7 @@ export const buildMarketplaceKitArchive = async (theme, options = {}) => {
   const exportData = buildThemePackExportData(theme, options);
   const kitName = exportData.themeName || 'Theme Kit';
   const kitSlug = exportData.slug || slugifyFilename(kitName, 'theme-kit');
-  const cssPrefix = exportData.metadata?.tokenPrefix || kitSlug;
+  const cssPrefix = String(exportData.metadata?.tokenPrefix || kitSlug).replace(/[^a-zA-Z0-9_-]/g, '-');
 
   const JSZip = (await import('jszip')).default;
   const zip = new JSZip();
@@ -164,14 +177,22 @@ export const buildMarketplaceKitArchive = async (theme, options = {}) => {
   const groupCounts = {};
   const previewFolder = root.folder('previews');
   let tokenCount = 0;
+  let referenceKeys = null;
 
   for (const mode of exportData.availableModes) {
     const variant = exportData.variants[mode];
     const { flatTokens, currentTheme } = await buildModeFiles({
       root, kitSlug, kitName, mode, variant, cssPrefix,
     });
-    if (tokenCount === 0) tokenCount = flatTokens.length;
-    flatTokens.forEach(({ group }) => { groupCounts[group] = (groupCounts[group] || 0) + 1; });
+    const modeKeys = flatTokens.map(({ key }) => key).sort();
+    if (referenceKeys && JSON.stringify(modeKeys) !== JSON.stringify(referenceKeys)) {
+      throw new Error('Marketplace kit modes must contain the same token keys');
+    }
+    if (!referenceKeys) {
+      referenceKeys = modeKeys;
+      tokenCount = flatTokens.length;
+      flatTokens.forEach(({ group }) => { groupCounts[group] = (groupCounts[group] || 0) + 1; });
+    }
     matrix[mode] = buildKitContrastMatrix(flatTokens);
     [
       `${mode}/${kitSlug}-${mode}.json`, `${mode}/${kitSlug}-${mode}.css`,
@@ -213,6 +234,16 @@ export const buildMarketplaceKitArchive = async (theme, options = {}) => {
     formats: ['ase', 'swatches', 'gpl', 'css', 'json', 'figma-tokens', 'tailwind'],
     files: [...orderedFiles, 'README.md', 'manifest.json'].sort(),
   }));
+
+  // Do not claim an export file exists unless it was actually put into the ZIP.
+  const declared = [...orderedFiles, 'README.md', 'manifest.json'].sort();
+  const packed = Object.entries(zip.files)
+    .filter(([, item]) => !item.dir)
+    .map(([path]) => path.slice(kitSlug.length + 1))
+    .sort();
+  if (JSON.stringify(declared) !== JSON.stringify(packed)) {
+    throw new Error('Marketplace kit manifest does not match ZIP contents');
+  }
 
   const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/zip' });
   return {
