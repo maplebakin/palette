@@ -9,3 +9,4 @@ playwright-report/
 *.log
 token-gen/*theme-pack*.zip
 token-gen/products/**/*.zip
+token-gen/.release-candidates/
