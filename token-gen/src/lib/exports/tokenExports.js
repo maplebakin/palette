@@ -182,7 +182,7 @@ export const buildTailwindConfigJs = ({ kitName, mode, flatTokens, prefix }) => 
     tree[group][name] = hex;
   });
   const colorsBody = JSON.stringify({ colors: { [prefix || 'kit']: tree } }, null, 2)
-    .replace(/"([^"]+)":/g, '$1:');
+    .replace(/"([a-zA-Z_$][a-zA-Z0-9_$]*)":/g, '$1:');
   const varName = `${(prefix || 'kit').replace(/[^a-zA-Z0-9]+/g, '')}${mode[0].toUpperCase()}${mode.slice(1)}`;
   return [
     `// ${kitName} — ${mode} variant · Tailwind CSS v3 theme extension`,
