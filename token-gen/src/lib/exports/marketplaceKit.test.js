@@ -43,6 +43,7 @@ vi.mock('./previewAssets.js', () => ({
 const {
   flattenKitTokens,
   buildKitContrastMatrix,
+  buildMarketplaceKitCss,
   buildKitReadme,
   buildKitManifest,
   buildKitLicense,
@@ -50,6 +51,9 @@ const {
 } = await import('./marketplaceKit.js');
 const { buildTailwindConfigJs } = await import('./tokenExports.js');
 const { getContrastRatio } = await import('../colorUtils.js');
+const { generateAse } = await import('./exportAse.js');
+const { generateGpl } = await import('./exportGpl.js');
+const { auditMarketplaceKitMode } = await import('./marketplaceKitReleaseAudit.js');
 
 const FLAT = [
   { key: 'brand-primary', hex: '#76a653', group: 'brand' },
@@ -58,6 +62,56 @@ const FLAT = [
   { key: 'actions-primary', hex: '#76a653', group: 'actions' },
   { key: 'actions-primary-foreground', hex: '#0b0b10', group: 'actions' },
 ];
+
+const RELEASE_FLAT = [
+  ...FLAT,
+  { key: 'cards-card-panel-surface', hex: '#29353d', group: 'cards' },
+  { key: 'typography-heading', hex: '#ffffff', group: 'typography' },
+  { key: 'typography-text-muted', hex: '#ccd6dd', group: 'typography' },
+  { key: 'brand-accent', hex: '#ffc663', group: 'brand' },
+];
+
+const releaseFiles = (tokens = RELEASE_FLAT) => ({
+  flatTokens: tokens,
+  prefix: 'testkit',
+  css: buildMarketplaceKitCss(tokens, 'testkit'),
+  gpl: generateGpl('Test Kit', tokens.map(({ key, hex }) => ({ name: key, hex }))),
+  ase: generateAse(tokens.map(({ key, hex }) => ({ name: key, hex }))),
+});
+
+describe('sell-ready mode maths and format consistency', () => {
+  it('independently verifies required WCAG pairs and exact CSS/GPL/ASE swatches', () => {
+    expect(auditMarketplaceKitMode(releaseFiles())).toEqual({
+      tokenCount: RELEASE_FLAT.length,
+      checkedPairs: 8,
+    });
+  });
+
+  it('rejects unreadable manually overridden CTA text even when formats agree', () => {
+    const broken = RELEASE_FLAT.map(token => token.key === 'actions-primary-foreground'
+      ? { ...token, hex: '#76a653' }
+      : token);
+    expect(() => auditMarketplaceKitMode(releaseFiles(broken))).toThrow(/button label \/ button/);
+  });
+
+  it('rejects missing CSS colours instead of shipping a subset of JSON tokens', () => {
+    const files = releaseFiles();
+    files.css = files.css.replace(/.*--testkit-brand-accent:.*\n/, '');
+    expect(() => auditMarketplaceKitMode(files)).toThrow(/CSS mismatch: brand-accent/);
+  });
+
+  it('rejects a GPL swatch that silently differs from JSON', () => {
+    const files = releaseFiles();
+    files.gpl = files.gpl.replace(/118 166 83 brand-primary/, '0 0 0 brand-primary');
+    expect(() => auditMarketplaceKitMode(files)).toThrow(/GPL mismatch: brand-primary/);
+  });
+
+  it('rejects truncated or malformed ASE files', () => {
+    const files = releaseFiles();
+    files.ase = files.ase.slice(0, 18);
+    expect(() => auditMarketplaceKitMode(files)).toThrow(/ASE parse error/);
+  });
+});
 
 describe('flattenKitTokens', () => {
   it('flattens nested tokens to group-name keys and skips non-colors', () => {
@@ -85,6 +139,8 @@ describe('buildTailwindConfigJs', () => {
     expect(js).toContain('testkit:');
     expect(js).toContain('primary: "#76a653"');
     expect(js).toContain('theme: { extend:');
+    // Hyphenated token names must stay quoted to be valid JavaScript property keys.
+    expect(js).toContain('"primary-foreground": "#0b0b10"');
   });
 });
 
@@ -138,9 +194,10 @@ describe('buildMarketplaceKitArchive', () => {
       variants: {
         dark: {
           finalTokens: {
-            brand: { primary: '#76a653' },
+            brand: { primary: '#76a653', accent: '#ffc663' },
             surfaces: { background: '#1b1e20' },
-            typography: { 'text-body': '#ccceca' },
+            cards: { 'card-panel-surface': '#29353d' },
+            typography: { 'text-body': '#ccceca', heading: '#ffffff', 'text-muted': '#ccd6dd' },
             actions: { primary: '#76a653', 'primary-foreground': '#0b0b10' },
           },
         },
@@ -162,7 +219,11 @@ describe('buildMarketplaceKitArchive', () => {
     ].forEach((name) => expect(names).toContain(name));
 
     const manifest = JSON.parse(zip.files['test-kit/manifest.json']);
-    expect(manifest.tokenCount).toBe(5);
+    expect(manifest.tokenCount).toBe(9);
+    expect(manifest.tokenGroups).toEqual({ brand: 2, surfaces: 1, cards: 1, typography: 3, actions: 2 });
+    const css = zip.files[base + '.css'];
+    expect(css).toContain('--test-kit-typography-text-body: #ccceca;');
+    expect(css).toContain('--test-kit-brand-accent: #ffc663;');
     const matrix = JSON.parse(zip.files['test-kit/contrast-matrix.json']);
     expect(matrix.dark.length).toBeGreaterThan(0);
     const readme = zip.files['test-kit/README.md'];
