@@ -37,6 +37,7 @@ class JSZipMock {
 
 vi.mock('jszip', () => ({ default: JSZipMock }));
 vi.mock('./previewAssets.js', () => ({
+  buildPaletteCardSvg: vi.fn(() => '<svg viewBox="0 0 12 12"></svg>'),
   renderPaletteCardPng: vi.fn(async () => new Uint8Array([1, 2, 3])),
 }));
 
@@ -216,6 +217,7 @@ describe('buildMarketplaceKitArchive', () => {
       `${base}.figma-tokens.json`, `test-kit/dark/tailwind.test-kit-dark.js`,
       'test-kit/README.md', 'test-kit/manifest.json',
       'test-kit/contrast-matrix.json', 'test-kit/LICENSE.txt',
+      'test-kit/previews/test-kit-dark.svg',
     ].forEach((name) => expect(names).toContain(name));
 
     const manifest = JSON.parse(zip.files['test-kit/manifest.json']);
@@ -265,5 +267,8 @@ describe('buildMarketplaceKitArchive', () => {
     expect(readme).toContain('dark: 9, light: 9, pop: 10');
     const pop = JSON.parse(zip.files['test-kit/pop/test-kit-pop.json']);
     expect(pop.tokenCount).toBe(10);
+    for (const mode of modes) {
+      expect(zip.files[`test-kit/previews/test-kit-${mode}.svg`]).toContain('<svg');
+    }
   });
 });
