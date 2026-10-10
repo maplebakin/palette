@@ -52,14 +52,17 @@ export const buildKitContrastMatrix = (flatTokens) => {
     .map(([label, fg, bg]) => ({ pair: label, ratio: getContrastRatio(map[fg], map[bg]).toFixed(2) }));
 };
 
-export const buildKitReadme = ({ name, tokenCount, groups, modes, files }) => {
+export const buildKitReadme = ({ name, tokenCount, groups, modes, files, tokenCountsByVariant = null }) => {
   const groupLines = Object.entries(groups)
     .map(([group, count]) => `- **${group}** (${count})`)
     .join('\n');
   return [
     `# ${name}`,
     '',
-    `A finished ${tokenCount}-token theme kit in ${modes.length} variant${modes.length === 1 ? '' : 's'}: ${modes.join(', ')}.`,
+    `A finished theme kit in ${modes.length} variant${modes.length === 1 ? '' : 's'}: ${modes.join(', ')}.`,
+    tokenCountsByVariant
+      ? `Colour tokens per variant: ${modes.map(mode => `${mode}: ${tokenCountsByVariant[mode]}`).join(', ')}.`
+      : `Colour tokens in this variant: ${tokenCount}.`,
     '',
     '## Tokens',
     '',
@@ -95,7 +98,7 @@ export const buildKitReadme = ({ name, tokenCount, groups, modes, files }) => {
   ].join('\n');
 };
 
-export const buildKitManifest = ({ slug, name, tokenCount, groups, modes, formats, files }) => (
+export const buildKitManifest = ({ slug, name, tokenCount, groups, modes, formats, files, tokenCountsByVariant = null, tokenGroupsByVariant = null, modeSpecificTokens = null }) => (
   JSON.stringify({
     id: slug,
     name,
@@ -103,6 +106,9 @@ export const buildKitManifest = ({ slug, name, tokenCount, groups, modes, format
     variants: modes,
     formats,
     tokenGroups: groups,
+    ...(tokenCountsByVariant ? { tokenCountsByVariant } : {}),
+    ...(tokenGroupsByVariant ? { tokenGroupsByVariant } : {}),
+    ...(modeSpecificTokens ? { modeSpecificTokens } : {}),
     accessibility: 'Key text/surface pairs and button pairs per variant measured at WCAG 2.1 ratios (see contrast-matrix.json).',
     license: 'Personal and commercial use allowed for finished work; no resale/redistribution of the kit itself.',
     created: new Date().toISOString().slice(0, 10),
@@ -177,21 +183,28 @@ export const buildMarketplaceKitArchive = async (theme, options = {}) => {
   const groupCounts = {};
   const previewFolder = root.folder('previews');
   let tokenCount = 0;
-  let referenceKeys = null;
+  const tokenCountsByVariant = {};
+  const tokenGroupsByVariant = {};
+  const keysByVariant = {};
 
   for (const mode of exportData.availableModes) {
     const variant = exportData.variants[mode];
     const { flatTokens, currentTheme } = await buildModeFiles({
       root, kitSlug, kitName, mode, variant, cssPrefix,
     });
-    const modeKeys = flatTokens.map(({ key }) => key).sort();
-    if (referenceKeys && JSON.stringify(modeKeys) !== JSON.stringify(referenceKeys)) {
-      throw new Error('Marketplace kit modes must contain the same token keys');
-    }
-    if (!referenceKeys) {
-      referenceKeys = modeKeys;
+    // All variants must pass the required semantic-pair audit in buildModeFiles.
+    // Pop legitimately adds extra pop-* tokens that are absent in Light/Dark,
+    // so demanding identical key sets would reject valid complete kits.
+    keysByVariant[mode] = new Set(flatTokens.map(({ key }) => key));
+    tokenCountsByVariant[mode] = flatTokens.length;
+    const modeGroups = {};
+    flatTokens.forEach(({ group }) => {
+      modeGroups[group] = (modeGroups[group] || 0) + 1;
+    });
+    tokenGroupsByVariant[mode] = modeGroups;
+    if (!tokenCount) {
       tokenCount = flatTokens.length;
-      flatTokens.forEach(({ group }) => { groupCounts[group] = (groupCounts[group] || 0) + 1; });
+      Object.assign(groupCounts, modeGroups);
     }
     matrix[mode] = buildKitContrastMatrix(flatTokens);
     [
@@ -213,6 +226,17 @@ export const buildMarketplaceKitArchive = async (theme, options = {}) => {
     }
   }
 
+  const allModes = exportData.availableModes;
+  const commonKeys = new Set(keysByVariant[allModes[0]] || []);
+  for (const mode of allModes.slice(1)) {
+    for (const key of commonKeys) {
+      if (!keysByVariant[mode].has(key)) commonKeys.delete(key);
+    }
+  }
+  const modeSpecificTokens = Object.fromEntries(allModes.map(mode => [
+    mode, [...keysByVariant[mode]].filter(key => !commonKeys.has(key)).sort(),
+  ]));
+
   root.file('contrast-matrix.json', JSON.stringify(matrix, null, 2));
   root.file('LICENSE.txt', buildKitLicense(kitName));
   files.push('contrast-matrix.json', 'LICENSE.txt');
@@ -223,6 +247,7 @@ export const buildMarketplaceKitArchive = async (theme, options = {}) => {
     tokenCount,
     groups: groupCounts,
     modes: exportData.availableModes,
+    tokenCountsByVariant,
     files: orderedFiles,
   }));
   root.file('manifest.json', buildKitManifest({
@@ -231,6 +256,9 @@ export const buildMarketplaceKitArchive = async (theme, options = {}) => {
     tokenCount,
     groups: groupCounts,
     modes: exportData.availableModes,
+    tokenCountsByVariant,
+    tokenGroupsByVariant,
+    modeSpecificTokens,
     formats: ['ase', 'swatches', 'gpl', 'css', 'json', 'figma-tokens', 'tailwind'],
     files: [...orderedFiles, 'README.md', 'manifest.json'].sort(),
   }));
