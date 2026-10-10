@@ -37,6 +37,7 @@ class JSZipMock {
 
 vi.mock('jszip', () => ({ default: JSZipMock }));
 vi.mock('./previewAssets.js', () => ({
+  buildPaletteCardSvg: vi.fn(() => '<svg viewBox="0 0 12 12"></svg>'),
   renderPaletteCardPng: vi.fn(async () => new Uint8Array([1, 2, 3])),
 }));
 
@@ -216,6 +217,7 @@ describe('buildMarketplaceKitArchive', () => {
       `${base}.figma-tokens.json`, `test-kit/dark/tailwind.test-kit-dark.js`,
       'test-kit/README.md', 'test-kit/manifest.json',
       'test-kit/contrast-matrix.json', 'test-kit/LICENSE.txt',
+      'test-kit/previews/test-kit-dark.svg',
     ].forEach((name) => expect(names).toContain(name));
 
     const manifest = JSON.parse(zip.files['test-kit/manifest.json']);
@@ -229,5 +231,44 @@ describe('buildMarketplaceKitArchive', () => {
     const readme = zip.files['test-kit/README.md'];
     expect(readme).toContain('dark/test-kit-dark.ase');
     expect(readme).not.toContain(',,');
+  });
+
+  it('accepts mode-specific Pop colour tokens and reports actual per-variant counts', async () => {
+    const common = {
+      brand: { primary: '#76a653', accent: '#ffc663' },
+      surfaces: { background: '#1b1e20' },
+      cards: { 'card-panel-surface': '#29353d' },
+      typography: { 'text-body': '#ccceca', heading: '#ffffff', 'text-muted': '#ccd6dd' },
+      actions: { primary: '#76a653', 'primary-foreground': '#0b0b10' },
+    };
+    const deepCopy = () => JSON.parse(JSON.stringify(common));
+    const theme = {
+      displayThemeName: 'Test Kit',
+      themeMode: 'dark',
+      mode: 'Analogous',
+      baseColor: '#76a653',
+      variants: {
+        dark: { finalTokens: deepCopy() },
+        light: { finalTokens: deepCopy() },
+        pop: { finalTokens: { ...deepCopy(), pop: { 'sticker-accent': '#f23a99' } } },
+      },
+    };
+    const index = zipInstances.length;
+    const { modes } = await buildMarketplaceKitArchive(theme);
+    expect(modes).toEqual(['dark', 'light', 'pop']);
+    const zip = zipInstances[index];
+    const manifest = JSON.parse(zip.files['test-kit/manifest.json']);
+    expect(manifest.tokenCountsByVariant).toEqual({ dark: 9, light: 9, pop: 10 });
+    expect(manifest.tokenGroupsByVariant.pop.pop).toBe(1);
+    expect(manifest.modeSpecificTokens).toEqual({
+      dark: [], light: [], pop: ['pop-sticker-accent'],
+    });
+    const readme = zip.files['test-kit/README.md'];
+    expect(readme).toContain('dark: 9, light: 9, pop: 10');
+    const pop = JSON.parse(zip.files['test-kit/pop/test-kit-pop.json']);
+    expect(pop.tokenCount).toBe(10);
+    for (const mode of modes) {
+      expect(zip.files[`test-kit/previews/test-kit-${mode}.svg`]).toContain('<svg');
+    }
   });
 });
