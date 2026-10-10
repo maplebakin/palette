@@ -101,6 +101,9 @@ export const verifyCandidateArchive = async (blob, kitSlug) => {
       assert(zip.file(base + suffix), 'Missing ' + base + suffix);
     }
     assert(zip.file(root + mode + '/tailwind.' + kitSlug + '-' + mode + '.js'), 'Missing Tailwind in ' + mode);
+    const preview = zip.file(root + 'previews/' + kitSlug + '-' + mode + '.svg');
+    assert(preview, 'Missing portable SVG preview for ' + mode);
+    assert((await preview.async('string')).includes('<svg'), 'Malformed SVG preview for ' + mode);
   }
   const packaged = Object.keys(zip.files).filter(path => !zip.files[path].dir)
     .map(path => path.slice(root.length)).sort();
